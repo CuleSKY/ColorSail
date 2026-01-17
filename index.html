@@ -143,7 +143,6 @@
         .card.online .status-line { background: var(--status-online); }
         .card-header-row { display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center; }
         .srv-name { font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 75%; }
-        .ping-tag { font-size: 12px; font-weight: bold; }
         .info-block { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
         .info-row { display: flex; justify-content: space-between; align-items: flex-start; font-size: 13px; color: var(--text-primary); }
         .info-label { color: var(--text-secondary); min-width: 40px; }
@@ -166,7 +165,6 @@
         .col-map .map-name { font-weight: 500; }
         .col-map .map-cn { font-size: 12px; color: var(--text-secondary); }
         .col-players { flex: 1; font-size: 14px; text-align: center; color: var(--text-secondary); }
-        .col-ping { flex: 0.8; font-size: 14px; font-weight: 600; text-align: center; }
         .col-actions { flex: 2.5; display: flex; gap: 8px; justify-content: flex-end; }
         .col-actions .btn { max-width: 100px; }
 
@@ -177,7 +175,6 @@
         .mobile-map-name { font-size: 13px; color: var(--text-secondary); display: flex; flex-direction: column; }
         .mobile-trans { font-size: 12px; opacity: 0.8; }
         .mobile-item-right { font-weight: bold; font-size: 14px; white-space: nowrap; margin-left: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-        .mobile-ping { font-size: 11px; opacity: 0.7; font-weight: normal; }
 
         /* --- Stats Dashboard --- */
         .stats-dashboard { display: flex; flex-direction: column; gap: 20px; max-width: 1200px; margin: 0 auto; }
@@ -430,9 +427,6 @@
                                 <div>
                                     <div class="card-header-row">
                                         <div class="srv-name" :title="s.name">[[ s.name ]]</div>
-                                        <div class="ping-tag" :style="{color: getPingColor(s.ping, s.image_url)}" v-if="s.online">
-                                            [[ getPingText(s) ]]
-                                        </div>
                                     </div>
                                     <div class="info-block">
                                         <div class="info-row"><span class="info-label">[[ t('map') ]]</span> <div class="map-info"><span>[[ s.map || '-' ]]</span><div class="map-trans" v-if="isChineseLang"><span v-if="s.map_cn">[[ s.map_cn ]]</span><span v-if="!s.map_cn && s.map!='-'" style="opacity:0.6">[[ t('no_trans') ]]</span></div></div></div>
@@ -454,9 +448,6 @@
                             <div class="col-name" :title="s.name">[[ s.name ]]</div>
                             <div class="col-map"><span class="map-name">[[ s.map || '-' ]]</span><span class="col-map-cn" v-if="isChineseLang">[[ s.map_cn || (s.map!='-' ? t('no_trans') : '') ]]</span></div>
                             <div class="col-players">[[ s.players ]]/[[ s.max_players ]]</div>
-                            <div class="col-ping" :style="{color: getPingColor(s.ping, false)}">
-                                [[ s.online ? getPingText(s) : '-' ]]
-                            </div>
                             <div class="col-actions"><a :href="getConnectUrl(s, comm.game)" class="btn btn-primary">[[ t('join') ]]</a><button class="btn btn-sec" @click="copyCmd(s)">[[ t('copy_console') ]] </button><button class="btn btn-sec" @click="copyIp(s)">[[ t('copy_ip') ]]</button></div>
                         </div>
                     </div>
@@ -464,8 +455,7 @@
                     <div class="mobile-list-container" v-if="isMobile">
                         <div class="mobile-item" v-for="s in getServers(comm.id)" :key="s.display_ip">
                             <div class="mobile-item-left"><div class="mobile-srv-name">[[ s.name ]]</div><div class="mobile-map-name"><span>[[ s.map || '-' ]]</span><span class="mobile-trans" v-if="isChineseLang"> [[ s.map_cn || (s.map!='-' ? t('no_trans') : '') ]]</span></div></div>
-                            <div class="mobile-item-right"><div :style="{color: s.online ? 'var(--text-primary)' : 'var(--status-offline)'}">[[ s.online ? s.players + '/' + s.max_players : t('offline') ]]</div>
-                            <div class="mobile-ping" v-if="s.online">[[ getPingText(s) ]]</div></div>
+                            <div class="mobile-item-right"><div :style="{color: s.online ? 'var(--text-primary)' : 'var(--status-offline)'}">[[ s.online ? s.players + '/' + s.max_players : t('offline') ]]</div></div>
                         </div>
                     </div>
                 </div>
@@ -1028,22 +1018,10 @@ createApp({
         };
         // ------------------------------------------
 
-        const getPingColor = (ping, hasImage) => {
-            if(ping === 0 || ping === -1) return 'var(--accent)'; 
-            if(ping < 80) return hasImage ? '#4cc94c' : 'var(--status-online)';
-            if(ping < 150) return '#ffaa44';
-            return 'var(--status-offline)';
-        };
-        const getPingText = (s) => {
-            if (s.ping === -1) return isChineseLang.value ? '在线' : 'Online';
-            if (s.ping === 0) return 'API';
-            return s.ping + ' ms';
-        };
-
         return {
             t, curLang, isDark, curView, communities, servers, toastMsg, icons: ICONS,
             isCollapsed, toggleSidebar, toggleTheme, showLangMenu, setLang,
-            hasFeature, loadStats, openMapLink, getConnectUrl, copyCmd, copyIp, getPingColor, getPingText, langLabel, currentLogoPath, isChineseLang,
+            hasFeature, loadStats, openMapLink, getConnectUrl, copyCmd, copyIp, langLabel, currentLogoPath, isChineseLang,
             scrollToComm, viewMode, toggleViewMode, isMobile,
             isEditMode, toggleEditMode, 
             sortByPlayers, toggleSortByPlayers, getServers,

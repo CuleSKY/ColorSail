@@ -10,7 +10,7 @@ import colorsys
 import socket
 import urllib3
 from datetime import datetime
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 import a2s
 from apscheduler.schedulers.background import BackgroundScheduler
 from concurrent.futures import ThreadPoolExecutor
@@ -28,11 +28,16 @@ STATIC_MAP_DIR = os.path.join('static', 'maps')
 
 # EXG API 地址
 EXG_API_URL = "https://list.darkrp.cn:9000/ServerList/CurrentStatus"
+EXG_SESSION = requests.Session()
+EXG_CACHE = []
+EXG_CACHE_UPDATED_AT = 0
 
 os.makedirs(STATIC_MAP_DIR, exist_ok=True)
 
 # --- 全局状态 ---
 SERVER_CACHE = {}
+AGENT_CACHE = {}
+AGENT_CACHE_UPDATED_AT = {}
 COMMUNITY_META = []
 MAP_IMAGE_INDEX = set()
 MAP_TRANS_CACHE = {}
@@ -98,6 +103,7 @@ def fetch_exg_data_from_api():
     直接从 EXG API 获取实时服务器数据
     返回格式与 A2S 查询结果一致
     """
+    global EXG_CACHE, EXG_CACHE_UPDATED_AT
     servers = []
     
     try:
@@ -106,7 +112,7 @@ def fetch_exg_data_from_api():
             'Accept': 'application/json'
         }
         
-        resp = requests.get(EXG_API_URL, timeout=10, verify=False, headers=headers)
+        resp = EXG_SESSION.get(EXG_API_URL, timeout=10, verify=False, headers=headers)
         
         if resp.status_code == 200:
             data = resp.json()
@@ -180,6 +186,8 @@ def fetch_exg_data_from_api():
                 except Exception as e:
                     continue
             
+            EXG_CACHE = servers
+            EXG_CACHE_UPDATED_AT = int(time.time())
             print(f"[EXG API] 成功获取 {len(servers)} 个服务器")
                     
         else:
@@ -188,7 +196,9 @@ def fetch_exg_data_from_api():
     except Exception as e:
         print(f"[EXG API] 请求失败: {e}")
     
-    return servers
+    if servers:
+        return servers
+    return EXG_CACHE
 
 # --- 3. 核心：A2S 抓取逻辑（其他社区）---
 def fetch_a2s_data(server_cfg, game_type='cs2'):
@@ -253,10 +263,29 @@ def update_all_data():
     
     for comm in COMMUNITY_META:
         cid = comm['id']
+        use_agent = comm.get('source') == 'agent' or comm.get('agent') is True
+        if use_agent:
+            agent_servers = AGENT_CACHE.get(cid, [])
+            new_cache[cid] = agent_servers
+            online_count = sum(1 for s in agent_servers if s.get('online'))
+            total_players = sum(s['players'] for s in agent_servers if s.get('online'))
+            print(f"[Update] {comm['name']}: {online_count}/{len(agent_servers)} 在线, {total_players} 玩家 (agent)")
+            continue
+        if cid in AGENT_CACHE:
+            agent_servers = AGENT_CACHE.get(cid, [])
+            new_cache[cid] = agent_servers
+            online_count = sum(1 for s in agent_servers if s.get('online'))
+            total_players = sum(s['players'] for s in agent_servers if s.get('online'))
+            print(f"[Update] {comm['name']}: {online_count}/{len(agent_servers)} 在线, {total_players} 玩家 (agent)")
+            continue
         
         # === EXG 特殊处理：直接从 API 获取 ===
         if cid == 'exg':
-            new_cache[cid] = fetch_exg_data_from_api()
+            exg_data = fetch_exg_data_from_api()
+            if exg_data:
+                new_cache[cid] = exg_data
+            else:
+                new_cache[cid] = SERVER_CACHE.get(cid, [])
             online_count = sum(1 for s in new_cache[cid] if s.get('online'))
             total_players = sum(s['players'] for s in new_cache[cid] if s.get('online'))
             print(f"[Update] {comm['name']}: {online_count}/{len(new_cache[cid])} 在线, {total_players} 玩家")
@@ -333,6 +362,36 @@ def get_config_meta():
 def get_servers(cid):
     """返回指定社区的实时服务器列表"""
     return jsonify(SERVER_CACHE.get(cid, []))
+
+@app.route('/api/agent/update', methods=['POST'])
+def update_agent_data():
+    token = os.environ.get('AGENT_SHARED_TOKEN')
+    if token:
+        auth = request.headers.get('Authorization', '')
+        if auth != f"Bearer {token}":
+            return jsonify({"error": "unauthorized"}), 401
+
+    payload = request.get_json(silent=True) or {}
+    communities = payload.get('communities', {})
+    if not isinstance(communities, dict):
+        return jsonify({"error": "invalid payload"}), 400
+
+    for cid, servers in communities.items():
+        if not isinstance(servers, list):
+            continue
+        normalized = []
+        for srv in servers:
+            if not isinstance(srv, dict):
+                continue
+            ip = srv.get('ip')
+            port = srv.get('port')
+            if ip and port and not srv.get('display_ip'):
+                srv['display_ip'] = f"{ip}:{port}"
+            normalized.append(srv)
+        AGENT_CACHE[cid] = normalized
+        AGENT_CACHE_UPDATED_AT[cid] = int(time.time())
+
+    return jsonify({"status": "ok", "updated": list(communities.keys())})
 
 @app.route('/api/map_translations')
 def get_translations():
