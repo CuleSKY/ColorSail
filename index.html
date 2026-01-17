@@ -896,31 +896,22 @@ createApp({
 
         const refreshCommunity = async (cid) => {
             const now = Date.now();
-            let fetched = [];
-            let fetchOk = false;
             try {
                 const res = await fetch(`/api/servers/${cid}`);
                 const data = await res.json();
-                if (Array.isArray(data)) {
-                    fetched = data;
-                    fetchOk = true;
-                }
-            } catch(e) {}
-            const cache = serverCache.value[cid] || {};
-            if (fetchOk) {
-                fetched.forEach(s => {
-                    const key = getServerKey(s);
-                    cache[key] = { ...(cache[key] || {}), ...s, _lastSeen: now };
+                const cache = serverCache.value[cid] || {};
+                data.forEach(s => {
+                    cache[getServerKey(s)] = { ...s, _lastSeen: now };
                     checkSubscriptions(s, cid);
                 });
-                if (fetched.length > 0) {
-                    Object.keys(cache).forEach((key) => {
-                        if (now - cache[key]._lastSeen > serverStaleMs) {
-                            delete cache[key];
-                        }
-                    });
+                serverCache.value[cid] = cache;
+            } catch(e) {}
+            const cache = serverCache.value[cid] || {};
+            Object.keys(cache).forEach((key) => {
+                if (now - cache[key]._lastSeen > serverStaleMs) {
+                    delete cache[key];
                 }
-            }
+            });
             serverCache.value[cid] = cache;
             servers.value[cid] = Object.values(cache);
         };
