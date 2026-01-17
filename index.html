@@ -600,6 +600,7 @@ createApp({
     setup() {
         const communities = ref([]);
         const servers = ref({});
+        const serverCache = ref({});
         const curView = ref('servers');
         const toastMsg = ref('');
         const isCollapsed = ref(false); 
@@ -874,6 +875,10 @@ createApp({
             }
         };
 
+        const serverStaleMs = 15000;
+        const refreshIntervalMs = 15000;
+        const getServerKey = (srv) => `${srv.ip}:${srv.port}`;
+
         const fetchConfig = async () => {
             try {
                 const res = await fetch('/api/config');
@@ -891,20 +896,37 @@ createApp({
                 } catch(e) { localStorage.removeItem('comm_order'); }
 
                 communities.value = data;
-                communities.value.forEach(c => { servers.value[c.id] = []; refreshCommunity(c.id); });
+                communities.value.forEach(c => {
+                    servers.value[c.id] = [];
+                    serverCache.value[c.id] = {};
+                    refreshCommunity(c.id);
+                });
             } catch(e) { console.error("Config fetch failed", e); }
         };
 
         const refreshCommunity = async (cid) => {
+            const now = Date.now();
             try {
                 const res = await fetch(`/api/servers/${cid}`);
                 const data = await res.json();
-                servers.value[cid] = data;
-                data.forEach(s => checkSubscriptions(s, cid));
+                const cache = serverCache.value[cid] || {};
+                data.forEach(s => {
+                    cache[getServerKey(s)] = { ...s, _lastSeen: now };
+                    checkSubscriptions(s, cid);
+                });
+                serverCache.value[cid] = cache;
             } catch(e) {}
+            const cache = serverCache.value[cid] || {};
+            Object.keys(cache).forEach((key) => {
+                if (now - cache[key]._lastSeen > serverStaleMs) {
+                    delete cache[key];
+                }
+            });
+            serverCache.value[cid] = cache;
+            servers.value[cid] = Object.values(cache);
         };
 
-        setInterval(() => communities.value.forEach(c => refreshCommunity(c.id)), 5000);
+        setInterval(() => communities.value.forEach(c => refreshCommunity(c.id)), refreshIntervalMs);
 
         const getServers = (cid) => {
             let list = servers.value[cid] ? [...servers.value[cid]] : [];
