@@ -20,9 +20,6 @@ SECRETS_FILE = 'secrets.json'
 # 全局 Steam API Key (将从 secrets.json 中解密加载)
 STEAM_API_KEY = None
 
-# EXG 配置
-EXG_API_URL = "https://list.darkrp.cn:9000/ServerList/CurrentStatus"
-
 def load_secrets():
     """加载并解密 secrets.json 中的 Steam API Key"""
     global STEAM_API_KEY
@@ -57,64 +54,10 @@ def load_secrets():
     except Exception as e:
         print(f"[Secrets] ❌ 解密失败: {e}")
 
-def fetch_exg_data_from_api():
-    """EXG API 拉取，格式与主服务器保持一致"""
-    servers = []
-    try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Accept': 'application/json'
-        }
-        resp = requests.get(EXG_API_URL, timeout=10, verify=False, headers=headers)
-        if resp.status_code != 200:
-            print(f"[EXG API] HTTP 错误: {resp.status_code}")
-            return servers
-
-        data = resp.json()
-        if not isinstance(data, list):
-            data = [data]
-
-        for item in data:
-            try:
-                server_info = item.get('Server', {})
-                status_info = item.get('Status', {})
-                ip = server_info.get('Ip')
-                port = server_info.get('Port')
-                if not ip or not port:
-                    continue
-
-                name = (status_info.get('FullTitle')
-                        or server_info.get('DisplayNameCN')
-                        or server_info.get('DisplayName')
-                        or f"EXG {port}")
-
-                map_name = status_info.get('Map', '-')
-                map_display = status_info.get('MapDisplayName', '')
-                current_players = status_info.get('CurrentPlayers', 0)
-                max_players = status_info.get('MaxPlayers', 64)
-
-                servers.append({
-                    "name": name.strip(),
-                    "ip": str(ip).strip(),
-                    "connect_ip": str(ip).strip(),
-                    "port": int(port),
-                    "display_ip": f"{ip}:{port}",
-                    "map": map_name,
-                    "players": int(current_players),
-                    "max_players": int(max_players),
-                    "online": True,
-                    "ping": -1,
-                    "game_type": "cs2",
-                    "map_cn": map_display or None
-                })
-            except Exception:
-                continue
-
-        print(f"[EXG API] 成功获取 {len(servers)} 个服务器")
-    except Exception as e:
-        print(f"[EXG API] 请求失败: {e}")
-
-    return servers
+def should_collect_community(comm):
+    if comm.get('location') == 'cn':
+        return False
+    return comm.get('source') == 'agent' or comm.get('agent') is True
 
 def fetch_server_data(server_cfg, exg_cache=None):
     host, port = server_cfg['host'], server_cfg['port']
