@@ -105,10 +105,12 @@
         .edit-banner { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: repeating-linear-gradient(45deg, var(--warn-text), var(--warn-text) 10px, var(--warn-bg) 10px, var(--warn-bg) 20px); z-index: 101; }
 
         .header-toolbar { display: flex; align-items: center; gap: 12px; position: absolute; left: 50%; transform: translateX(-50%); }
-        .toolbar-btn { display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 20px; background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-primary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .toolbar-btn { display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 20px; background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-primary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02); line-height: 1; }
         .toolbar-btn:hover { background: rgba(128,128,128,0.1); transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.08); }
         .toolbar-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
-        .toolbar-btn .icon-svg { width: 18px; height: 18px; }
+        .toolbar-btn .icon-svg { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
+        .toolbar-btn .icon-svg svg { display: block; }
+        .toolbar-btn span { line-height: 1; }
 
         .top-controls { display: flex; gap: 12px; align-items: center; }
         .control-btn { background: transparent; border: none; cursor: pointer; padding: 8px; border-radius: 50%; color: var(--text-primary); display: flex; align-items: center; justify-content: center; transition: background 0.2s; position: relative; }
