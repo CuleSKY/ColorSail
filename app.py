@@ -285,11 +285,11 @@ def update_all_data():
     
     for comm in COMMUNITY_META:
         cid = comm['id']
-        if comm.get('location') == 'cn':
+        if comm.get('location') != 'cn':
             agent_servers = AGENT_CACHE.get(cid)
             if agent_servers is None:
                 new_cache[cid] = []
-                print(f"[Update] {comm['name']}: 等待 agent 数据 (cn)")
+                print(f"[Update] {comm['name']}: 等待 agent 数据 (non-cn)")
                 continue
             new_cache[cid] = agent_servers
             online_count = sum(1 for s in agent_servers if s.get('online'))
