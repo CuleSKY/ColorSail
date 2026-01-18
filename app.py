@@ -161,6 +161,7 @@ def fetch_exg_data_from_api():
                     server_obj = {
                         "name": name.strip(),
                         "ip": str(ip).strip(),
+                        "connect_ip": str(ip).strip(),
                         "port": int(port),
                         "display_ip": f"{ip}:{port}",
                         "map": map_name,
@@ -214,10 +215,16 @@ def fetch_a2s_data(server_cfg, game_type='cs2'):
     host = server_cfg['host']
     port = server_cfg['port']
     name = server_cfg.get('name', f"{host}:{port}")
+    resolved_ip = None
+    try:
+        resolved_ip = socket.gethostbyname(host)
+    except Exception:
+        resolved_ip = None
     
     res = {
         "name": name,
-        "ip": host, 
+        "ip": host,
+        "connect_ip": resolved_ip or host,
         "port": port, 
         "display_ip": f"{host}:{port}",
         "map": "-", 
@@ -363,6 +370,7 @@ def index():
 @app.route('/api/config')
 def get_config_meta():
     """返回社区的元数据"""
+    load_config()
     meta = []
     for c in COMMUNITY_META:
         meta.append({
@@ -405,6 +413,11 @@ def update_agent_data():
             port = srv.get('port')
             if ip and port and not srv.get('display_ip'):
                 srv['display_ip'] = f"{ip}:{port}"
+            if ip and not srv.get('connect_ip'):
+                try:
+                    srv['connect_ip'] = socket.gethostbyname(ip)
+                except Exception:
+                    srv['connect_ip'] = ip
             normalized.append(srv)
         AGENT_CACHE[cid] = normalized
         AGENT_CACHE_UPDATED_AT[cid] = int(time.time())
