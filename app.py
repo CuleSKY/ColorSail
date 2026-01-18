@@ -39,7 +39,7 @@ SERVER_CACHE = {}
 AGENT_CACHE = {}
 AGENT_CACHE_UPDATED_AT = {}
 COMMUNITY_META = []
-MAP_IMAGE_INDEX = set()
+MAP_IMAGE_INDEX = {}
 MAP_TRANS_CACHE = {}
 
 EXG_SERVER_STALE_SECONDS = 15
@@ -64,16 +64,16 @@ def refresh_local_caches():
     global MAP_IMAGE_INDEX, MAP_TRANS_CACHE
     try:
         if os.path.exists(STATIC_MAP_DIR):
-            files = set()
+            files = {}
             for f in os.listdir(STATIC_MAP_DIR):
                 if f.lower().endswith(('.jpg', '.png', '.webp', '.jpeg')):
                     map_name = f.rsplit('.', 1)[0].lower()
-                    files.add(map_name)
+                    files[map_name] = f
             MAP_IMAGE_INDEX = files
             print(f"[Cache] 已加载 {len(MAP_IMAGE_INDEX)} 个地图图片")
     except Exception as e:
         print(f"[Cache] 图片索引加载失败: {e}")
-        MAP_IMAGE_INDEX = set()
+        MAP_IMAGE_INDEX = {}
 
     try:
         if os.path.exists(TRANS_FILE):
@@ -87,6 +87,23 @@ def refresh_local_caches():
     except Exception as e:
         print(f"[Cache] 翻译加载失败: {e}")
         MAP_TRANS_CACHE = {}
+
+def normalize_map_name(map_name):
+    if not map_name or map_name == "-":
+        return None
+    map_clean = str(map_name).strip().lower()
+    if map_clean.endswith('.bsp'):
+        map_clean = map_clean[:-4]
+    return map_clean or None
+
+def get_map_image_url(map_name):
+    map_clean = normalize_map_name(map_name)
+    if not map_clean:
+        return None
+    filename = MAP_IMAGE_INDEX.get(map_clean)
+    if filename:
+        return f"/static/maps/{filename}"
+    return None
 
 def load_config():
     """加载 config.json 中的社区列表结构"""
@@ -173,12 +190,9 @@ def fetch_exg_data_from_api():
                     }
                     
                     # 地图图片匹配
-                    map_clean = map_name.lower().strip()
-                    if map_clean.endswith('.bsp'):
-                        map_clean = map_clean[:-4]
-                    
-                    if map_clean in MAP_IMAGE_INDEX:
-                        server_obj['image_url'] = f"/static/maps/{map_clean}.jpg"
+                    image_url = get_map_image_url(map_name)
+                    if image_url:
+                        server_obj['image_url'] = image_url
                     else:
                         server_obj['image_url'] = None
                     
@@ -187,8 +201,10 @@ def fetch_exg_data_from_api():
                         server_obj['map_cn'] = map_display
                     elif map_name in MAP_TRANS_CACHE:
                         server_obj['map_cn'] = MAP_TRANS_CACHE[map_name]
-                    elif map_clean in MAP_TRANS_CACHE:
-                        server_obj['map_cn'] = MAP_TRANS_CACHE[map_clean]
+                    else:
+                        map_clean = normalize_map_name(map_name)
+                        if map_clean and map_clean in MAP_TRANS_CACHE:
+                            server_obj['map_cn'] = MAP_TRANS_CACHE[map_clean]
                     
                     servers.append(server_obj)
                     
@@ -249,18 +265,17 @@ def fetch_a2s_data(server_cfg, game_type='cs2'):
         })
         
         # 图片匹配
-        map_clean = info.map_name.lower().strip()
-        if map_clean.endswith('.bsp'):
-            map_clean = map_clean[:-4]
-        
-        if map_clean in MAP_IMAGE_INDEX:
-            res['image_url'] = f"/static/maps/{map_clean}.jpg"
+        image_url = get_map_image_url(info.map_name)
+        if image_url:
+            res['image_url'] = image_url
         
         # 翻译匹配
         if info.map_name in MAP_TRANS_CACHE:
             res['map_cn'] = MAP_TRANS_CACHE[info.map_name]
-        elif map_clean in MAP_TRANS_CACHE:
-            res['map_cn'] = MAP_TRANS_CACHE[map_clean]
+        else:
+            map_clean = normalize_map_name(info.map_name)
+            if map_clean and map_clean in MAP_TRANS_CACHE:
+                res['map_cn'] = MAP_TRANS_CACHE[map_clean]
             
     except Exception as e:
         pass
@@ -412,6 +427,8 @@ def update_agent_data():
     communities = payload.get('communities', {})
     if not isinstance(communities, dict):
         return jsonify({"error": "invalid payload"}), 400
+    if not MAP_IMAGE_INDEX:
+        refresh_local_caches()
 
     for cid, servers in communities.items():
         if not isinstance(servers, list):
@@ -429,6 +446,11 @@ def update_agent_data():
                     srv['connect_ip'] = socket.gethostbyname(ip)
                 except Exception:
                     srv['connect_ip'] = ip
+            image_url = get_map_image_url(srv.get('map'))
+            if image_url:
+                srv['image_url'] = image_url
+            else:
+                srv.pop('image_url', None)
             normalized.append(srv)
         AGENT_CACHE[cid] = normalized
         AGENT_CACHE_UPDATED_AT[cid] = int(time.time())
