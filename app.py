@@ -103,6 +103,18 @@ def load_config():
     except Exception as e:
         print(f"[Config] 加载失败: {e}")
 
+def resolve_host(host):
+    try:
+        infos = socket.getaddrinfo(host, None)
+        for family, _, _, _, sockaddr in infos:
+            if family == socket.AF_INET:
+                return sockaddr[0]
+        if infos:
+            return infos[0][4][0]
+    except Exception:
+        return None
+    return None
+
 # --- 2. 核心：EXG API 直接抓取（实时数据）---
 def fetch_exg_data_from_api():
     """
@@ -161,6 +173,7 @@ def fetch_exg_data_from_api():
                     server_obj = {
                         "name": name.strip(),
                         "ip": str(ip).strip(),
+                        "connect_ip": str(ip).strip(),
                         "port": int(port),
                         "display_ip": f"{ip}:{port}",
                         "map": map_name,
@@ -214,10 +227,12 @@ def fetch_a2s_data(server_cfg, game_type='cs2'):
     host = server_cfg['host']
     port = server_cfg['port']
     name = server_cfg.get('name', f"{host}:{port}")
+    resolved_ip = resolve_host(host)
     
     res = {
         "name": name,
-        "ip": host, 
+        "ip": host,
+        "connect_ip": resolved_ip or host,
         "port": port, 
         "display_ip": f"{host}:{port}",
         "map": "-", 
@@ -363,6 +378,7 @@ def index():
 @app.route('/api/config')
 def get_config_meta():
     """返回社区的元数据"""
+    load_config()
     meta = []
     for c in COMMUNITY_META:
         meta.append({
@@ -405,6 +421,9 @@ def update_agent_data():
             port = srv.get('port')
             if ip and port and not srv.get('display_ip'):
                 srv['display_ip'] = f"{ip}:{port}"
+            if ip and not srv.get('connect_ip'):
+                resolved_ip = resolve_host(ip)
+                srv['connect_ip'] = resolved_ip or ip
             normalized.append(srv)
         AGENT_CACHE[cid] = normalized
         AGENT_CACHE_UPDATED_AT[cid] = int(time.time())
