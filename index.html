@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CS2ZE Browser</title>
-    <link rel="icon" href="/static/GSC Header.png" type="image/png">
+    <link id="favicon" rel="icon" href="/static/GSC Header.png" type="image/png">
     
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -131,12 +131,14 @@
         .card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
         .card-bg-layer { position: absolute; inset: 0; background-size: cover; background-position: center; z-index: 0; transition: filter 0.4s ease, transform 0.4s ease; }
         .card:hover .card-bg-layer { filter: blur(4px); transform: scale(1.05); }
-        .card-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 1; }
+        .card-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.65); z-index: 1; }
         .card-content { padding: 16px; position: relative; z-index: 2; display: flex; flex-direction: column; flex: 1; justify-content: space-between; }
-        .card.has-image .card-content { color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
-        .card.has-image .srv-name { color: white; }
-        .card.has-image .info-label { color: rgba(255,255,255,0.8); }
-        .card.has-image .map-trans { color: rgba(255,255,255,0.9); }
+        .card.has-image .card-content { color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+        .card.has-image .srv-name { color: #ffffff; }
+        .card.has-image .info-row { color: #ffffff; }
+        .card.has-image .info-label { color: rgba(255,255,255,0.88); }
+        .card.has-image .map-info { color: #ffffff; }
+        .card.has-image .map-trans { color: rgba(255,255,255,0.92); }
         .card.has-image .btn-sec { border-color: rgba(255,255,255,0.4); background: rgba(0,0,0,0.3); color: white; backdrop-filter: blur(4px); }
         .card.has-image .btn-sec:hover { background: rgba(0,0,0,0.6); }
         .status-line { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--status-offline); z-index: 3; transition: width 0.2s; }
@@ -584,6 +586,7 @@ const ICONS = {
 };
 
 const LOGO_PATHS = { B: '/static/GSC B@4x.png', W: '/static/GSC W@4x.png' };
+const FAVICON_PATHS = { light: '/static/GSC W@4x.png', dark: '/static/GSC B@4x.png' };
 
 createApp({
     delimiters: ['[[', ']]'],
@@ -635,6 +638,12 @@ createApp({
         const isChineseLang = computed(() => curLang.value.includes('zh'));
         const currentLogoPath = computed(() => isDark.value ? LOGO_PATHS.W : LOGO_PATHS.B);
 
+        const updateFavicon = () => {
+            const icon = document.getElementById('favicon');
+            if (!icon) return;
+            icon.href = isDark.value ? FAVICON_PATHS.dark : FAVICON_PATHS.light;
+        };
+
         watch(curLang, () => document.title = t('app_title'), { immediate: true });
 
         const handleResize = () => isMobile.value = window.innerWidth <= 768;
@@ -653,6 +662,7 @@ createApp({
             window.addEventListener('click', handleGlobalClick);
             
             if(isDark.value) document.documentElement.setAttribute('data-theme', 'dark');
+            updateFavicon();
             
             try {
                 const savedCollapse = localStorage.getItem('sidebar_collapsed');
@@ -697,7 +707,7 @@ createApp({
             isCollapsed.value = !isCollapsed.value;
             localStorage.setItem('sidebar_collapsed', isCollapsed.value);
         };
-        const toggleTheme = () => { isDark.value = !isDark.value; document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light'); };
+        const toggleTheme = () => { isDark.value = !isDark.value; document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light'); updateFavicon(); };
         const setLang = (l) => { curLang.value = l; showLangMenu.value = false; };
         
         const closeDropdowns = () => {
