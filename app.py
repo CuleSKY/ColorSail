@@ -42,6 +42,12 @@ COMMUNITY_META = []
 MAP_IMAGE_INDEX = set()
 MAP_TRANS_CACHE = {}
 
+EXG_SERVER_STALE_SECONDS = 15
+EXG_FETCH_INTERVAL_SECONDS = 15
+HTTP_SESSION = requests.Session()
+
+EXG_STATS_EXCLUDE_KEYWORDS = ("pve", "大厅", "躲猫猫", "mg")
+
 # --- 1. 辅助函数 ---
 def generate_distinct_colors(n):
     colors = []
@@ -105,6 +111,7 @@ def fetch_exg_data_from_api():
     """
     global EXG_CACHE, EXG_CACHE_UPDATED_AT
     servers = []
+    success = False
     
     try:
         headers = {
@@ -116,6 +123,7 @@ def fetch_exg_data_from_api():
         
         if resp.status_code == 200:
             data = resp.json()
+            success = True
             
             # 确保是数组
             if not isinstance(data, list):
@@ -252,10 +260,17 @@ def fetch_a2s_data(server_cfg, game_type='cs2'):
     
     return res
 
+def is_exg_stats_eligible(server):
+    name = (server.get("name") or "").strip()
+    if not name:
+        return True
+    lower_name = name.lower()
+    return not any(keyword in lower_name if keyword.isascii() else keyword in name for keyword in EXG_STATS_EXCLUDE_KEYWORDS)
+
 # --- 4. 主更新循环 ---
 def update_all_data():
     """定时任务：更新所有社区数据"""
-    global SERVER_CACHE
+    global SERVER_CACHE, EXG_CACHE_UPDATED_AT
     load_config()
     refresh_local_caches()
     
@@ -326,7 +341,10 @@ def save_stats():
     c.execute("DELETE FROM player_stats WHERE timestamp < ?", (timestamp - 48 * 3600,))
     
     for cid, servers in SERVER_CACHE.items():
-        count = sum(s['players'] for s in servers if s.get('online'))
+        if cid == "exg":
+            count = sum(s['players'] for s in servers if s.get('online') and is_exg_stats_eligible(s))
+        else:
+            count = sum(s['players'] for s in servers if s.get('online'))
         c.execute("INSERT INTO player_stats VALUES (?, ?, ?)", (timestamp, cid, count))
         
     conn.commit()
@@ -407,7 +425,10 @@ def get_stats():
     for cid, info in meta_map.items():
         count = 0
         if cid in SERVER_CACHE:
-            count = sum(s['players'] for s in SERVER_CACHE[cid] if s.get('online'))
+            if cid == "exg":
+                count = sum(s['players'] for s in SERVER_CACHE[cid] if s.get('online') and is_exg_stats_eligible(s))
+            else:
+                count = sum(s['players'] for s in SERVER_CACHE[cid] if s.get('online'))
         total_players += count
         current_stats.append({
             "id": cid, "name": info['name'], "count": count, "color": info['color']
