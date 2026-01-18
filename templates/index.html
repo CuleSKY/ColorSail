@@ -976,11 +976,17 @@ createApp({
         };
 
         // --- 修复功能区 (Connection & Clipboard) ---
+        const getConnectAddress = (srv) => {
+            const host = srv.connect_ip || srv.ip;
+            if (host && srv.port) {
+                return `${host}:${srv.port}`;
+            }
+            return srv.display_ip || (srv.ip + ':' + srv.port);
+        };
         const getConnectUrl = (srv, game) => {
             // steam://connect/IP:PORT 是通用的，支持 CS2 和 CSS
-            // 确保 display_ip 存在，否则兜底
-            const ip = srv.display_ip || (srv.ip + ':' + srv.port);
-            return `steam://connect/${ip}`;
+            const address = getConnectAddress(srv);
+            return `steam://connect/${address}`;
         };
 
         // 兼容 HTTP 的复制函数
@@ -1019,12 +1025,12 @@ createApp({
         };
 
         const copyCmd = (srv) => {
-            const ip = srv.display_ip || (srv.ip + ':' + srv.port);
-            copyText(`connect ${ip}`);
+            const address = getConnectAddress(srv);
+            copyText(`connect ${address}`);
         };
         const copyIp = (srv) => {
-            const ip = srv.display_ip || (srv.ip + ':' + srv.port);
-            copyText(ip);
+            const address = getConnectAddress(srv);
+            copyText(address);
         };
         // ------------------------------------------
 
