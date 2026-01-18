@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # --- 配置 ---
-MASTER_URL = "http://23.224.49.85:5000"  # ⚠️ 请修改为您美国主服的 IP
+MASTER_URL = "http://23.224.49.85:5000"  # ⚠️ 请修改为您中国主服的 IP
 AGENT_TOKEN = "ZE61QNWgB7rXqNHcg84u"    # 与 app.py 保持一致
 SECRETS_FILE = 'secrets.json'
 
@@ -191,7 +191,7 @@ def run_agent():
             # 2. 处理任务
             payload = {"communities": {}}
             for comm in local_config.get('communities', []):
-                if comm.get('location') != 'cn':
+                if comm.get('location') == 'cn':
                     continue
 
                 print(f"[Job] 更新社区: {comm['name']}")
