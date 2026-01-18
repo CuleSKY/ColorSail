@@ -128,13 +128,20 @@ def run_agent():
             with open("config.json", "r", encoding="utf-8") as f:
                 local_config = json.load(f)
 
-            # 1. 处理任务
+            # 1. 预抓取 EXG 数据
+            exg_servers = fetch_exg_data_from_api()
+
+            # 2. 处理任务
             payload = {"communities": {}}
             for comm in local_config.get('communities', []):
-                if not should_collect_community(comm):
+                if comm.get('location') == 'cn':
                     continue
 
                 print(f"[Job] 更新社区: {comm['name']}")
+
+                if comm['id'] == 'exg':
+                    payload["communities"][comm['id']] = exg_servers
+                    continue
 
                 with ThreadPoolExecutor(max_workers=10) as executor:
                     results = list(executor.map(lambda s: fetch_server_data(s), comm['servers']))
