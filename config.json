@@ -1,0 +1,74 @@
+{
+  "map_cd_url": "https://list.darkrp.cn:9000/serverlist/cs2maplist",
+  "communities": [
+    {
+      "id": "exg",
+      "name": "EXG",
+      "short_name": "EXG",
+      "logo": "/static/exg_logo.webp",
+      "game": "cs2",
+      "features": ["map_cd"],
+      "servers": []
+    },
+    {
+      "id": "zed",
+      "name": "ZED",
+      "short_name": "ZED",
+      "logo": "/static/zed_logo.png",
+      "game": "cs2",
+      "servers": [
+        { "name": "ZED 01", "host": "cs1.zombieden.cn", "port": 27016 },
+        { "name": "ZED 02", "host": "cs3.zombieden.cn", "port": 27015 },
+        { "name": "ZED 03", "host": "cs3.zombieden.cn", "port": 27016 },
+        { "name": "ZED 04", "host": "cs5.zombieden.cn", "port": 27015 },
+        { "name": "ZED 05", "host": "cs5.zombieden.cn", "port": 27016 }
+      ]
+    },
+    {
+      "id": "ub",
+      "name": "MoeUB",
+      "short_name": "UB",
+      "logo": "https://csgo.moeub.cn/favicon.svg",
+      "game": "cs2",
+      "servers": [
+        { "name": "UB 01", "host": "110.42.9.188", "port": 27011 },
+        { "name": "UB 02", "host": "110.42.9.188", "port": 27021 },
+        { "name": "UB 03", "host": "110.42.9.188", "port": 27031 },
+        { "name": "UB 04", "host": "110.42.9.195", "port": 27111 },
+        { "name": "UB 05", "host": "110.42.9.195", "port": 27121 },
+        { "name": "UB 06", "host": "110.42.9.195", "port": 27131 }
+      ]
+    },
+    {
+      "id": "gfl",
+      "name": "GFL ZE",
+      "short_name": "GFL",
+      "logo": "/static/gfl-icon-small.svg",
+      "game": "cs2",
+      "servers": [
+        { "name": "GFL ZE 01", "host": "74.91.124.21", "port": 27015 }
+      ]
+    },
+    {
+      "id": "nide",
+      "name": "NiDE (CSS)",
+      "short_name": "NiDE",
+      "logo": "/static/nide_logo.png",
+      "game": "css",
+      "servers": [
+        { "name": "NiDE ZE", "host": "46.105.73.18", "port": 27015 }
+      ]
+    },
+    {
+      "id": "unloze",
+      "name": "UNLOZE (CSS)",
+      "short_name": "UNLOZE",
+      "logo": "/static/unloze_logo.ico",
+      "game": "css",
+      "servers": [
+        { "name": "Unloze ZE 01", "host": "51.195.188.106", "port": 27015 },
+        { "name": "Unloze ZE 02", "host": "51.195.188.106", "port": 27035 }
+      ]
+    }
+  ]
+}
