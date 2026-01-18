@@ -54,12 +54,7 @@ def load_secrets():
     except Exception as e:
         print(f"[Secrets] ❌ 解密失败: {e}")
 
-def should_collect_community(comm):
-    if comm.get('location') == 'cn':
-        return False
-    return comm.get('source') == 'agent' or comm.get('agent') is True
-
-def fetch_server_data(server_cfg, exg_cache=None):
+def fetch_server_data(server_cfg):
     host, port = server_cfg['host'], server_cfg['port']
     name = server_cfg.get('name', '')
 
@@ -116,7 +111,7 @@ def run_agent():
     
     print(f"[*] Agent 启动 | 目标主服: {MASTER_URL}")
     if not STEAM_API_KEY:
-        print("[Warning] 未能加载 Steam API Key，将仅使用 A2S 和 爬虫。")
+        print("[Warning] 未能加载 Steam API Key，将仅使用 A2S 查询。")
 
     while True:
         try:
@@ -128,23 +123,19 @@ def run_agent():
             with open("config.json", "r", encoding="utf-8") as f:
                 local_config = json.load(f)
 
-            # 1. 预抓取 EXG 数据
-            exg_servers = fetch_exg_data_from_api()
+            non_cn_comms = [
+                comm for comm in local_config.get('communities', [])
+                if comm.get('location') != 'cn'
+            ]
 
-            # 2. 处理任务
+            # 处理任务
             payload = {"communities": {}}
-            for comm in local_config.get('communities', []):
-                if comm.get('location') == 'cn':
-                    continue
+            for comm in non_cn_comms:
 
                 print(f"[Job] 更新社区: {comm['name']}")
 
-                if comm['id'] == 'exg':
-                    payload["communities"][comm['id']] = exg_servers
-                    continue
-
                 with ThreadPoolExecutor(max_workers=10) as executor:
-                    results = list(executor.map(lambda s: fetch_server_data(s), comm['servers']))
+                    results = list(executor.map(fetch_server_data, comm.get('servers', [])))
 
                 payload["communities"][comm['id']] = results
 
