@@ -285,6 +285,17 @@ def update_all_data():
     
     for comm in COMMUNITY_META:
         cid = comm['id']
+        if comm.get('location') == 'cn':
+            agent_servers = AGENT_CACHE.get(cid)
+            if agent_servers is None:
+                new_cache[cid] = []
+                print(f"[Update] {comm['name']}: 等待 agent 数据 (cn)")
+                continue
+            new_cache[cid] = agent_servers
+            online_count = sum(1 for s in agent_servers if s.get('online'))
+            total_players = sum(s['players'] for s in agent_servers if s.get('online'))
+            print(f"[Update] {comm['name']}: {online_count}/{len(agent_servers)} 在线, {total_players} 玩家 (agent)")
+            continue
         use_agent = comm.get('source') == 'agent' or comm.get('agent') is True
         if use_agent:
             agent_servers = AGENT_CACHE.get(cid, [])

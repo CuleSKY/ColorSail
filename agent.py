@@ -5,7 +5,7 @@ import os
 import a2s
 import base64
 from concurrent.futures import ThreadPoolExecutor
-from bs4 import BeautifulSoup
+import socket
 import urllib3
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -21,7 +21,7 @@ SECRETS_FILE = 'secrets.json'
 STEAM_API_KEY = None
 
 # EXG 配置
-EXG_URL = "https://list.darkrp.cn:9000/serverlist/cs2maplist"
+EXG_API_URL = "https://list.darkrp.cn:9000/ServerList/CurrentStatus"
 
 def load_secrets():
     """加载并解密 secrets.json 中的 Steam API Key"""
@@ -57,62 +57,84 @@ def load_secrets():
     except Exception as e:
         print(f"[Secrets] ❌ 解密失败: {e}")
 
-def fetch_exg_web_data():
-    """EXG 专属爬虫"""
-    cache = {}
+def fetch_exg_data_from_api():
+    """EXG API 拉取，格式与主服务器保持一致"""
+    servers = []
     try:
-        resp = requests.get(EXG_URL, timeout=10, verify=False)
-        if resp.status_code == 200:
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            for row in soup.find_all('tr'):
-                cols = row.find_all('td')
-                if len(cols) >= 3:
-                    raw_name = cols[0].get_text(strip=True)
-                    raw_map = cols[1].get_text(strip=True)
-                    raw_players = cols[2].get_text(strip=True)
-                    
-                    cur, max_p = 0, 64
-                    if '/' in raw_players:
-                        parts = raw_players.split('/')
-                        cur = int(parts[0]) if parts[0].isdigit() else 0
-                        max_p = int(parts[1]) if parts[1].isdigit() else 64
-                    
-                    cache[raw_name] = {
-                        "map": raw_map,
-                        "players": cur,
-                        "max_players": max_p
-                    }
-            # print(f"[Crawler] EXG 抓取成功: {len(cache)} 条记录")
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json'
+        }
+        resp = requests.get(EXG_API_URL, timeout=10, verify=False, headers=headers)
+        if resp.status_code != 200:
+            print(f"[EXG API] HTTP 错误: {resp.status_code}")
+            return servers
+
+        data = resp.json()
+        if not isinstance(data, list):
+            data = [data]
+
+        for item in data:
+            try:
+                server_info = item.get('Server', {})
+                status_info = item.get('Status', {})
+                ip = server_info.get('Ip')
+                port = server_info.get('Port')
+                if not ip or not port:
+                    continue
+
+                name = (status_info.get('FullTitle')
+                        or server_info.get('DisplayNameCN')
+                        or server_info.get('DisplayName')
+                        or f"EXG {port}")
+
+                map_name = status_info.get('Map', '-')
+                map_display = status_info.get('MapDisplayName', '')
+                current_players = status_info.get('CurrentPlayers', 0)
+                max_players = status_info.get('MaxPlayers', 64)
+
+                servers.append({
+                    "name": name.strip(),
+                    "ip": str(ip).strip(),
+                    "connect_ip": str(ip).strip(),
+                    "port": int(port),
+                    "display_ip": f"{ip}:{port}",
+                    "map": map_name,
+                    "players": int(current_players),
+                    "max_players": int(max_players),
+                    "online": True,
+                    "ping": -1,
+                    "game_type": "cs2",
+                    "map_cn": map_display or None
+                })
+            except Exception:
+                continue
+
+        print(f"[EXG API] 成功获取 {len(servers)} 个服务器")
     except Exception as e:
-        print(f"[Crawler] EXG 抓取失败: {e}")
-    return cache
+        print(f"[EXG API] 请求失败: {e}")
+
+    return servers
 
 def fetch_server_data(server_cfg, exg_cache=None):
     host, port = server_cfg['host'], server_cfg['port']
     name = server_cfg.get('name', '')
-    
+
+    resolved_ip = None
+    try:
+        resolved_ip = socket.gethostbyname(host)
+    except Exception:
+        resolved_ip = None
+
     res = {
-        "ip": host, "port": port, "display_ip": f"{host}:{port}",
+        "ip": host, "connect_ip": resolved_ip or host, "port": port, "display_ip": f"{host}:{port}",
         "name": name, "map": "-", "players": 0, "max_players": 0,
         "online": False, 
         "ping": -1, 
         "game_type": "cs2"
     }
 
-    # 1. EXG 爬虫匹配
-    if exg_cache:
-        for web_name, web_data in exg_cache.items():
-            if (web_name in name) or (name in web_name):
-                res.update({
-                    "online": True,
-                    "map": web_data['map'],
-                    "players": web_data['players'],
-                    "max_players": web_data['max_players'],
-                    "ping": -1
-                })
-                return res
-
-    # 2. A2S UDP 查询 (优先获取延迟)
+    # 1. A2S UDP 查询 (优先获取延迟)
     try:
         info = a2s.info((host, port), timeout=2.0)
         res.update({
@@ -123,10 +145,10 @@ def fetch_server_data(server_cfg, exg_cache=None):
             "max_players": info.max_players,
             "ping": int(info.ping * 1000)
         })
-        return res
+        return res, "a2s"
     except: pass
 
-    # 3. Steam API 兜底 (前提是 Key 解密成功)
+    # 2. Steam API 兜底 (前提是 Key 解密成功)
     if STEAM_API_KEY:
         try:
             u = "https://api.steampowered.com/IGameServersService/GetServerList/v1/"
@@ -141,9 +163,10 @@ def fetch_server_data(server_cfg, exg_cache=None):
                         "players": s.get('players'), "max_players": s.get('max_players'),
                         "ping": -1
                     })
+                    return res, "steam"
         except: pass
 
-    return res
+    return res, "offline"
 
 def run_agent():
     # 启动时加载密钥
@@ -155,12 +178,6 @@ def run_agent():
 
     while True:
         try:
-            # 1. 拉取配置
-            conf_resp = requests.get(f"{MASTER_URL}/api/config", timeout=10)
-            if conf_resp.status_code != 200:
-                print(f"[Config] 拉取失败: {conf_resp.status_code}")
-                time.sleep(10); continue
-            
             # Agent 读取本地 config.json 以获取完整服务器列表
             if not os.path.exists("config.json"):
                 print("[Error] 请在 Agent 同目录下放置 config.json")
@@ -169,26 +186,46 @@ def run_agent():
             with open("config.json", "r", encoding="utf-8") as f:
                 local_config = json.load(f)
 
-            # 2. 预抓取 EXG 数据
-            exg_cache = fetch_exg_web_data()
+            # 1. 预抓取 EXG 数据
+            exg_servers = fetch_exg_data_from_api()
 
-            # 3. 处理任务
+            # 2. 处理任务
+            payload = {"communities": {}}
             for comm in local_config.get('communities', []):
-                if comm.get('location') != 'cn': continue 
+                if comm.get('location') != 'cn':
+                    continue
 
                 print(f"[Job] 更新社区: {comm['name']}")
-                current_exg = exg_cache if comm['id'] == 'exg' else None
-                
-                with ThreadPoolExecutor(max_workers=10) as executor:
-                    results = list(executor.map(lambda s: fetch_server_data(s, current_exg), comm['servers']))
 
-                # 4. 推送
-                payload = {"id": comm['id'], "servers": results}
+                if comm['id'] == 'exg':
+                    payload["communities"][comm['id']] = exg_servers
+                    continue
+
+                with ThreadPoolExecutor(max_workers=10) as executor:
+                    results = list(executor.map(lambda s: fetch_server_data(s), comm['servers']))
+
+                successful = []
+                final_results = []
+                for res, source in results:
+                    final_results.append(res)
+                    if res.get("online"):
+                        successful.append((res.get("name") or res.get("display_ip"), source))
+
+                if successful:
+                    print(f"[OK] {comm['name']} 获取成功 {len(successful)} 个服务器:")
+                    for name, source in successful:
+                        print(f"     - {name} ({source})")
+                else:
+                    print(f"[Warn] {comm['name']} 未获取到在线服务器")
+
+                payload["communities"][comm['id']] = final_results
+
+            if payload["communities"]:
                 try:
                     requests.post(
-                        f"{MASTER_URL}/api/agent/push", 
-                        json=payload, 
-                        headers={"Authorization": f"Bearer {AGENT_TOKEN}"}, 
+                        f"{MASTER_URL}/api/agent/update",
+                        json=payload,
+                        headers={"Authorization": f"Bearer {AGENT_TOKEN}"},
                         timeout=5
                     )
                 except Exception as e:
