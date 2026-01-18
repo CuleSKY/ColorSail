@@ -145,7 +145,7 @@ def fetch_server_data(server_cfg, exg_cache=None):
             "max_players": info.max_players,
             "ping": int(info.ping * 1000)
         })
-        return res, "a2s"
+        return res
     except: pass
 
     # 2. Steam API 兜底 (前提是 Key 解密成功)
@@ -163,10 +163,9 @@ def fetch_server_data(server_cfg, exg_cache=None):
                         "players": s.get('players'), "max_players": s.get('max_players'),
                         "ping": -1
                     })
-                    return res, "steam"
         except: pass
 
-    return res, "offline"
+    return res
 
 def run_agent():
     # 启动时加载密钥
@@ -204,21 +203,7 @@ def run_agent():
                 with ThreadPoolExecutor(max_workers=10) as executor:
                     results = list(executor.map(lambda s: fetch_server_data(s), comm['servers']))
 
-                successful = []
-                final_results = []
-                for res, source in results:
-                    final_results.append(res)
-                    if res.get("online"):
-                        successful.append((res.get("name") or res.get("display_ip"), source))
-
-                if successful:
-                    print(f"[OK] {comm['name']} 获取成功 {len(successful)} 个服务器:")
-                    for name, source in successful:
-                        print(f"     - {name} ({source})")
-                else:
-                    print(f"[Warn] {comm['name']} 未获取到在线服务器")
-
-                payload["communities"][comm['id']] = final_results
+                payload["communities"][comm['id']] = results
 
             if payload["communities"]:
                 try:
