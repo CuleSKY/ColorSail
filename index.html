@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CS2ZE Browser</title>
-    <link id="favicon" rel="icon" href="/static/GSC Header.png" type="image/png">
+    <link id="favicon" rel="icon" href="/static/NERV_Logo.png" type="image/png">
     
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -561,7 +561,7 @@
             </div>
         </div>
         
-        <div class="fixed-logo"><img :src="currentLogoPath" alt="GSC Logo"></div>
+        <div class="fixed-logo"><img :src="currentLogoPath" alt="NERV_Logo"></div>
     </div>
     <div class="toast" :class="{show: toastMsg}">[[ toastMsg ]]</div>
 </div>
@@ -585,8 +585,8 @@ const ICONS = {
     search_sub: `<svg width="24" height="24" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 2.5a7.5 7.5 0 0 1 5.964 12.048l4.743 4.745a1 1 0 0 1-1.32 1.497l-.094-.083-4.745-4.743A7.5 7.5 0 1 1 10 2.5Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z" fill="currentColor"/></svg>`
 };
 
-const LOGO_PATHS = { B: '/static/GSC B@4x.png', W: '/static/GSC W@4x.png' };
-const FAVICON_PATHS = { light: '/static/GSC W@4x.png', dark: '/static/GSC B@4x.png' };
+const LOGO_PATHS = { B: '/static/NERV_Logo.png', W: '/static/NERV_Logo.png' };
+const FAVICON_PATHS = { light: '/static/NERV_Logo.png', dark: '/static/NERV_Logo.png' };
 
 createApp({
     delimiters: ['[[', ']]'],
@@ -838,7 +838,7 @@ createApp({
                 const cName = communities.value.length > 0 ? communities.value[0].name : "Test Community";
                 new Notification(t('sub_notify'), { 
                     body: `[${cName}] Changed map to: ze_test_map\nTest Server`, 
-                    icon: "/static/GSC Header.png" 
+                    icon: "/static/NERV_Logo.png" 
                 });
             } else {
                 requestPerm();
@@ -862,7 +862,7 @@ createApp({
                         const cName = c ? (c.short_name || c.name) : commId;
                         const n = new Notification(t('sub_notify'), {
                             body: `[${cName}] Changed map to: ${srvData.map}\n${srvData.name}`,
-                            icon: '/static/GSC Header.png'
+                            icon: '/static/NERV_Logo.png'
                         });
                         n.onclick = () => { window.focus(); copyCmd(srvData); };
                     }
