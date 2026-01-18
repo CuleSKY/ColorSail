@@ -10,7 +10,7 @@ import colorsys
 import socket
 import urllib3
 from datetime import datetime
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 import a2s
 from apscheduler.schedulers.background import BackgroundScheduler
 from concurrent.futures import ThreadPoolExecutor
@@ -33,9 +33,19 @@ os.makedirs(STATIC_MAP_DIR, exist_ok=True)
 
 # --- 全局状态 ---
 SERVER_CACHE = {}
+AGENT_CACHE = {}
+AGENT_CACHE_UPDATED_AT = {}
+EXG_CACHE = {}
+EXG_CACHE_UPDATED_AT = 0.0
 COMMUNITY_META = []
 MAP_IMAGE_INDEX = set()
 MAP_TRANS_CACHE = {}
+
+EXG_SERVER_STALE_SECONDS = 15
+EXG_FETCH_INTERVAL_SECONDS = 15
+HTTP_SESSION = requests.Session()
+
+EXG_STATS_EXCLUDE_KEYWORDS = ("pve", "大厅", "躲猫猫", "mg")
 
 # --- 1. 辅助函数 ---
 def generate_distinct_colors(n):
@@ -99,6 +109,7 @@ def fetch_exg_data_from_api():
     返回格式与 A2S 查询结果一致
     """
     servers = []
+    success = False
     
     try:
         headers = {
@@ -106,10 +117,11 @@ def fetch_exg_data_from_api():
             'Accept': 'application/json'
         }
         
-        resp = requests.get(EXG_API_URL, timeout=10, verify=False, headers=headers)
+        resp = HTTP_SESSION.get(EXG_API_URL, timeout=10, verify=False, headers=headers)
         
         if resp.status_code == 200:
             data = resp.json()
+            success = True
             
             # 确保是数组
             if not isinstance(data, list):
@@ -187,8 +199,23 @@ def fetch_exg_data_from_api():
             
     except Exception as e:
         print(f"[EXG API] 请求失败: {e}")
-    
-    return servers
+
+    return servers if success else None
+
+def merge_exg_cache(fetched_servers):
+    global EXG_CACHE
+    now = time.time()
+    for srv in fetched_servers:
+        key = srv.get('display_ip') or f"{srv.get('ip')}:{srv.get('port')}"
+        if not key:
+            continue
+        EXG_CACHE[key] = {**srv, "_last_seen": now}
+
+    stale_keys = [k for k, v in EXG_CACHE.items() if now - v.get("_last_seen", 0) > EXG_SERVER_STALE_SECONDS]
+    for k in stale_keys:
+        del EXG_CACHE[k]
+
+    return [{k: v for k, v in item.items() if k != "_last_seen"} for item in EXG_CACHE.values()]
 
 # --- 3. 核心：A2S 抓取逻辑（其他社区）---
 def fetch_a2s_data(server_cfg, game_type='cs2'):
@@ -242,10 +269,17 @@ def fetch_a2s_data(server_cfg, game_type='cs2'):
     
     return res
 
+def is_exg_stats_eligible(server):
+    name = (server.get("name") or "").strip()
+    if not name:
+        return True
+    lower_name = name.lower()
+    return not any(keyword in lower_name if keyword.isascii() else keyword in name for keyword in EXG_STATS_EXCLUDE_KEYWORDS)
+
 # --- 4. 主更新循环 ---
 def update_all_data():
     """定时任务：更新所有社区数据"""
-    global SERVER_CACHE
+    global SERVER_CACHE, EXG_CACHE_UPDATED_AT
     load_config()
     refresh_local_caches()
     
@@ -253,10 +287,33 @@ def update_all_data():
     
     for comm in COMMUNITY_META:
         cid = comm['id']
+        use_agent = comm.get('source') == 'agent' or comm.get('agent') is True
+        if use_agent:
+            agent_servers = AGENT_CACHE.get(cid, [])
+            new_cache[cid] = agent_servers
+            online_count = sum(1 for s in agent_servers if s.get('online'))
+            total_players = sum(s['players'] for s in agent_servers if s.get('online'))
+            print(f"[Update] {comm['name']}: {online_count}/{len(agent_servers)} 在线, {total_players} 玩家 (agent)")
+            continue
+        if cid in AGENT_CACHE:
+            agent_servers = AGENT_CACHE.get(cid, [])
+            new_cache[cid] = agent_servers
+            online_count = sum(1 for s in agent_servers if s.get('online'))
+            total_players = sum(s['players'] for s in agent_servers if s.get('online'))
+            print(f"[Update] {comm['name']}: {online_count}/{len(agent_servers)} 在线, {total_players} 玩家 (agent)")
+            continue
         
         # === EXG 特殊处理：直接从 API 获取 ===
         if cid == 'exg':
-            new_cache[cid] = fetch_exg_data_from_api()
+            now = time.time()
+            fetched = None
+            if now - EXG_CACHE_UPDATED_AT >= EXG_FETCH_INTERVAL_SECONDS:
+                fetched = fetch_exg_data_from_api()
+            if fetched is not None:
+                new_cache[cid] = merge_exg_cache(fetched)
+                EXG_CACHE_UPDATED_AT = now
+            else:
+                new_cache[cid] = merge_exg_cache([])
             online_count = sum(1 for s in new_cache[cid] if s.get('online'))
             total_players = sum(s['players'] for s in new_cache[cid] if s.get('online'))
             print(f"[Update] {comm['name']}: {online_count}/{len(new_cache[cid])} 在线, {total_players} 玩家")
@@ -297,7 +354,10 @@ def save_stats():
     c.execute("DELETE FROM player_stats WHERE timestamp < ?", (timestamp - 48 * 3600,))
     
     for cid, servers in SERVER_CACHE.items():
-        count = sum(s['players'] for s in servers if s.get('online'))
+        if cid == "exg":
+            count = sum(s['players'] for s in servers if s.get('online') and is_exg_stats_eligible(s))
+        else:
+            count = sum(s['players'] for s in servers if s.get('online'))
         c.execute("INSERT INTO player_stats VALUES (?, ?, ?)", (timestamp, cid, count))
         
     conn.commit()
@@ -334,6 +394,36 @@ def get_servers(cid):
     """返回指定社区的实时服务器列表"""
     return jsonify(SERVER_CACHE.get(cid, []))
 
+@app.route('/api/agent/update', methods=['POST'])
+def update_agent_data():
+    token = os.environ.get('AGENT_SHARED_TOKEN')
+    if token:
+        auth = request.headers.get('Authorization', '')
+        if auth != f"Bearer {token}":
+            return jsonify({"error": "unauthorized"}), 401
+
+    payload = request.get_json(silent=True) or {}
+    communities = payload.get('communities', {})
+    if not isinstance(communities, dict):
+        return jsonify({"error": "invalid payload"}), 400
+
+    for cid, servers in communities.items():
+        if not isinstance(servers, list):
+            continue
+        normalized = []
+        for srv in servers:
+            if not isinstance(srv, dict):
+                continue
+            ip = srv.get('ip')
+            port = srv.get('port')
+            if ip and port and not srv.get('display_ip'):
+                srv['display_ip'] = f"{ip}:{port}"
+            normalized.append(srv)
+        AGENT_CACHE[cid] = normalized
+        AGENT_CACHE_UPDATED_AT[cid] = int(time.time())
+
+    return jsonify({"status": "ok", "updated": list(communities.keys())})
+
 @app.route('/api/map_translations')
 def get_translations():
     return jsonify(MAP_TRANS_CACHE)
@@ -348,7 +438,10 @@ def get_stats():
     for cid, info in meta_map.items():
         count = 0
         if cid in SERVER_CACHE:
-            count = sum(s['players'] for s in SERVER_CACHE[cid] if s.get('online'))
+            if cid == "exg":
+                count = sum(s['players'] for s in SERVER_CACHE[cid] if s.get('online') and is_exg_stats_eligible(s))
+            else:
+                count = sum(s['players'] for s in SERVER_CACHE[cid] if s.get('online'))
         total_players += count
         current_stats.append({
             "id": cid, "name": info['name'], "count": count, "color": info['color']

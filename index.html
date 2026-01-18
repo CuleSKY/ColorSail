@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CS2ZE Browser</title>
-    <link rel="icon" href="/static/GSC Header.png" type="image/png">
+    <link id="favicon" rel="icon" href="/static/GSC Header.png" type="image/png">
     
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -131,19 +131,20 @@
         .card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
         .card-bg-layer { position: absolute; inset: 0; background-size: cover; background-position: center; z-index: 0; transition: filter 0.4s ease, transform 0.4s ease; }
         .card:hover .card-bg-layer { filter: blur(4px); transform: scale(1.05); }
-        .card-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 1; }
+        .card-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.65); z-index: 1; }
         .card-content { padding: 16px; position: relative; z-index: 2; display: flex; flex-direction: column; flex: 1; justify-content: space-between; }
-        .card.has-image .card-content { color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
-        .card.has-image .srv-name { color: white; }
-        .card.has-image .info-label { color: rgba(255,255,255,0.8); }
-        .card.has-image .map-trans { color: rgba(255,255,255,0.9); }
+        .card.has-image .card-content { color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+        .card.has-image .srv-name { color: #ffffff; }
+        .card.has-image .info-row { color: #ffffff; }
+        .card.has-image .info-label { color: rgba(255,255,255,0.88); }
+        .card.has-image .map-info { color: #ffffff; }
+        .card.has-image .map-trans { color: rgba(255,255,255,0.92); }
         .card.has-image .btn-sec { border-color: rgba(255,255,255,0.4); background: rgba(0,0,0,0.3); color: white; backdrop-filter: blur(4px); }
         .card.has-image .btn-sec:hover { background: rgba(0,0,0,0.6); }
         .status-line { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--status-offline); z-index: 3; transition: width 0.2s; }
         .card.online .status-line { background: var(--status-online); }
         .card-header-row { display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center; }
         .srv-name { font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 75%; }
-        .ping-tag { font-size: 12px; font-weight: bold; }
         .info-block { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
         .info-row { display: flex; justify-content: space-between; align-items: flex-start; font-size: 13px; color: var(--text-primary); }
         .info-label { color: var(--text-secondary); min-width: 40px; }
@@ -166,7 +167,6 @@
         .col-map .map-name { font-weight: 500; }
         .col-map .map-cn { font-size: 12px; color: var(--text-secondary); }
         .col-players { flex: 1; font-size: 14px; text-align: center; color: var(--text-secondary); }
-        .col-ping { flex: 0.8; font-size: 14px; font-weight: 600; text-align: center; }
         .col-actions { flex: 2.5; display: flex; gap: 8px; justify-content: flex-end; }
         .col-actions .btn { max-width: 100px; }
 
@@ -177,7 +177,6 @@
         .mobile-map-name { font-size: 13px; color: var(--text-secondary); display: flex; flex-direction: column; }
         .mobile-trans { font-size: 12px; opacity: 0.8; }
         .mobile-item-right { font-weight: bold; font-size: 14px; white-space: nowrap; margin-left: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-        .mobile-ping { font-size: 11px; opacity: 0.7; font-weight: normal; }
 
         /* --- Stats Dashboard --- */
         .stats-dashboard { display: flex; flex-direction: column; gap: 20px; max-width: 1200px; margin: 0 auto; }
@@ -430,9 +429,6 @@
                                 <div>
                                     <div class="card-header-row">
                                         <div class="srv-name" :title="s.name">[[ s.name ]]</div>
-                                        <div class="ping-tag" :style="{color: getPingColor(s.ping, s.image_url)}" v-if="s.online">
-                                            [[ getPingText(s) ]]
-                                        </div>
                                     </div>
                                     <div class="info-block">
                                         <div class="info-row"><span class="info-label">[[ t('map') ]]</span> <div class="map-info"><span>[[ s.map || '-' ]]</span><div class="map-trans" v-if="isChineseLang"><span v-if="s.map_cn">[[ s.map_cn ]]</span><span v-if="!s.map_cn && s.map!='-'" style="opacity:0.6">[[ t('no_trans') ]]</span></div></div></div>
@@ -454,9 +450,6 @@
                             <div class="col-name" :title="s.name">[[ s.name ]]</div>
                             <div class="col-map"><span class="map-name">[[ s.map || '-' ]]</span><span class="col-map-cn" v-if="isChineseLang">[[ s.map_cn || (s.map!='-' ? t('no_trans') : '') ]]</span></div>
                             <div class="col-players">[[ s.players ]]/[[ s.max_players ]]</div>
-                            <div class="col-ping" :style="{color: getPingColor(s.ping, false)}">
-                                [[ s.online ? getPingText(s) : '-' ]]
-                            </div>
                             <div class="col-actions"><a :href="getConnectUrl(s, comm.game)" class="btn btn-primary">[[ t('join') ]]</a><button class="btn btn-sec" @click="copyCmd(s)">[[ t('copy_console') ]] </button><button class="btn btn-sec" @click="copyIp(s)">[[ t('copy_ip') ]]</button></div>
                         </div>
                     </div>
@@ -464,8 +457,7 @@
                     <div class="mobile-list-container" v-if="isMobile">
                         <div class="mobile-item" v-for="s in getServers(comm.id)" :key="s.display_ip">
                             <div class="mobile-item-left"><div class="mobile-srv-name">[[ s.name ]]</div><div class="mobile-map-name"><span>[[ s.map || '-' ]]</span><span class="mobile-trans" v-if="isChineseLang"> [[ s.map_cn || (s.map!='-' ? t('no_trans') : '') ]]</span></div></div>
-                            <div class="mobile-item-right"><div :style="{color: s.online ? 'var(--text-primary)' : 'var(--status-offline)'}">[[ s.online ? s.players + '/' + s.max_players : t('offline') ]]</div>
-                            <div class="mobile-ping" v-if="s.online">[[ getPingText(s) ]]</div></div>
+                            <div class="mobile-item-right"><div :style="{color: s.online ? 'var(--text-primary)' : 'var(--status-offline)'}">[[ s.online ? s.players + '/' + s.max_players : t('offline') ]]</div></div>
                         </div>
                     </div>
                 </div>
@@ -594,12 +586,14 @@ const ICONS = {
 };
 
 const LOGO_PATHS = { B: '/static/GSC B@4x.png', W: '/static/GSC W@4x.png' };
+const FAVICON_PATHS = { light: '/static/GSC W@4x.png', dark: '/static/GSC B@4x.png' };
 
 createApp({
     delimiters: ['[[', ']]'],
     setup() {
         const communities = ref([]);
         const servers = ref({});
+        const serverCache = ref({});
         const curView = ref('servers');
         const toastMsg = ref('');
         const isCollapsed = ref(false); 
@@ -644,6 +638,12 @@ createApp({
         const isChineseLang = computed(() => curLang.value.includes('zh'));
         const currentLogoPath = computed(() => isDark.value ? LOGO_PATHS.W : LOGO_PATHS.B);
 
+        const updateFavicon = () => {
+            const icon = document.getElementById('favicon');
+            if (!icon) return;
+            icon.href = isDark.value ? FAVICON_PATHS.dark : FAVICON_PATHS.light;
+        };
+
         watch(curLang, () => document.title = t('app_title'), { immediate: true });
 
         const handleResize = () => isMobile.value = window.innerWidth <= 768;
@@ -662,6 +662,7 @@ createApp({
             window.addEventListener('click', handleGlobalClick);
             
             if(isDark.value) document.documentElement.setAttribute('data-theme', 'dark');
+            updateFavicon();
             
             try {
                 const savedCollapse = localStorage.getItem('sidebar_collapsed');
@@ -706,7 +707,7 @@ createApp({
             isCollapsed.value = !isCollapsed.value;
             localStorage.setItem('sidebar_collapsed', isCollapsed.value);
         };
-        const toggleTheme = () => { isDark.value = !isDark.value; document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light'); };
+        const toggleTheme = () => { isDark.value = !isDark.value; document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light'); updateFavicon(); };
         const setLang = (l) => { curLang.value = l; showLangMenu.value = false; };
         
         const closeDropdowns = () => {
@@ -874,6 +875,10 @@ createApp({
             }
         };
 
+        const serverStaleMs = 15000;
+        const refreshIntervalMs = 15000;
+        const getServerKey = (srv) => `${srv.ip}:${srv.port}`;
+
         const fetchConfig = async () => {
             try {
                 const res = await fetch('/api/config');
@@ -891,20 +896,37 @@ createApp({
                 } catch(e) { localStorage.removeItem('comm_order'); }
 
                 communities.value = data;
-                communities.value.forEach(c => { servers.value[c.id] = []; refreshCommunity(c.id); });
+                communities.value.forEach(c => {
+                    servers.value[c.id] = [];
+                    serverCache.value[c.id] = {};
+                    refreshCommunity(c.id);
+                });
             } catch(e) { console.error("Config fetch failed", e); }
         };
 
         const refreshCommunity = async (cid) => {
+            const now = Date.now();
             try {
                 const res = await fetch(`/api/servers/${cid}`);
                 const data = await res.json();
-                servers.value[cid] = data;
-                data.forEach(s => checkSubscriptions(s, cid));
+                const cache = serverCache.value[cid] || {};
+                data.forEach(s => {
+                    cache[getServerKey(s)] = { ...s, _lastSeen: now };
+                    checkSubscriptions(s, cid);
+                });
+                serverCache.value[cid] = cache;
             } catch(e) {}
+            const cache = serverCache.value[cid] || {};
+            Object.keys(cache).forEach((key) => {
+                if (now - cache[key]._lastSeen > serverStaleMs) {
+                    delete cache[key];
+                }
+            });
+            serverCache.value[cid] = cache;
+            servers.value[cid] = Object.values(cache);
         };
 
-        setInterval(() => communities.value.forEach(c => refreshCommunity(c.id)), 5000);
+        setInterval(() => communities.value.forEach(c => refreshCommunity(c.id)), refreshIntervalMs);
 
         const getServers = (cid) => {
             let list = servers.value[cid] ? [...servers.value[cid]] : [];
@@ -1006,22 +1028,10 @@ createApp({
         };
         // ------------------------------------------
 
-        const getPingColor = (ping, hasImage) => {
-            if(ping === 0 || ping === -1) return 'var(--accent)'; 
-            if(ping < 80) return hasImage ? '#4cc94c' : 'var(--status-online)';
-            if(ping < 150) return '#ffaa44';
-            return 'var(--status-offline)';
-        };
-        const getPingText = (s) => {
-            if (s.ping === -1) return isChineseLang.value ? '在线' : 'Online';
-            if (s.ping === 0) return 'API';
-            return s.ping + ' ms';
-        };
-
         return {
             t, curLang, isDark, curView, communities, servers, toastMsg, icons: ICONS,
             isCollapsed, toggleSidebar, toggleTheme, showLangMenu, setLang,
-            hasFeature, loadStats, openMapLink, getConnectUrl, copyCmd, copyIp, getPingColor, getPingText, langLabel, currentLogoPath, isChineseLang,
+            hasFeature, loadStats, openMapLink, getConnectUrl, copyCmd, copyIp, langLabel, currentLogoPath, isChineseLang,
             scrollToComm, viewMode, toggleViewMode, isMobile,
             isEditMode, toggleEditMode, 
             sortByPlayers, toggleSortByPlayers, getServers,
