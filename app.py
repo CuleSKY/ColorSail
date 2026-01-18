@@ -28,6 +28,9 @@ STATIC_MAP_DIR = os.path.join('static', 'maps')
 
 # EXG API 地址
 EXG_API_URL = "https://list.darkrp.cn:9000/ServerList/CurrentStatus"
+EXG_SESSION = requests.Session()
+EXG_CACHE = []
+EXG_CACHE_UPDATED_AT = 0
 
 os.makedirs(STATIC_MAP_DIR, exist_ok=True)
 
@@ -35,8 +38,6 @@ os.makedirs(STATIC_MAP_DIR, exist_ok=True)
 SERVER_CACHE = {}
 AGENT_CACHE = {}
 AGENT_CACHE_UPDATED_AT = {}
-EXG_CACHE = {}
-EXG_CACHE_UPDATED_AT = 0.0
 COMMUNITY_META = []
 MAP_IMAGE_INDEX = set()
 MAP_TRANS_CACHE = {}
@@ -108,6 +109,7 @@ def fetch_exg_data_from_api():
     直接从 EXG API 获取实时服务器数据
     返回格式与 A2S 查询结果一致
     """
+    global EXG_CACHE, EXG_CACHE_UPDATED_AT
     servers = []
     success = False
     
@@ -117,7 +119,7 @@ def fetch_exg_data_from_api():
             'Accept': 'application/json'
         }
         
-        resp = HTTP_SESSION.get(EXG_API_URL, timeout=10, verify=False, headers=headers)
+        resp = EXG_SESSION.get(EXG_API_URL, timeout=10, verify=False, headers=headers)
         
         if resp.status_code == 200:
             data = resp.json()
@@ -192,6 +194,8 @@ def fetch_exg_data_from_api():
                 except Exception as e:
                     continue
             
+            EXG_CACHE = servers
+            EXG_CACHE_UPDATED_AT = int(time.time())
             print(f"[EXG API] 成功获取 {len(servers)} 个服务器")
                     
         else:
@@ -199,23 +203,10 @@ def fetch_exg_data_from_api():
             
     except Exception as e:
         print(f"[EXG API] 请求失败: {e}")
-
-    return servers if success else None
-
-def merge_exg_cache(fetched_servers):
-    global EXG_CACHE
-    now = time.time()
-    for srv in fetched_servers:
-        key = srv.get('display_ip') or f"{srv.get('ip')}:{srv.get('port')}"
-        if not key:
-            continue
-        EXG_CACHE[key] = {**srv, "_last_seen": now}
-
-    stale_keys = [k for k, v in EXG_CACHE.items() if now - v.get("_last_seen", 0) > EXG_SERVER_STALE_SECONDS]
-    for k in stale_keys:
-        del EXG_CACHE[k]
-
-    return [{k: v for k, v in item.items() if k != "_last_seen"} for item in EXG_CACHE.values()]
+    
+    if servers:
+        return servers
+    return EXG_CACHE
 
 # --- 3. 核心：A2S 抓取逻辑（其他社区）---
 def fetch_a2s_data(server_cfg, game_type='cs2'):
@@ -305,15 +296,11 @@ def update_all_data():
         
         # === EXG 特殊处理：直接从 API 获取 ===
         if cid == 'exg':
-            now = time.time()
-            fetched = None
-            if now - EXG_CACHE_UPDATED_AT >= EXG_FETCH_INTERVAL_SECONDS:
-                fetched = fetch_exg_data_from_api()
-            if fetched is not None:
-                new_cache[cid] = merge_exg_cache(fetched)
-                EXG_CACHE_UPDATED_AT = now
+            exg_data = fetch_exg_data_from_api()
+            if exg_data:
+                new_cache[cid] = exg_data
             else:
-                new_cache[cid] = merge_exg_cache([])
+                new_cache[cid] = SERVER_CACHE.get(cid, [])
             online_count = sum(1 for s in new_cache[cid] if s.get('online'))
             total_players = sum(s['players'] for s in new_cache[cid] if s.get('online'))
             print(f"[Update] {comm['name']}: {online_count}/{len(new_cache[cid])} 在线, {total_players} 玩家")
