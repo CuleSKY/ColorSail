@@ -7,6 +7,7 @@
       "short_name": "EXG",
       "logo": "/static/exg_logo.webp",
       "game": "cs2",
+      "location": "cn",
       "features": ["map_cd"],
       "servers": []
     },
@@ -16,6 +17,7 @@
       "short_name": "ZED",
       "logo": "/static/zed_logo.png",
       "game": "cs2",
+      "location": "cn",
       "servers": [
         { "name": "ZED 01", "host": "cs1.zombieden.cn", "port": 27016 },
         { "name": "ZED 02", "host": "cs3.zombieden.cn", "port": 27015 },
@@ -30,6 +32,7 @@
       "short_name": "UB",
       "logo": "https://csgo.moeub.cn/favicon.svg",
       "game": "cs2",
+      "location": "cn",
       "servers": [
         { "name": "UB 01", "host": "110.42.9.188", "port": 27011 },
         { "name": "UB 02", "host": "110.42.9.188", "port": 27021 },
