@@ -436,7 +436,7 @@
                                     </div>
                                 </div>
                                 <div class="actions">
-                                    <a :href="getConnectUrl(s, comm.game)" class="btn btn-primary">[[ t('join') ]]</a>
+                                    <button class="btn btn-primary" @click="joinServer(s, comm.game)">[[ t('join') ]]</button>
                                     <button class="btn btn-sec" @click="copyCmd(s)">[[ t('copy_console') ]] </button>
                                     <button class="btn btn-sec" @click="copyIp(s)">[[ t('copy_ip') ]]</button>
                                 </div>
@@ -450,7 +450,7 @@
                             <div class="col-name" :title="s.name">[[ s.name ]]</div>
                             <div class="col-map"><span class="map-name">[[ s.map || '-' ]]</span><span class="col-map-cn" v-if="isChineseLang">[[ s.map_cn || (s.map!='-' ? t('no_trans') : '') ]]</span></div>
                             <div class="col-players">[[ s.players ]]/[[ s.max_players ]]</div>
-                            <div class="col-actions"><a :href="getConnectUrl(s, comm.game)" class="btn btn-primary">[[ t('join') ]]</a><button class="btn btn-sec" @click="copyCmd(s)">[[ t('copy_console') ]] </button><button class="btn btn-sec" @click="copyIp(s)">[[ t('copy_ip') ]]</button></div>
+                            <div class="col-actions"><button class="btn btn-primary" @click="joinServer(s, comm.game)">[[ t('join') ]]</button><button class="btn btn-sec" @click="copyCmd(s)">[[ t('copy_console') ]] </button><button class="btn btn-sec" @click="copyIp(s)">[[ t('copy_ip') ]]</button></div>
                         </div>
                     </div>
 
@@ -604,6 +604,7 @@ createApp({
         const isMobile = ref(window.innerWidth <= 768);
         const isEditMode = ref(false);
         const sortByPlayers = ref(false);
+        const configSignature = ref('');
         
         const currentStats = ref([]);
         const totalPlayers = ref(0);
@@ -656,6 +657,8 @@ createApp({
                 showSubPopover.value = false;
             }
         };
+        let refreshTimer = null;
+        let configTimer = null;
 
         onMounted(async () => {
             window.addEventListener('resize', handleResize);
@@ -686,12 +689,16 @@ createApp({
             } catch(e) {}
 
             await loadTranslations();
-            await fetchConfig();
+            await fetchConfig({ force: true });
+            refreshTimer = setInterval(() => communities.value.forEach(c => refreshCommunity(c.id)), refreshIntervalMs);
+            configTimer = setInterval(() => fetchConfig(), configRefreshIntervalMs);
         });
         
         onUnmounted(() => {
             window.removeEventListener('resize', handleResize);
             window.removeEventListener('click', handleGlobalClick);
+            if (refreshTimer) clearInterval(refreshTimer);
+            if (configTimer) clearInterval(configTimer);
         });
 
         const toggleLangMenu = () => {
@@ -877,12 +884,34 @@ createApp({
 
         const serverStaleMs = 15000;
         const refreshIntervalMs = 15000;
+        const configRefreshIntervalMs = 5000;
         const getServerKey = (srv) => `${srv.ip}:${srv.port}`;
 
-        const fetchConfig = async () => {
+        const applyConfig = (data) => {
+            const existingServers = { ...servers.value };
+            const existingCache = { ...serverCache.value };
+            const nextServers = {};
+            const nextCache = {};
+
+            data.forEach(c => {
+                nextServers[c.id] = existingServers[c.id] || [];
+                nextCache[c.id] = existingCache[c.id] || {};
+            });
+
+            communities.value = data;
+            servers.value = nextServers;
+            serverCache.value = nextCache;
+
+            communities.value.forEach(c => refreshCommunity(c.id));
+        };
+
+        const fetchConfig = async ({ force = false } = {}) => {
             try {
-                const res = await fetch('/api/config');
+                const res = await fetch('/api/config', { cache: 'no-store' });
                 const data = await res.json();
+                const nextSignature = JSON.stringify(data);
+                if (!force && nextSignature === configSignature.value) return;
+                configSignature.value = nextSignature;
                 
                 try {
                     const savedIds = JSON.parse(localStorage.getItem('comm_order') || '[]');
@@ -895,12 +924,7 @@ createApp({
                     }
                 } catch(e) { localStorage.removeItem('comm_order'); }
 
-                communities.value = data;
-                communities.value.forEach(c => {
-                    servers.value[c.id] = [];
-                    serverCache.value[c.id] = {};
-                    refreshCommunity(c.id);
-                });
+                applyConfig(data);
             } catch(e) { console.error("Config fetch failed", e); }
         };
 
@@ -925,8 +949,6 @@ createApp({
             serverCache.value[cid] = cache;
             servers.value[cid] = Object.values(cache);
         };
-
-        setInterval(() => communities.value.forEach(c => refreshCommunity(c.id)), refreshIntervalMs);
 
         const getServers = (cid) => {
             let list = servers.value[cid] ? [...servers.value[cid]] : [];
@@ -977,10 +999,18 @@ createApp({
 
         // --- 修复功能区 (Connection & Clipboard) ---
         const getConnectUrl = (srv, game) => {
-            // steam://connect/IP:PORT 是通用的，支持 CS2 和 CSS
-            // 确保 display_ip 存在，否则兜底
-            const ip = srv.display_ip || (srv.ip + ':' + srv.port);
+            const host = srv.connect_ip || srv.ip;
+            const port = srv.port || (srv.display_ip ? srv.display_ip.split(':')[1] : '');
+            const ip = port ? `${host}:${port}` : host;
+            if (game === 'cs2') {
+                return `steam://rungameid/730//+connect ${ip}`;
+            }
             return `steam://connect/${ip}`;
+        };
+
+        const joinServer = (srv, game) => {
+            const url = getConnectUrl(srv, game);
+            window.location.href = url;
         };
 
         // 兼容 HTTP 的复制函数
@@ -1031,7 +1061,7 @@ createApp({
         return {
             t, curLang, isDark, curView, communities, servers, toastMsg, icons: ICONS,
             isCollapsed, toggleSidebar, toggleTheme, showLangMenu, setLang,
-            hasFeature, loadStats, openMapLink, getConnectUrl, copyCmd, copyIp, langLabel, currentLogoPath, isChineseLang,
+            hasFeature, loadStats, openMapLink, getConnectUrl, joinServer, copyCmd, copyIp, langLabel, currentLogoPath, isChineseLang,
             scrollToComm, viewMode, toggleViewMode, isMobile,
             isEditMode, toggleEditMode, 
             sortByPlayers, toggleSortByPlayers, getServers,
