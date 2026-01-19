@@ -296,8 +296,8 @@ def is_exg_stats_eligible(server):
     name = (server.get("name") or "").strip()
     if not name:
         return True
-    lower_name = name.lower()
-    return not any(keyword in lower_name if keyword.isascii() else keyword in name for keyword in EXG_STATS_EXCLUDE_KEYWORDS)
+    normalized = name.casefold()
+    return not any(keyword.casefold() in normalized for keyword in EXG_STATS_EXCLUDE_KEYWORDS)
 
 # --- 4. 主更新循环 ---
 def update_all_data():
@@ -396,7 +396,10 @@ def save_stats():
 # --- 6. 任务调度 ---
 scheduler = BackgroundScheduler()
 scheduler.add_job(update_all_data, 'interval', seconds=15, id='updater')
-scheduler.start()
+
+def start_scheduler():
+    if not scheduler.running:
+        scheduler.start()
 
 # --- 7. Flask 路由 ---
 @app.route('/')
@@ -438,10 +441,11 @@ def get_servers(cid):
 @app.route('/api/agent/update', methods=['POST'])
 def update_agent_data():
     token = os.environ.get('AGENT_SHARED_TOKEN')
-    if token:
-        auth = request.headers.get('Authorization', '')
-        if auth != f"Bearer {token}":
-            return jsonify({"error": "unauthorized"}), 401
+    if not token:
+        return jsonify({"error": "agent token not configured"}), 403
+    auth = request.headers.get('Authorization', '')
+    if auth != f"Bearer {token}":
+        return jsonify({"error": "unauthorized"}), 401
 
     payload = request.get_json(silent=True) or {}
     communities = payload.get('communities', {})
@@ -565,5 +569,7 @@ if __name__ == '__main__':
     update_all_data()
     print("-" * 70)
     print("\n✓ 初始化完成，服务器启动中...\n")
+
+    start_scheduler()
     
     app.run(host='0.0.0.0', port=5000, debug=False)
