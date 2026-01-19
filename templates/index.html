@@ -564,6 +564,10 @@
                             <div class="summary-label">[[ t('stats_total_label') ]]</div>
                             <div class="summary-value">[[ totalPlayers ]]</div>
                         </div>
+                        <div class="summary-card">
+                            <div class="summary-label">[[ t('stats_peak_label') ]]</div>
+                            <div class="summary-value">[[ totalPeak48h ]]</div>
+                        </div>
                         <div class="summary-card" v-if="topCommunity">
                             <div class="summary-label">[[ t('stats_top_label') ]]</div>
                             <div class="summary-value">[[ topCommunity.name ]]</div>
@@ -647,6 +651,7 @@ createApp({
         
         const currentStats = ref([]);
         const totalPlayers = ref(0);
+        const totalPeak48h = ref(0);
         const topCommunity = ref(null);
         
         const subSearchQuery = ref('');
@@ -685,6 +690,7 @@ createApp({
                 stats_title: 'ZE 在线趋势 (48小时)',
                 stats_time_note: '时间为你的本地时间',
                 stats_total_label: '当前ZE社区总人数',
+                stats_peak_label: '近48小时ZE总人数峰值',
                 stats_top_label: '当前热门ZE社区',
                 stats_players_label: '人',
                 stats_distribution_label: '当前ZE玩家分布',
@@ -735,6 +741,7 @@ createApp({
                 stats_title: 'ZE 在線趨勢 (48小時)',
                 stats_time_note: '時間為你的本地時間',
                 stats_total_label: '目前ZE社群總人數',
+                stats_peak_label: '近48小時ZE總人數峰值',
                 stats_top_label: '目前熱門ZE社群',
                 stats_players_label: '人',
                 stats_distribution_label: '目前ZE玩家分布',
@@ -785,6 +792,7 @@ createApp({
                 stats_title: 'ZE Player Trend (48h)',
                 stats_time_note: 'Times shown are your local time.',
                 stats_total_label: 'Total ZE players (all communities)',
+                stats_peak_label: 'Peak total ZE players (48h)',
                 stats_top_label: 'Top ZE community',
                 stats_players_label: 'players',
                 stats_distribution_label: 'Current ZE player distribution',
@@ -1293,6 +1301,7 @@ createApp({
             });
             totalPlayers.value = t;
             topCommunity.value = top;
+            totalPeak48h.value = data.total_peak_48h || 0;
 
             curView.value = 'stats';
             if (data.line_chart && Array.isArray(data.line_chart.labels)) {
@@ -1392,7 +1401,7 @@ createApp({
             mapTranslations, getMapTranslation, getServerMapTranslation, isSubscribed, toggleSubscription, testNotification,
             notificationPermission, requestPerm,
             showSubPopover, toggleSubPopover, toggleLangMenu, goToSubPage, closeDropdowns,
-            currentStats, totalPlayers, topCommunity,
+            currentStats, totalPlayers, totalPeak48h, topCommunity,
             filteredCommunities, serverSearchNotice
         };
     }
