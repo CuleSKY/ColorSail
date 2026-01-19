@@ -619,7 +619,8 @@ createApp({
         const newSubComms = ref(['all']);
         const subscriptions = ref([]);
         const lastNotifiedMaps = ref({});
-        const notificationPermission = ref(Notification.permission);
+        const hasNotification = typeof Notification !== 'undefined';
+        const notificationPermission = ref(hasNotification ? Notification.permission : 'denied');
 
         const draggedIndex = ref(null);
         const dragOverIndex = ref(null);
@@ -684,9 +685,11 @@ createApp({
                 if (!Array.isArray(subscriptions.value)) subscriptions.value = [];
             } catch(e) { localStorage.removeItem('map_subs'); subscriptions.value = []; }
             
-            try {
-                if (Notification.permission !== "granted") Notification.requestPermission();
-            } catch(e) {}
+            if (hasNotification) {
+                try {
+                    if (Notification.permission !== "granted") Notification.requestPermission();
+                } catch(e) {}
+            }
 
             await loadTranslations();
             await fetchConfig();
@@ -754,7 +757,10 @@ createApp({
             if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
 
-        const requestPerm = () => { Notification.requestPermission().then(p => notificationPermission.value = p); };
+        const requestPerm = () => {
+            if (!hasNotification) return;
+            Notification.requestPermission().then(p => notificationPermission.value = p);
+        };
 
         const saveCommunityOrder = () => {
             const ids = communities.value.map(c => c.id);
@@ -849,6 +855,7 @@ createApp({
         };
 
         const testNotification = () => {
+            if (!hasNotification) return;
             if (Notification.permission === "granted") {
                 const cName = communities.value.length > 0 ? communities.value[0].name : "Test Community";
                 new Notification(t('sub_notify'), { 
@@ -860,9 +867,11 @@ createApp({
             }
         };
 
+        const getServerKey = (srv) => `${srv.ip}:${srv.port}`;
+
         const checkSubscriptions = (srvData, commId) => {
             if (!srvData.map || srvData.map === '-') return;
-            const fullId = commId + '_' + srvData.ip;
+            const fullId = `${commId}_${getServerKey(srvData)}`;
             
             const matchedSub = subscriptions.value.find(sub => {
                 const mapMatch = srvData.map.toLowerCase() === sub.map.toLowerCase();
@@ -872,7 +881,7 @@ createApp({
 
             if (matchedSub) {
                 if (lastNotifiedMaps.value[fullId] !== srvData.map) {
-                    if (Notification.permission === "granted") {
+                    if (hasNotification && Notification.permission === "granted") {
                         const c = communities.value.find(x => x.id === commId);
                         const cName = c ? (c.short_name || c.name) : commId;
                         const n = new Notification(t('sub_notify'), {
@@ -892,7 +901,6 @@ createApp({
 
         const serverStaleMs = 15000;
         const refreshIntervalMs = 15000;
-        const getServerKey = (srv) => `${srv.ip}:${srv.port}`;
 
         const fetchConfig = async () => {
             try {
