@@ -950,6 +950,11 @@ createApp({
         };
 
         setInterval(() => communities.value.forEach(c => refreshCommunity(c.id)), refreshIntervalMs);
+        setInterval(() => {
+            if (curView.value === 'stats') {
+                loadStats();
+            }
+        }, statsRefreshIntervalMs);
 
         const getServers = (cid) => {
             let list = servers.value[cid] ? [...servers.value[cid]] : [];
