@@ -33,6 +33,9 @@
             --warn-bg: #fff4ce;
             --warn-text: #7d630c;
             --ease-fluent: cubic-bezier(0.1, 0.9, 0.2, 1);
+            --scrollbar-track: rgba(0, 0, 0, 0.06);
+            --scrollbar-thumb: rgba(0, 0, 0, 0.28);
+            --scrollbar-thumb-hover: rgba(0, 0, 0, 0.45);
         }
 
         [data-theme="dark"] {
@@ -49,6 +52,9 @@
             --shadow: 0 4px 16px rgba(0,0,0,0.4);
             --warn-bg: #463b15;
             --warn-text: #fce100;
+            --scrollbar-track: rgba(255, 255, 255, 0.08);
+            --scrollbar-thumb: rgba(255, 255, 255, 0.3);
+            --scrollbar-thumb-hover: rgba(255, 255, 255, 0.5);
         }
 
         * { box-sizing: border-box; }
@@ -61,6 +67,12 @@
         }
 
         #app { display: flex; width: 100%; height: 100%; }
+
+        * { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); }
+        *::-webkit-scrollbar { width: 10px; height: 10px; }
+        *::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 8px; }
+        *::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+        *::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
         * { transition: background-color 0.3s var(--ease-fluent), border-color 0.3s var(--ease-fluent), color 0.3s var(--ease-fluent), box-shadow 0.3s var(--ease-fluent), transform 0.3s var(--ease-fluent), opacity 0.3s var(--ease-fluent); }
         #app * { animation: fluentFadeIn 0.35s var(--ease-fluent) both; }
@@ -105,7 +117,8 @@
 
         .edit-banner { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: repeating-linear-gradient(45deg, var(--warn-text), var(--warn-text) 10px, var(--warn-bg) 10px, var(--warn-bg) 20px); z-index: 101; }
 
-        .header-toolbar { display: flex; align-items: center; gap: 12px; justify-self: center; }
+        .header-right { display: flex; align-items: center; gap: 16px; justify-self: end; }
+        .header-toolbar { display: flex; align-items: center; gap: 12px; }
         .toolbar-btn { display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 20px; background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-primary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02); line-height: 1; }
         .toolbar-btn:hover { background: rgba(128,128,128,0.1); transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.08); }
         .toolbar-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
@@ -369,50 +382,52 @@
                 </div>
             </div>
 
-            <div class="header-toolbar" v-if="curView === 'servers'">
-                <button class="toolbar-btn" @click.stop="toggleViewMode" :title="t('switch_view')">
-                    <div class="icon-svg" v-html="viewMode === 'grid' ? icons.list : icons.grid"></div>
-                    <span>[[ viewMode === 'grid' ? t('view_list') : t('view_grid') ]]</span>
-                </button>
-                <button class="toolbar-btn" @click.stop="toggleSortByPlayers" :class="{active: sortByPlayers}" :title="t('sort_players')">
-                    <div class="icon-svg" v-html="icons.sort"></div>
-                    <span>[[ t('sort_btn') ]]</span>
-                </button>
-            </div>
-
-            <div class="top-controls">
-                <div class="desktop-only-icon" style="position: relative;">
-                    <button class="control-btn" :class="{'menu-active': showSubPopover}" @click.stop="toggleSubPopover" :title="t('my_subs')">
-                        <div class="icon-svg" v-html="icons.bell"></div>
+            <div class="header-right">
+                <div class="header-toolbar" v-if="curView === 'servers'">
+                    <button class="toolbar-btn" @click.stop="toggleViewMode" :title="t('switch_view')">
+                        <div class="icon-svg" v-html="viewMode === 'grid' ? icons.list : icons.grid"></div>
+                        <span>[[ viewMode === 'grid' ? t('view_list') : t('view_grid') ]]</span>
                     </button>
-                    <div class="dropdown-menu sub-popover" :class="{show: showSubPopover}" @click.stop>
-                        <div v-if="subscriptions.length === 0" class="sub-pop-empty">[[ t('no_subs') ]]</div>
-                        <div v-else>
-                            <div class="sub-pop-item" v-for="sub in subscriptions.slice(0, 5)" :key="sub.map">
-                                <div class="sub-pop-info">
-                                    <div class="sub-pop-map">[[ sub.map ]]</div>
-                                    <div class="sub-pop-trans" v-if="isChineseLang && getMapTranslation(sub.map)">[[ getMapTranslation(sub.map) ]]</div>
-                                </div>
-                                <div class="sub-pop-del" @click.stop="removeSubscriptionByMap(sub.map)" :title="t('unsubscribe')">
-                                    <div class="icon-svg" v-html="icons.trash" style="width:14px;"></div>
+                    <button class="toolbar-btn" @click.stop="toggleSortByPlayers" :class="{active: sortByPlayers}" :title="t('sort_players')">
+                        <div class="icon-svg" v-html="icons.sort"></div>
+                        <span>[[ t('sort_btn') ]]</span>
+                    </button>
+                </div>
+
+                <div class="top-controls">
+                    <div class="desktop-only-icon" style="position: relative;">
+                        <button class="control-btn" :class="{'menu-active': showSubPopover}" @click.stop="toggleSubPopover" :title="t('my_subs')">
+                            <div class="icon-svg" v-html="icons.bell"></div>
+                        </button>
+                        <div class="dropdown-menu sub-popover" :class="{show: showSubPopover}" @click.stop>
+                            <div v-if="subscriptions.length === 0" class="sub-pop-empty">[[ t('no_subs') ]]</div>
+                            <div v-else>
+                                <div class="sub-pop-item" v-for="sub in subscriptions.slice(0, 5)" :key="sub.map">
+                                    <div class="sub-pop-info">
+                                        <div class="sub-pop-map">[[ sub.map ]]</div>
+                                        <div class="sub-pop-trans" v-if="isChineseLang && getMapTranslation(sub.map)">[[ getMapTranslation(sub.map) ]]</div>
+                                    </div>
+                                    <div class="sub-pop-del" @click.stop="removeSubscriptionByMap(sub.map)" :title="t('unsubscribe')">
+                                        <div class="icon-svg" v-html="icons.trash" style="width:14px;"></div>
+                                    </div>
                                 </div>
                             </div>
+                            <div class="sub-pop-footer" @click.stop="goToSubPage">[[ t('manage_all') ]]</div>
                         </div>
-                        <div class="sub-pop-footer" @click.stop="goToSubPage">[[ t('manage_all') ]]</div>
                     </div>
-                </div>
 
-                <div style="position: relative;">
-                    <button class="control-btn" :class="{'menu-active': showLangMenu}" @click.stop="toggleLangMenu">
-                        <div class="icon-svg" v-html="icons.lang"></div>
-                    </button>
-                    <div class="dropdown-menu" :class="{show: showLangMenu}" @click.stop>
-                        <div class="dropdown-item" :class="{active: curLang==='zh-CN'}" @click="setLang('zh-CN')">简体中文</div>
-                        <div class="dropdown-item" :class="{active: curLang==='zh-TW'}" @click="setLang('zh-TW')">繁體中文</div>
-                        <div class="dropdown-item" :class="{active: curLang==='en'}" @click="setLang('en')">English</div>
+                    <div style="position: relative;">
+                        <button class="control-btn" :class="{'menu-active': showLangMenu}" @click.stop="toggleLangMenu">
+                            <div class="icon-svg" v-html="icons.lang"></div>
+                        </button>
+                        <div class="dropdown-menu" :class="{show: showLangMenu}" @click.stop>
+                            <div class="dropdown-item" :class="{active: curLang==='zh-CN'}" @click="setLang('zh-CN')">简体中文</div>
+                            <div class="dropdown-item" :class="{active: curLang==='zh-TW'}" @click="setLang('zh-TW')">繁體中文</div>
+                            <div class="dropdown-item" :class="{active: curLang==='en'}" @click="setLang('en')">English</div>
+                        </div>
                     </div>
+                    <button class="control-btn" @click="toggleTheme"><div class="icon-svg" v-html="icons.theme"></div></button>
                 </div>
-                <button class="control-btn" @click="toggleTheme"><div class="icon-svg" v-html="icons.theme"></div></button>
             </div>
         </header>
 
