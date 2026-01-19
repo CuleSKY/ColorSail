@@ -4,6 +4,7 @@ import requests
 import os
 import a2s
 import base64
+import random
 from concurrent.futures import ThreadPoolExecutor
 import socket
 import urllib3
@@ -117,12 +118,17 @@ def run_agent():
     if not STEAM_API_KEY:
         print("[Warning] 未能加载 Steam API Key，将仅使用 A2S 查询。")
 
+    base_interval = 15
+    comm_index = 0
+    comm_count = 1
+
     while True:
         try:
             # Agent 读取本地 config.json 以获取完整服务器列表
             if not os.path.exists("config.json"):
                 print("[Error] 请在 Agent 同目录下放置 config.json")
-                time.sleep(10); continue
+                time.sleep(10)
+                continue
                 
             with open("config.json", "r", encoding="utf-8") as f:
                 local_config = json.load(f)
@@ -132,41 +138,49 @@ def run_agent():
                 if comm.get('location') != 'cn'
             ]
 
-            # 处理任务
-            payload = {"communities": {}}
-            for comm in non_cn_comms:
+            if not non_cn_comms:
+                time.sleep(10)
+                continue
+            comm_count = len(non_cn_comms)
 
-                print(f"[Job] 更新社区: {comm['name']}")
+            comm = non_cn_comms[comm_index % len(non_cn_comms)]
+            comm_index += 1
+            server_list = comm.get('servers', [])
 
-                with ThreadPoolExecutor(max_workers=10) as executor:
-                    results = list(executor.map(fetch_server_data, comm.get('servers', [])))
+            print(f"[Job] 更新社区: {comm['name']}")
+            if server_list:
+                max_workers = min(10, max(1, len(server_list)))
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    results = list(executor.map(fetch_server_data, server_list))
+            else:
+                results = []
 
-                online_count = sum(1 for r in results if r.get("online"))
-                a2s_count = sum(1 for r in results if r.get("query_source") == "a2s")
-                steam_count = sum(1 for r in results if r.get("query_source") == "steam_api")
-                print(f"[Job] {comm['name']}: {online_count}/{len(results)} 在线 (A2S {a2s_count}, Steam {steam_count})")
+            online_count = sum(1 for r in results if r.get("online"))
+            a2s_count = sum(1 for r in results if r.get("query_source") == "a2s")
+            steam_count = sum(1 for r in results if r.get("query_source") == "steam_api")
+            print(f"[Job] {comm['name']}: {online_count}/{len(results)} 在线 (A2S {a2s_count}, Steam {steam_count})")
 
-                payload["communities"][comm['id']] = results
-
-            if payload["communities"]:
-                try:
-                    resp = requests.post(
-                        f"{MASTER_URL}/api/agent/update",
-                        json=payload,
-                        headers={"Authorization": f"Bearer {AGENT_TOKEN}"},
-                        timeout=5
-                    )
-                    if resp.ok:
-                        print(f"[Push] ✅ 更新成功: {', '.join(payload['communities'].keys())}")
-                    else:
-                        print(f"[Push] ❌ 更新失败: HTTP {resp.status_code}")
-                except Exception as e:
-                    print(f"[Push] 推送失败: {e}")
+            payload = {"communities": {comm['id']: results}}
+            try:
+                resp = requests.post(
+                    f"{MASTER_URL}/api/agent/update",
+                    json=payload,
+                    headers={"Authorization": f"Bearer {AGENT_TOKEN}"},
+                    timeout=5
+                )
+                if resp.ok:
+                    print(f"[Push] ✅ 更新成功: {comm['id']}")
+                else:
+                    print(f"[Push] ❌ 更新失败: HTTP {resp.status_code}")
+            except Exception as e:
+                print(f"[Push] 推送失败: {e}")
 
         except Exception as e:
             print(f"[Error] 主循环异常: {e}")
-        
-        time.sleep(15)
+
+        per_comm_delay = max(1.0, base_interval / max(1, comm_count))
+        jitter = random.uniform(0.2, 1.2)
+        time.sleep(per_comm_delay + jitter)
 
 if __name__ == "__main__":
     if "YOUR_" in MASTER_URL:

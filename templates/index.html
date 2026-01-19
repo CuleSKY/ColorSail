@@ -98,14 +98,14 @@
 
         /* --- 3. Header --- */
         .content-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; height: 100%; position: relative; z-index: 1; }
-        header { height: var(--header-height); width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0 30px; flex-shrink: 0; background: var(--bg-color); border-bottom: 1px solid transparent; }
+        header { height: var(--header-height); width: 100%; display: grid; grid-template-columns: auto 1fr auto; align-items: center; padding: 0 30px; flex-shrink: 0; background: var(--bg-color); border-bottom: 1px solid transparent; position: relative; z-index: 200; column-gap: 16px; }
         .header-title-area { display: flex; align-items: center; gap: 16px; }
         .header-logo img { height: 32px; width: auto; display: block; }
         h1 { margin: 0; font-weight: 600; font-size: 20px; }
 
         .edit-banner { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: repeating-linear-gradient(45deg, var(--warn-text), var(--warn-text) 10px, var(--warn-bg) 10px, var(--warn-bg) 20px); z-index: 101; }
 
-        .header-toolbar { display: flex; align-items: center; gap: 12px; position: absolute; left: 50%; transform: translateX(-50%); }
+        .header-toolbar { display: flex; align-items: center; gap: 12px; justify-self: center; }
         .toolbar-btn { display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 20px; background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-primary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02); line-height: 1; }
         .toolbar-btn:hover { background: rgba(128,128,128,0.1); transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.08); }
         .toolbar-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
@@ -113,7 +113,7 @@
         .toolbar-btn .icon-svg svg { display: block; }
         .toolbar-btn span { line-height: 1; }
 
-        .top-controls { display: flex; gap: 12px; align-items: center; }
+        .top-controls { display: flex; gap: 12px; align-items: center; position: relative; z-index: 210; }
         .control-btn { background: transparent; border: none; cursor: pointer; padding: 8px; border-radius: 50%; color: var(--text-primary); display: flex; align-items: center; justify-content: center; transition: background 0.2s; position: relative; }
         .control-btn:hover { background: rgba(128,128,128,0.1); }
         .control-btn.menu-active { background: rgba(128,128,128,0.15); color: var(--accent); }
@@ -128,6 +128,8 @@
         .server-search-bar { display: flex; align-items: center; padding: 12px 30px; border-bottom: 1px solid var(--card-border); background: var(--bg-color); gap: 12px; }
         .server-search-input { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--card-bg); color: var(--text-primary); font-size: 14px; outline: none; }
         .server-search-input::placeholder { color: var(--text-secondary); }
+        .server-search-hint { padding: 6px 30px 12px 30px; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--card-border); background: var(--bg-color); }
+        .server-search-hint strong { color: var(--text-primary); }
 
         #main-content { flex: 1; padding: 20px 30px 80px 30px; overflow-y: auto; scroll-behavior: smooth; width: 100%; }
         [id^="comm-"] { scroll-margin-top: 20px; }
@@ -331,7 +333,10 @@
 
         <div class="nav-item" :class="{active: curView === 'stats'}" @click="goToView('stats')">
             <div class="icon-svg" v-html="icons.stats"></div>
-            <span v-if="!isCollapsed">[[ t('stats') ]]</span>
+            <div v-if="!isCollapsed" style="display:flex; flex-direction:column; justify-content:center; line-height:1.2;">
+                <span>[[ t('stats') ]]</span>
+                <span style="font-size: 10px; opacity: 0.7;">[[ t('stats_note') ]]</span>
+            </div>
             <div class="tooltip" v-if="isCollapsed">[[ t('stats') ]]</div>
         </div>
         <div class="nav-item" @click="openMapLink" v-if="hasFeature('map_cd')">
@@ -383,12 +388,12 @@
                     <div class="dropdown-menu sub-popover" :class="{show: showSubPopover}" @click.stop>
                         <div v-if="subscriptions.length === 0" class="sub-pop-empty">[[ t('no_subs') ]]</div>
                         <div v-else>
-                            <div class="sub-pop-item" v-for="(sub, idx) in subscriptions.slice(0, 5)" :key="idx">
+                            <div class="sub-pop-item" v-for="sub in subscriptions.slice(0, 5)" :key="sub.map">
                                 <div class="sub-pop-info">
                                     <div class="sub-pop-map">[[ sub.map ]]</div>
                                     <div class="sub-pop-trans" v-if="isChineseLang && getMapTranslation(sub.map)">[[ getMapTranslation(sub.map) ]]</div>
                                 </div>
-                                <div class="sub-pop-del" @click.stop="removeSubscription(idx)" :title="t('unsubscribe')">
+                                <div class="sub-pop-del" @click.stop="removeSubscriptionByMap(sub.map)" :title="t('unsubscribe')">
                                     <div class="icon-svg" v-html="icons.trash" style="width:14px;"></div>
                                 </div>
                             </div>
@@ -412,7 +417,7 @@
         </header>
 
         <div class="community-nav" v-if="curView === 'servers'">
-            <div class="jump-pill" v-for="comm in communities" :key="comm.id" @click="scrollToComm(comm.id)">
+            <div class="jump-pill" v-for="comm in filteredCommunities" :key="comm.id" @click="scrollToComm(comm.id)">
                 <img v-if="comm.logo" :src="comm.logo">
                 <span>[[ comm.name ]]</span>
             </div>
@@ -425,7 +430,10 @@
         <div id="main-content">
             
             <div v-if="curView === 'servers'" class="animate-enter">
-                <div v-for="comm in communities" :key="comm.id" :id="'comm-' + comm.id" style="margin-bottom: 40px;">
+                <div v-if="serverSearchNotice" class="server-search-hint">
+                    [[ serverSearchNotice ]]
+                </div>
+                <div v-for="comm in filteredCommunities" :key="comm.id" :id="'comm-' + comm.id" style="margin-bottom: 40px;">
                     <h3 class="desktop-header" v-if="!isMobile" style="border-left: 4px solid var(--accent); padding-left: 10px; margin: 0 0 16px 0;">[[ comm.name ]]</h3>
                     <div class="community-title-bar" v-if="isMobile" :id="'comm-mob-' + comm.id">
                         <img v-if="comm.logo" :src="comm.logo">
@@ -576,7 +584,7 @@
         
         <div class="fixed-logo"><img :src="currentLogoPath" alt="NERV_Logo"></div>
     </div>
-    <div class="toast" :class="{show: toastMsg}">[[ toastMsg ]]</div>
+    <div class="toast" v-if="toastMsg" :class="{show: toastMsg}">[[ toastMsg ]]</div>
 </div>
 
 <script>
@@ -646,12 +654,160 @@ createApp({
         const curLang = ref(defaultLang);
 
         const I18N = {
-            'zh-CN': { app_title: 'NERV CS2ZE', servers: '服务器列表', mapcd: '地图冷却', stats: '数据统计(仅ZE)', map: '地图', players: '人数', offline: '离线', join: '进入游戏', copy_console: '复制命令', copy_ip: '复制IP', exg_only: '仅限 EXG', stats_title: 'ZE 在线趋势 (48小时)', copied: '已复制: ', no_trans: '暂无', edit_order: '编辑社区排列顺序', exit_edit: '完成排序', drag_hint: '拖拽社区以排序', sort_btn: '人数排序', switch_view: '切换视图', view_list: '列表模式', view_grid: '卡片模式', sort_players: '按人数排序', sub_menu: '查询/订阅地图', sub_search_ph: '搜索地图 (英文名或中文)...', server_search_ph: '搜索服务器地图 (英文/中文)...', sub_notify: '地图变更通知', subscribed: '已订阅', subscribe: '订阅', unsubscribe: '取消订阅', no_map_found: '未找到地图，请尝试其他关键词', test_notify: '测试通知', sub_title: '地图订阅', my_subs: '我的订阅', no_subs: '暂无订阅', sub_confirm_title: '确认订阅地图', sub_select_comm: '选择接收通知的社区', all_comm: '所有社区', subscribe_confirm: '确认订阅', notify_warn: '您尚未开启通知权限，点击此处开启以接收地图推送。', manage_all: '管理所有订阅', keep_open_hint: '请保持此页面在浏览器中开启（可后台运行）以接收通知' },
-            'zh-TW': { app_title: 'NERV CS2ZE', servers: '伺服器列表', mapcd: '地圖冷卻', stats: '數據統計(僅ZE)', map: '地圖', players: '人數', offline: '離線', join: '進入遊戲', copy_console: '複製命令', copy_ip: '複製IP', exg_only: '僅限 EXG', stats_title: 'ZE 在線趨勢 (48小時)', copied: '已複製: ', no_trans: '暫無', edit_order: '編輯社區排列順序', exit_edit: '完成排序', drag_hint: '拖動社區以排序', sort_btn: '人數排序', switch_view: '切換視圖', view_list: '列表模式', view_grid: '卡片模式', sort_players: '按人數排序', sub_menu: '查詢/訂閱地圖', sub_search_ph: '搜尋地圖 (英文名或中文)...', server_search_ph: '搜尋伺服器地圖 (英文/中文)...', sub_notify: '地圖變更通知', subscribed: '已訂閱', subscribe: '訂閱', unsubscribe: '取消訂閱', no_map_found: '未找到地圖，請嘗試其他關鍵詞', test_notify: '測試通知', sub_title: '地圖訂閱', my_subs: '我的訂閱', no_subs: '暫無訂閱', sub_confirm_title: '確認訂閱地圖', sub_select_comm: '選擇接收通知的社區', all_comm: '所有社區', subscribe_confirm: '確認訂閱', notify_warn: '您尚未開啟通知權限，點擊此處開啟以接收地圖推送。', manage_all: '管理所有訂閱', keep_open_hint: '請保持此頁面在瀏覽器中開啟（可後臺運行）以接收通知' },
-            'en': { app_title: 'NERV CS2ZE', servers: 'Servers', mapcd: 'Map CD', stats: 'Statistics(ZE ONLY)', map: 'Map', players: 'Players', offline: 'Offline', join: 'Join', copy_console: 'Console CMD', copy_ip: 'Copy IP', exg_only: 'EXG Only', stats_title: 'ZE Player Trend (48h)', copied: 'Copied: ', no_trans: 'N/A', edit_order: 'Edit Community Order', exit_edit: 'Done', drag_hint: 'Drag to reorder', sort_btn: 'Sort Players', switch_view: 'Switch View', view_list: 'List View', view_grid: 'Grid View', sort_players: 'Sort by Players', sub_menu: 'Map Search/Sub', sub_search_ph: 'Search map (English or Chinese)...', server_search_ph: 'Search server maps (English/Chinese)...', sub_notify: 'Map Change Alert', subscribed: 'Subscribed', subscribe: 'Subscribe', unsubscribe: 'Unsubscribe', no_map_found: 'No map found, try other keywords', test_notify: 'Test Notification', sub_title: 'Subscriptions', my_subs: 'My Subscriptions', no_subs: 'No subscriptions', sub_confirm_title: 'Subscribe to Map', sub_select_comm: 'Select Communities for Notification', all_comm: 'All Communities', subscribe_confirm: 'Confirm Subscription', notify_warn: 'Notifications disabled. Click here to enable alerts.', manage_all: 'Manage All Subscriptions', keep_open_hint: 'Please keep this tab open to receive notifications.' }
+            'zh-CN': {
+                app_title: 'NERV CS2僵尸逃跑启动器',
+                servers: '服务器列表',
+                mapcd: '地图冷却',
+                stats: '数据统计',
+                stats_note: '仅ZE',
+                map: '地图',
+                players: '人数',
+                offline: '离线',
+                join: '进入游戏',
+                copy_console: '复制命令',
+                copy_ip: '复制IP',
+                exg_only: '仅限 EXG',
+                stats_title: 'ZE 在线趋势 (48小时)',
+                stats_time_note: '时间为你的本地时间',
+                stats_total_label: '当前ZE社区总人数',
+                stats_top_label: '当前热门ZE社区',
+                stats_players_label: '人',
+                stats_distribution_label: '当前ZE玩家分布',
+                copied: '已复制: ',
+                no_trans: '暂无',
+                edit_order: '编辑社区排列顺序',
+                exit_edit: '完成排序',
+                drag_hint: '拖拽社区以排序',
+                sort_btn: '人数排序',
+                switch_view: '切换视图',
+                view_list: '列表模式',
+                view_grid: '卡片模式',
+                sort_players: '按人数排序',
+                sub_menu: '查询/订阅地图',
+                sub_search_ph: '搜索地图 (英文名或中文)...',
+                server_search_ph: '看看现在有没有你想蛆的图（输入地图名称搜索）',
+                server_search_empty: '当前没有服务器运行“{map}”。',
+                sub_notify: '地图变更通知',
+                subscribed: '已订阅',
+                subscribe: '订阅',
+                unsubscribe: '取消订阅',
+                no_map_found: '未找到地图，请尝试其他关键词',
+                test_notify: '测试通知',
+                sub_title: '地图订阅',
+                my_subs: '我的订阅',
+                no_subs: '暂无订阅',
+                sub_confirm_title: '确认订阅地图',
+                sub_select_comm: '选择接收通知的社区',
+                all_comm: '所有社区',
+                subscribe_confirm: '确认订阅',
+                notify_warn: '您尚未开启通知权限，点击此处开启以接收地图推送。',
+                manage_all: '管理所有订阅',
+                keep_open_hint: '请保持此页面在浏览器中开启（可后台运行）以接收通知'
+            },
+            'zh-TW': {
+                app_title: 'NERV CS2殭屍逃跑啟動器',
+                servers: '伺服器列表',
+                mapcd: '地圖冷卻',
+                stats: '數據統計',
+                stats_note: '僅ZE',
+                map: '地圖',
+                players: '人數',
+                offline: '離線',
+                join: '進入遊戲',
+                copy_console: '複製命令',
+                copy_ip: '複製IP',
+                exg_only: '僅限 EXG',
+                stats_title: 'ZE 在線趨勢 (48小時)',
+                stats_time_note: '時間為你的本地時間',
+                stats_total_label: '目前ZE社群總人數',
+                stats_top_label: '目前熱門ZE社群',
+                stats_players_label: '人',
+                stats_distribution_label: '目前ZE玩家分布',
+                copied: '已複製: ',
+                no_trans: '暫無',
+                edit_order: '編輯社區排列順序',
+                exit_edit: '完成排序',
+                drag_hint: '拖動社區以排序',
+                sort_btn: '人數排序',
+                switch_view: '切換視圖',
+                view_list: '列表模式',
+                view_grid: '卡片模式',
+                sort_players: '按人數排序',
+                sub_menu: '查詢/訂閱地圖',
+                sub_search_ph: '搜尋地圖 (英文名或中文)...',
+                server_search_ph: '看看現在有沒有你想玩的圖（輸入地圖名稱搜尋）',
+                server_search_empty: '目前沒有伺服器在運行「{map}」。',
+                sub_notify: '地圖變更通知',
+                subscribed: '已訂閱',
+                subscribe: '訂閱',
+                unsubscribe: '取消訂閱',
+                no_map_found: '未找到地圖，請嘗試其他關鍵詞',
+                test_notify: '測試通知',
+                sub_title: '地圖訂閱',
+                my_subs: '我的訂閱',
+                no_subs: '暫無訂閱',
+                sub_confirm_title: '確認訂閱地圖',
+                sub_select_comm: '選擇接收通知的社區',
+                all_comm: '所有社區',
+                subscribe_confirm: '確認訂閱',
+                notify_warn: '您尚未開啟通知權限，點擊此處開啟以接收地圖推送。',
+                manage_all: '管理所有訂閱',
+                keep_open_hint: '請保持此頁面在瀏覽器中開啟（可後臺運行）以接收地圖推送'
+            },
+            'en': {
+                app_title: 'NERV CS2ZE Browser',
+                servers: 'Servers',
+                mapcd: 'Map CD',
+                stats: 'Statistics',
+                stats_note: 'ZE Only',
+                map: 'Map',
+                players: 'Players',
+                offline: 'Offline',
+                join: 'Join',
+                copy_console: 'Console CMD',
+                copy_ip: 'Copy IP',
+                exg_only: 'EXG Only',
+                stats_title: 'ZE Player Trend (48h)',
+                stats_time_note: 'Times shown are your local time.',
+                stats_total_label: 'Total ZE players (all communities)',
+                stats_top_label: 'Top ZE community',
+                stats_players_label: 'players',
+                stats_distribution_label: 'Current ZE player distribution',
+                copied: 'Copied: ',
+                no_trans: 'N/A',
+                edit_order: 'Edit Community Order',
+                exit_edit: 'Done',
+                drag_hint: 'Drag to reorder',
+                sort_btn: 'Sort Players',
+                switch_view: 'Switch View',
+                view_list: 'List View',
+                view_grid: 'Grid View',
+                sort_players: 'Sort by Players',
+                sub_menu: 'Map Search/Sub',
+                sub_search_ph: 'Search map (English or Chinese)...',
+                server_search_ph: 'See if any ZE communities are running the map you want to play.',
+                server_search_empty: 'No servers are running “{map}” right now.',
+                sub_notify: 'Map Change Alert',
+                subscribed: 'Subscribed',
+                subscribe: 'Subscribe',
+                unsubscribe: 'Unsubscribe',
+                no_map_found: 'No map found, try other keywords',
+                test_notify: 'Test Notification',
+                sub_title: 'Subscriptions',
+                my_subs: 'My Subscriptions',
+                no_subs: 'No subscriptions',
+                sub_confirm_title: 'Subscribe to Map',
+                sub_select_comm: 'Select Communities for Notification',
+                all_comm: 'All Communities',
+                subscribe_confirm: 'Confirm Subscription',
+                notify_warn: 'Notifications disabled. Click here to enable alerts.',
+                manage_all: 'Manage All Subscriptions',
+                keep_open_hint: 'Please keep this tab open to receive notifications.'
+            }
         };
 
         const t = (key) => I18N[curLang.value][key] || I18N['en'][key];
+        const formatTemplate = (template, vars = {}) => template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? '');
         const langLabel = computed(() => curLang.value === 'zh-CN' ? '简体中文' : (curLang.value === 'zh-TW' ? '繁體中文' : 'English'));
         const isChineseLang = computed(() => curLang.value.includes('zh'));
         const currentLogoPath = computed(() => isDark.value ? LOGO_PATHS.W : LOGO_PATHS.B);
@@ -916,6 +1072,12 @@ createApp({
             subscriptions.value.splice(idx, 1);
             localStorage.setItem('map_subs', JSON.stringify(subscriptions.value));
         };
+        const removeSubscriptionByMap = (mapName) => {
+            const idx = subscriptions.value.findIndex((sub) => sub.map === mapName);
+            if (idx >= 0) {
+                removeSubscription(idx);
+            }
+        };
 
         const isSubscribed = (mapName) => subscriptions.value.some(s => s.map === mapName);
         const toggleSubscription = (mapName) => {
@@ -953,15 +1115,16 @@ createApp({
         const checkSubscriptions = (srvData, commId) => {
             if (!srvData.map || srvData.map === '-') return;
             const fullId = `${commId}_${getServerKey(srvData)}`;
+            const normalizedMap = normalizeMapKey(srvData.map);
             
             const matchedSub = subscriptions.value.find(sub => {
-                const mapMatch = srvData.map.toLowerCase() === sub.map.toLowerCase();
+                const mapMatch = normalizedMap && normalizedMap === normalizeMapKey(sub.map);
                 const commMatch = sub.comms.includes('all') || sub.comms.includes(commId);
                 return mapMatch && commMatch;
             });
 
             if (matchedSub) {
-                if (lastNotifiedMaps.value[fullId] !== srvData.map) {
+                if (lastNotifiedMaps.value[fullId] !== normalizedMap) {
                     if (hasNotification && Notification.permission === "granted") {
                         const c = communities.value.find(x => x.id === commId);
                         const cName = c ? (c.short_name || c.name) : commId;
@@ -971,12 +1134,10 @@ createApp({
                         });
                         n.onclick = () => { window.focus(); copyCmd(srvData); };
                     }
-                    lastNotifiedMaps.value[fullId] = srvData.map;
+                    lastNotifiedMaps.value[fullId] = normalizedMap;
                 }
             } else {
-                if (lastNotifiedMaps.value[fullId] && lastNotifiedMaps.value[fullId] !== srvData.map) {
-                    delete lastNotifiedMaps.value[fullId];
-                }
+                if (lastNotifiedMaps.value[fullId]) delete lastNotifiedMaps.value[fullId];
             }
         };
 
@@ -1062,6 +1223,23 @@ createApp({
             }
             return list;
         };
+        const filteredCommunities = computed(() => {
+            const query = normalizeSearchText(serverMapQuery.value);
+            if (!query) return communities.value;
+            return communities.value.filter((comm) => getServers(comm.id).length > 0);
+        });
+        const serverSearchNotice = computed(() => {
+            const query = serverMapQuery.value.trim();
+            if (!query) return '';
+            let count = 0;
+            filteredCommunities.value.forEach((comm) => {
+                count += getServers(comm.id).length;
+            });
+            if (count === 0) {
+                return formatTemplate(t('server_search_empty'), { map: query });
+            }
+            return '';
+        });
 
         let lineChartInst = null;
         let pieChartInst = null;
@@ -1195,11 +1373,12 @@ createApp({
             isEditMode, toggleEditMode, 
             sortByPlayers, toggleSortByPlayers, getServers, serverMapQuery, serverMapQueryInput,
             draggedIndex, dragOverIndex, onDragStart, onDragEnter, onDragLeave, onDrop,
-            subSearchQuery, searchResults, searchMaps, selectedMap, selectMapToSub, newSubComms, toggleSubComm, addSubscription, subscriptions, removeSubscription, formatSubComms,
+            subSearchQuery, searchResults, searchMaps, selectedMap, selectMapToSub, newSubComms, toggleSubComm, addSubscription, subscriptions, removeSubscription, removeSubscriptionByMap, formatSubComms,
             mapTranslations, getMapTranslation, getServerMapTranslation, isSubscribed, toggleSubscription, testNotification,
             notificationPermission, requestPerm,
             showSubPopover, toggleSubPopover, toggleLangMenu, goToSubPage, closeDropdowns,
-            currentStats, totalPlayers, topCommunity
+            currentStats, totalPlayers, topCommunity,
+            filteredCommunities, serverSearchNotice
         };
     }
 }).mount('#app');
