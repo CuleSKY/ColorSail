@@ -69,8 +69,8 @@ EXG_VERIFY_SSL = os.environ.get('EXG_VERIFY_SSL', 'true').lower() in ('1', 'true
 
 EXG_STATS_EXCLUDE_KEYWORDS = ("pve", "大厅", "躲猫猫", "mg")
 FYS_STATS_INCLUDE_NAME = "僵尸逃跑"
-FYS_STATS_EXCLUDE_KEYWORDS = ("匪镇谍影", "魔兽混战", "休闲娱乐")
-STATS_CACHE_TTL_SECONDS = 30 * 60
+FYS_STATS_EXCLUDE_KEYWORDS = ("大厅", "匪镇谍影", "魔兽混战", "休闲娱乐")
+STATS_CACHE_TTL_SECONDS = 10 * 60
 STATS_CACHE = None
 STATS_CACHE_UPDATED_AT = 0
 STATS_EXPORT_RETENTION_DAYS = 30
@@ -783,6 +783,7 @@ def get_stats():
 
     line_chart = {'labels': [], 'datasets': []}
     pie_chart = {'labels': [], 'datasets': [{'data': [], 'backgroundColor': []}]}
+    total_peak_48h = 0
     
     for item in current_stats:
         if item['count'] > 0:
@@ -795,9 +796,14 @@ def get_stats():
         line_chart['labels'] = timestamps
         
         data_map = {}
+        totals_by_ts = {}
         for ts, cid, count in rows:
-            if cid not in data_map: data_map[cid] = {}
+            if cid not in data_map:
+                data_map[cid] = {}
             data_map[cid][ts] = count
+            totals_by_ts[ts] = totals_by_ts.get(ts, 0) + count
+        if totals_by_ts:
+            total_peak_48h = max(totals_by_ts.values())
             
         for cid, info in meta_map.items():
             if cid in data_map:
@@ -815,7 +821,8 @@ def get_stats():
     payload = {
         "current_stats": current_stats,
         "line_chart": line_chart,
-        "pie_chart": pie_chart
+        "pie_chart": pie_chart,
+        "total_peak_48h": total_peak_48h
     }
     STATS_CACHE = payload
     STATS_CACHE_UPDATED_AT = now
