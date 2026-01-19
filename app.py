@@ -18,13 +18,17 @@ from concurrent.futures import ThreadPoolExecutor
 # 禁用 SSL 警告
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-app = Flask(__name__)
+STATIC_DIR = 'static'
+if not os.path.isdir(STATIC_DIR) and os.path.isdir('Static'):
+    STATIC_DIR = 'Static'
+
+app = Flask(__name__, static_folder=STATIC_DIR)
 
 # --- 基础配置 ---
 CONFIG_FILE = 'config.json'
 TRANS_FILE = 'map_translations.json'
 DB_FILE = "stats.db"
-STATIC_MAP_DIR = os.path.join('static', 'maps')
+STATIC_MAP_DIR = os.path.join(STATIC_DIR, 'maps')
 
 # EXG API 地址
 EXG_API_URL = "https://list.darkrp.cn:9000/ServerList/CurrentStatus"
@@ -92,8 +96,14 @@ def normalize_map_name(map_name):
     if not map_name or map_name == "-":
         return None
     map_clean = str(map_name).strip().lower()
+    map_clean = map_clean.replace("\\", "/").split("?", 1)[0]
     if map_clean.endswith('.bsp'):
         map_clean = map_clean[:-4]
+    if map_clean.startswith("workshop/"):
+        parts = map_clean.split("/")
+        map_clean = parts[-1] if parts else map_clean
+    else:
+        map_clean = map_clean.split("/")[-1]
     return map_clean or None
 
 def get_map_image_url(map_name):
@@ -390,8 +400,18 @@ scheduler.start()
 
 # --- 7. Flask 路由 ---
 @app.route('/')
+@app.route('/servers')
+@app.route('/map-sub')
+@app.route('/stats')
 def index():
-    return render_template('index.html')
+    view_map = {
+        '/': 'servers',
+        '/servers': 'servers',
+        '/map-sub': 'map_sub',
+        '/stats': 'stats'
+    }
+    initial_view = view_map.get(request.path, 'servers')
+    return render_template('index.html', initial_view=initial_view)
 
 @app.route('/api/config')
 def get_config_meta():
@@ -451,6 +471,13 @@ def update_agent_data():
                 srv['image_url'] = image_url
             else:
                 srv.pop('image_url', None)
+            map_name = srv.get('map')
+            if map_name in MAP_TRANS_CACHE:
+                srv['map_cn'] = MAP_TRANS_CACHE[map_name]
+            else:
+                map_clean = normalize_map_name(map_name)
+                if map_clean and map_clean in MAP_TRANS_CACHE:
+                    srv['map_cn'] = MAP_TRANS_CACHE[map_clean]
             normalized.append(srv)
         AGENT_CACHE[cid] = normalized
         AGENT_CACHE_UPDATED_AT[cid] = int(time.time())
