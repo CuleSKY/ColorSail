@@ -7,7 +7,6 @@
     <link id="favicon" rel="icon" href="/static/NERV_Logo.png" type="image/png">
     
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         /* --- 1. 基础变量 --- */
@@ -281,7 +280,7 @@
         }
     </style>
 </head>
-<body>
+<body data-initial-view="{{ initial_view or 'servers' }}">
 
 <div id="app" :style="isMobile ? {} : { display: 'flex', width: '100%', height: '100%' }" @click="closeDropdowns">
 
@@ -291,7 +290,7 @@
         </button>
         <div class="sidebar-logo"><img :src="currentLogoPath" alt="Logo"></div>
         
-        <div class="nav-item" :class="{active: curView === 'servers'}" @click="curView='servers'">
+        <div class="nav-item" :class="{active: curView === 'servers'}" @click="goToView('servers')">
             <div class="icon-svg" v-html="icons.server"></div>
             <span v-if="!isCollapsed">[[ t('servers') ]]</span>
             <div class="tooltip" v-if="isCollapsed">[[ t('servers') ]]</div>
@@ -317,13 +316,13 @@
             </div>
         </div>
 
-        <div class="nav-item" :class="{active: curView === 'map_sub'}" @click="curView='map_sub'">
+        <div class="nav-item" :class="{active: curView === 'map_sub'}" @click="goToView('map_sub')">
             <div class="icon-svg" v-html="icons.search_sub"></div>
             <span v-if="!isCollapsed">[[ t('sub_menu') ]]</span>
             <div class="tooltip" v-if="isCollapsed">[[ t('sub_menu') ]]</div>
         </div>
 
-        <div class="nav-item" :class="{active: curView === 'stats'}" @click="loadStats">
+        <div class="nav-item" :class="{active: curView === 'stats'}" @click="goToView('stats')">
             <div class="icon-svg" v-html="icons.stats"></div>
             <span v-if="!isCollapsed">[[ t('stats') ]]</span>
             <div class="tooltip" v-if="isCollapsed">[[ t('stats') ]]</div>
@@ -589,6 +588,7 @@ const ICONS = {
 
 const LOGO_PATHS = { B: '/static/NERV_Logo.png', W: '/static/NERV_Logo.png' };
 const FAVICON_PATHS = { light: '/static/NERV_Logo.png', dark: '/static/NERV_Logo.png' };
+const VIEW_ROUTES = { servers: '/', map_sub: '/map-sub', stats: '/stats' };
 
 createApp({
     delimiters: ['[[', ']]'],
@@ -596,7 +596,8 @@ createApp({
         const communities = ref([]);
         const servers = ref({});
         const serverCache = ref({});
-        const curView = ref('servers');
+        const initialView = document.body.dataset.initialView || 'servers';
+        const curView = ref(initialView);
         const toastMsg = ref('');
         const isCollapsed = ref(false); 
         const showLangMenu = ref(false);
@@ -689,6 +690,9 @@ createApp({
 
             await loadTranslations();
             await fetchConfig();
+            if (initialView === 'stats') {
+                await loadStats();
+            }
         });
         
         onUnmounted(() => {
@@ -725,13 +729,22 @@ createApp({
         const toggleSortByPlayers = () => sortByPlayers.value = !sortByPlayers.value;
 
         const hasFeature = (feat) => communities.value.some(c => c.features.includes(feat));
+        const goToView = (view) => {
+            const target = VIEW_ROUTES[view] || '/';
+            if (window.location.pathname !== target) {
+                window.location.href = target;
+            } else {
+                curView.value = view;
+            }
+        };
+
         const openMapLink = () => {
              const comm = communities.value.find(c => c.features.includes('map_cd'));
              window.open((comm && comm.map_url) ? comm.map_url : 'https://list.darkrp.cn:9000/serverlist/cs2maplist', '_blank');
         };
 
         const goToSubPage = () => {
-            curView.value = 'map_sub';
+            goToView('map_sub');
             showSubPopover.value = false;
         };
 
@@ -943,8 +956,30 @@ createApp({
 
         let lineChartInst = null;
         let pieChartInst = null;
+        let chartLoader = null;
+
+        const loadChartJs = () => {
+            if (window.Chart) return Promise.resolve();
+            if (chartLoader) return chartLoader;
+            chartLoader = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+                script.async = true;
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error('Chart.js load failed'));
+                document.head.appendChild(script);
+            });
+            return chartLoader;
+        };
 
         const loadStats = async () => {
+            try {
+                await loadChartJs();
+            } catch (e) {
+                toastMsg.value = 'Chart.js load failed';
+                setTimeout(()=>toastMsg.value='', 3000);
+                return;
+            }
             const res = await fetch('/api/stats');
             const data = await res.json();
             currentStats.value = data.current_stats;
@@ -1039,7 +1074,7 @@ createApp({
         return {
             t, curLang, isDark, curView, communities, servers, toastMsg, icons: ICONS,
             isCollapsed, toggleSidebar, toggleTheme, showLangMenu, setLang,
-            hasFeature, loadStats, openMapLink, getConnectUrl, copyCmd, copyIp, langLabel, currentLogoPath, isChineseLang,
+            hasFeature, goToView, loadStats, openMapLink, getConnectUrl, copyCmd, copyIp, langLabel, currentLogoPath, isChineseLang,
             scrollToComm, viewMode, toggleViewMode, isMobile,
             isEditMode, toggleEditMode, 
             sortByPlayers, toggleSortByPlayers, getServers,
