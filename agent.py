@@ -67,9 +67,10 @@ def fetch_server_data(server_cfg):
     res = {
         "ip": host, "connect_ip": resolved_ip or host, "port": port, "display_ip": f"{host}:{port}",
         "name": name, "map": "-", "players": 0, "max_players": 0,
-        "online": False, 
-        "ping": -1, 
-        "game_type": "cs2"
+        "online": False,
+        "ping": -1,
+        "game_type": "cs2",
+        "query_source": "offline"
     }
 
     # 1. A2S UDP 查询 (优先获取延迟)
@@ -81,7 +82,8 @@ def fetch_server_data(server_cfg):
             "map": info.map_name,
             "players": info.player_count,
             "max_players": info.max_players,
-            "ping": int(info.ping * 1000)
+            "ping": int(info.ping * 1000),
+            "query_source": "a2s"
         })
         return res
     except: pass
@@ -90,7 +92,8 @@ def fetch_server_data(server_cfg):
     if STEAM_API_KEY:
         try:
             u = "https://api.steampowered.com/IGameServersService/GetServerList/v1/"
-            p = {"key": STEAM_API_KEY, "filter": f"\\gameaddr\\{host}:{port}", "limit": 1}
+            query_addr = f"{resolved_ip or host}:{port}"
+            p = {"key": STEAM_API_KEY, "filter": f"\\gameaddr\\{query_addr}", "limit": 1}
             r = requests.get(u, params=p, timeout=5)
             if r.status_code == 200:
                 d = r.json().get('response', {}).get('servers', [])
@@ -99,7 +102,8 @@ def fetch_server_data(server_cfg):
                     res.update({
                         "online": True, "name": s.get('name'), "map": s.get('map'),
                         "players": s.get('players'), "max_players": s.get('max_players'),
-                        "ping": -1
+                        "ping": -1,
+                        "query_source": "steam_api"
                     })
         except: pass
 
@@ -137,16 +141,25 @@ def run_agent():
                 with ThreadPoolExecutor(max_workers=10) as executor:
                     results = list(executor.map(fetch_server_data, comm.get('servers', [])))
 
+                online_count = sum(1 for r in results if r.get("online"))
+                a2s_count = sum(1 for r in results if r.get("query_source") == "a2s")
+                steam_count = sum(1 for r in results if r.get("query_source") == "steam_api")
+                print(f"[Job] {comm['name']}: {online_count}/{len(results)} 在线 (A2S {a2s_count}, Steam {steam_count})")
+
                 payload["communities"][comm['id']] = results
 
             if payload["communities"]:
                 try:
-                    requests.post(
+                    resp = requests.post(
                         f"{MASTER_URL}/api/agent/update",
                         json=payload,
                         headers={"Authorization": f"Bearer {AGENT_TOKEN}"},
                         timeout=5
                     )
+                    if resp.ok:
+                        print(f"[Push] ✅ 更新成功: {', '.join(payload['communities'].keys())}")
+                    else:
+                        print(f"[Push] ❌ 更新失败: HTTP {resp.status_code}")
                 except Exception as e:
                     print(f"[Push] 推送失败: {e}")
 
