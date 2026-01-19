@@ -51,6 +51,11 @@ EXG_FETCH_INTERVAL_SECONDS = 15
 HTTP_SESSION = requests.Session()
 
 EXG_STATS_EXCLUDE_KEYWORDS = ("pve", "大厅", "躲猫猫", "mg")
+STATS_CACHE_TTL_SECONDS = 30 * 60
+STATS_CACHE = None
+STATS_CACHE_UPDATED_AT = 0
+
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 
 # --- 1. 辅助函数 ---
 def generate_distinct_colors(n):
@@ -296,8 +301,8 @@ def is_exg_stats_eligible(server):
     name = (server.get("name") or "").strip()
     if not name:
         return True
-    lower_name = name.lower()
-    return not any(keyword in lower_name if keyword.isascii() else keyword in name for keyword in EXG_STATS_EXCLUDE_KEYWORDS)
+    normalized = name.casefold()
+    return not any(keyword.casefold() in normalized for keyword in EXG_STATS_EXCLUDE_KEYWORDS)
 
 # --- 4. 主更新循环 ---
 def update_all_data():
@@ -396,7 +401,10 @@ def save_stats():
 # --- 6. 任务调度 ---
 scheduler = BackgroundScheduler()
 scheduler.add_job(update_all_data, 'interval', seconds=15, id='updater')
-scheduler.start()
+
+def start_scheduler():
+    if not scheduler.running:
+        scheduler.start()
 
 # --- 7. Flask 路由 ---
 @app.route('/')
@@ -438,10 +446,11 @@ def get_servers(cid):
 @app.route('/api/agent/update', methods=['POST'])
 def update_agent_data():
     token = os.environ.get('AGENT_SHARED_TOKEN')
-    if token:
-        auth = request.headers.get('Authorization', '')
-        if auth != f"Bearer {token}":
-            return jsonify({"error": "unauthorized"}), 401
+    if not token:
+        return jsonify({"error": "agent token not configured"}), 403
+    auth = request.headers.get('Authorization', '')
+    if auth != f"Bearer {token}":
+        return jsonify({"error": "unauthorized"}), 401
 
     payload = request.get_json(silent=True) or {}
     communities = payload.get('communities', {})
@@ -490,6 +499,13 @@ def get_translations():
 
 @app.route('/api/stats')
 def get_stats():
+    global STATS_CACHE, STATS_CACHE_UPDATED_AT
+    now = int(time.time())
+    if STATS_CACHE and (now - STATS_CACHE_UPDATED_AT) < STATS_CACHE_TTL_SECONDS:
+        response = jsonify(STATS_CACHE)
+        response.headers['Cache-Control'] = f"public, max-age={STATS_CACHE_TTL_SECONDS}, s-maxage={STATS_CACHE_TTL_SECONDS}"
+        return response
+
     colors = generate_distinct_colors(len(COMMUNITY_META))
     meta_map = {c['id']: {'name': c.get('short_name', c['name']), 'color': colors[i]} for i, c in enumerate(COMMUNITY_META)}
     
@@ -545,11 +561,24 @@ def get_stats():
                     "tension": 0.4
                 })
 
-    return jsonify({
+    payload = {
         "current_stats": current_stats,
         "line_chart": line_chart,
         "pie_chart": pie_chart
-    })
+    }
+    STATS_CACHE = payload
+    STATS_CACHE_UPDATED_AT = now
+    response = jsonify(payload)
+    response.headers['Cache-Control'] = f"public, max-age={STATS_CACHE_TTL_SECONDS}, s-maxage={STATS_CACHE_TTL_SECONDS}"
+    return response
+
+
+@app.after_request
+def set_cache_headers(response):
+    path = request.path or ''
+    if path.startswith('/static/'):
+        response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+    return response
 
 if __name__ == '__main__':
     print("\n" + "=" * 70)
@@ -565,5 +594,7 @@ if __name__ == '__main__':
     update_all_data()
     print("-" * 70)
     print("\n✓ 初始化完成，服务器启动中...\n")
+
+    start_scheduler()
     
     app.run(host='0.0.0.0', port=5000, debug=False)
