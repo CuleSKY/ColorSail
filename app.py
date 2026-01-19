@@ -48,6 +48,7 @@ SERVER_CACHE = {}
 AGENT_CACHE = {}
 AGENT_CACHE_UPDATED_AT = {}
 COMMUNITY_META = []
+FYS_COMMUNITY_IDS = set()
 MAP_IMAGE_INDEX = {}
 MAP_IMAGE_MTIME = 0
 MAP_TRANS_CACHE = {}
@@ -67,6 +68,8 @@ HTTP_SESSION = requests.Session()
 EXG_VERIFY_SSL = os.environ.get('EXG_VERIFY_SSL', 'true').lower() in ('1', 'true', 'yes')
 
 EXG_STATS_EXCLUDE_KEYWORDS = ("pve", "大厅", "躲猫猫", "mg")
+FYS_STATS_INCLUDE_NAME = "僵尸逃跑"
+FYS_STATS_EXCLUDE_KEYWORDS = ("匪镇谍影", "魔兽混战", "休闲娱乐")
 STATS_CACHE_TTL_SECONDS = 30 * 60
 STATS_CACHE = None
 STATS_CACHE_UPDATED_AT = 0
@@ -239,12 +242,21 @@ def get_map_image_url(map_name):
 
 def load_config():
     """加载 config.json 中的社区列表结构"""
-    global COMMUNITY_META, STATS_EXPORT_RETENTION_DAYS
+    global COMMUNITY_META, STATS_EXPORT_RETENTION_DAYS, FYS_COMMUNITY_IDS
     try:
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 COMMUNITY_META = data.get('communities', [])
+                fys_ids = set()
+                for comm in COMMUNITY_META:
+                    cid = str(comm.get('id', '')).strip()
+                    name = str(comm.get('name', '')).strip()
+                    short_name = str(comm.get('short_name', '')).strip()
+                    if cid.casefold() == "fys" or name.casefold() == "fys" or short_name.casefold() == "fys":
+                        if cid:
+                            fys_ids.add(cid)
+                FYS_COMMUNITY_IDS = fys_ids
                 retention_days = data.get('stats_export_retention_days')
                 if isinstance(retention_days, int) and retention_days > 0:
                     STATS_EXPORT_RETENTION_DAYS = retention_days
@@ -252,8 +264,10 @@ def load_config():
         else:
             print("[Config] 配置文件不存在")
             COMMUNITY_META = []
+            FYS_COMMUNITY_IDS = set()
     except Exception as e:
         print(f"[Config] 加载失败: {e}")
+        FYS_COMMUNITY_IDS = set()
 
 # --- 2. 核心：EXG API 直接抓取（实时数据）---
 def fetch_exg_data_from_api():
@@ -423,6 +437,22 @@ def is_exg_stats_eligible(server):
     normalized = name.casefold()
     return not any(keyword.casefold() in normalized for keyword in EXG_STATS_EXCLUDE_KEYWORDS)
 
+def is_fys_community_id(cid):
+    return cid.casefold() == "fys" or cid in FYS_COMMUNITY_IDS
+
+def is_fys_stats_eligible(server):
+    name = str(server.get("name", ""))
+    if FYS_STATS_INCLUDE_NAME not in name:
+        return False
+    return not any(keyword in name for keyword in FYS_STATS_EXCLUDE_KEYWORDS)
+
+def count_players_for_stats(cid, servers):
+    if cid == "exg":
+        return sum(s['players'] for s in servers if s.get('online') and is_exg_stats_eligible(s))
+    if is_fys_community_id(cid):
+        return sum(s['players'] for s in servers if s.get('online') and is_fys_stats_eligible(s))
+    return sum(s['players'] for s in servers if s.get('online'))
+
 def update_single_comm(comm):
     """更新单个社区数据并写入缓存"""
     global SERVER_CACHE, EXG_CACHE_UPDATED_AT
@@ -516,10 +546,7 @@ def save_stats():
     c.execute("DELETE FROM player_stats WHERE timestamp < ?", (timestamp - 48 * 3600,))
     
     for cid, servers in snapshot.items():
-        if cid == "exg":
-            count = sum(s['players'] for s in servers if s.get('online') and is_exg_stats_eligible(s))
-        else:
-            count = sum(s['players'] for s in servers if s.get('online'))
+        count = count_players_for_stats(cid, servers)
         c.execute("INSERT INTO player_stats VALUES (?, ?, ?)", (timestamp, cid, count))
         
     conn.commit()
@@ -741,10 +768,7 @@ def get_stats():
     for cid, info in meta_map.items():
         count = 0
         if cid in SERVER_CACHE:
-            if cid == "exg":
-                count = sum(s['players'] for s in SERVER_CACHE[cid] if s.get('online') and is_exg_stats_eligible(s))
-            else:
-                count = sum(s['players'] for s in SERVER_CACHE[cid] if s.get('online'))
+            count = count_players_for_stats(cid, SERVER_CACHE[cid])
         total_players += count
         current_stats.append({
             "id": cid, "name": info['name'], "count": count, "color": info['color']
