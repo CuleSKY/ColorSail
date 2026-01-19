@@ -10,10 +10,15 @@ import colorsys
 import socket
 import urllib3
 from datetime import datetime
+from datetime import timedelta
 from flask import Flask, render_template, jsonify, request
 import a2s
 from apscheduler.schedulers.background import BackgroundScheduler
 from concurrent.futures import ThreadPoolExecutor
+try:
+    from opencc import OpenCC
+except Exception:
+    OpenCC = None
 
 # 禁用 SSL 警告
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -45,15 +50,26 @@ AGENT_CACHE_UPDATED_AT = {}
 COMMUNITY_META = []
 MAP_IMAGE_INDEX = {}
 MAP_TRANS_CACHE = {}
+MAP_TRANS_NORMALIZED = {}
+MAP_TRANS_LOCK = threading.Lock()
+MAP_TRANS_DIRTY = False
+MAP_TRANS_LAST_WRITE = 0
+MAP_CACHE_UPDATED_AT = 0
+CACHE_REFRESH_INTERVAL_SECONDS = 300
+MAP_TRANS_MTIME = 0
+MAP_IMAGE_MTIME = 0
+OPENCC = OpenCC('s2t') if OpenCC else None
 
 EXG_SERVER_STALE_SECONDS = 15
 EXG_FETCH_INTERVAL_SECONDS = 15
 HTTP_SESSION = requests.Session()
+EXG_VERIFY_SSL = os.environ.get('EXG_VERIFY_SSL', 'true').lower() in ('1', 'true', 'yes')
 
 EXG_STATS_EXCLUDE_KEYWORDS = ("pve", "大厅", "躲猫猫", "mg")
 STATS_CACHE_TTL_SECONDS = 30 * 60
 STATS_CACHE = None
 STATS_CACHE_UPDATED_AT = 0
+STATS_EXPORT_RETENTION_DAYS = 30
 
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 
@@ -68,34 +84,151 @@ def generate_distinct_colors(n):
         colors.append(f'#{r:02x}{g:02x}{b:02x}')
     return colors
 
-def refresh_local_caches():
+def beijing_timestamp():
+    return int(time.time()) + 8 * 3600
+
+def beijing_date():
+    return datetime.utcnow() + timedelta(hours=8)
+
+def refresh_local_caches(force=False):
     """刷新地图图片索引和翻译文件"""
-    global MAP_IMAGE_INDEX, MAP_TRANS_CACHE
+    global MAP_IMAGE_INDEX, MAP_TRANS_CACHE, MAP_TRANS_NORMALIZED, MAP_CACHE_UPDATED_AT, MAP_TRANS_MTIME, MAP_IMAGE_MTIME
+    now = int(time.time())
+    if not force and (now - MAP_CACHE_UPDATED_AT) < CACHE_REFRESH_INTERVAL_SECONDS:
+        return
     try:
         if os.path.exists(STATIC_MAP_DIR):
-            files = {}
-            for f in os.listdir(STATIC_MAP_DIR):
-                if f.lower().endswith(('.jpg', '.png', '.webp', '.jpeg')):
-                    map_name = f.rsplit('.', 1)[0].lower()
-                    files[map_name] = f
-            MAP_IMAGE_INDEX = files
-            print(f"[Cache] 已加载 {len(MAP_IMAGE_INDEX)} 个地图图片")
+            dir_mtime = int(os.path.getmtime(STATIC_MAP_DIR))
+            if force or dir_mtime != MAP_IMAGE_MTIME:
+                files = {}
+                for f in os.listdir(STATIC_MAP_DIR):
+                    if f.lower().endswith(('.jpg', '.png', '.webp', '.jpeg')):
+                        map_name = f.rsplit('.', 1)[0].lower()
+                        files[map_name] = f
+                MAP_IMAGE_INDEX = files
+                MAP_IMAGE_MTIME = dir_mtime
+                print(f"[Cache] 已加载 {len(MAP_IMAGE_INDEX)} 个地图图片")
     except Exception as e:
         print(f"[Cache] 图片索引加载失败: {e}")
         MAP_IMAGE_INDEX = {}
 
     try:
-        if os.path.exists(TRANS_FILE):
-            with open(TRANS_FILE, 'r', encoding='utf-8') as f:
-                MAP_TRANS_CACHE = json.load(f)
+        with MAP_TRANS_LOCK:
+            if os.path.exists(TRANS_FILE):
+                file_mtime = int(os.path.getmtime(TRANS_FILE))
+                if not force and file_mtime == MAP_TRANS_MTIME:
+                    MAP_CACHE_UPDATED_AT = now
+                    return
+                with open(TRANS_FILE, 'r', encoding='utf-8') as f:
+                    raw_trans = json.load(f)
+            else:
+                raw_trans = {}
+                with open(TRANS_FILE, 'w', encoding='utf-8') as f:
+                    json.dump({}, f)
+                file_mtime = int(os.path.getmtime(TRANS_FILE))
+            normalized = {}
+            cleaned = {}
+            for key, value in raw_trans.items():
+                if isinstance(value, dict):
+                    zh_cn = (value.get('zh_cn') or value.get('cn') or '').strip()
+                    zh_tw = (value.get('zh_tw') or value.get('tw') or '').strip()
+                    if zh_cn and not zh_tw:
+                        zh_tw = convert_to_traditional(zh_cn)
+                else:
+                    zh_cn = str(value).strip()
+                    zh_tw = convert_to_traditional(zh_cn) if zh_cn else ''
+                entry = {"zh_cn": zh_cn, "zh_tw": zh_tw}
+                cleaned[key] = entry
+                normalized_key = normalize_map_name(key)
+                if normalized_key and normalized_key not in normalized:
+                    normalized[normalized_key] = entry
+            MAP_TRANS_CACHE = cleaned
+            MAP_TRANS_NORMALIZED = normalized
+            MAP_TRANS_MTIME = file_mtime
             print(f"[Cache] 已加载 {len(MAP_TRANS_CACHE)} 个地图翻译")
-        else:
-            with open(TRANS_FILE, 'w', encoding='utf-8') as f:
-                json.dump({}, f)
-            MAP_TRANS_CACHE = {}
     except Exception as e:
         print(f"[Cache] 翻译加载失败: {e}")
         MAP_TRANS_CACHE = {}
+        MAP_TRANS_NORMALIZED = {}
+    MAP_CACHE_UPDATED_AT = now
+
+def convert_to_traditional(text):
+    if not text:
+        return ''
+    try:
+        if not OPENCC:
+            return text
+        return OPENCC.convert(text)
+    except Exception:
+        return text
+
+def rebuild_translated_index():
+    global MAP_TRANS_NORMALIZED
+    normalized = {}
+    for key, entry in MAP_TRANS_CACHE.items():
+        normalized_key = normalize_map_name(key)
+        if normalized_key and normalized_key not in normalized:
+            normalized[normalized_key] = entry
+    MAP_TRANS_NORMALIZED = normalized
+
+def get_map_translation_entry(map_name):
+    if not map_name:
+        return None
+    if map_name in MAP_TRANS_CACHE:
+        return MAP_TRANS_CACHE[map_name]
+    map_clean = normalize_map_name(map_name)
+    if map_clean and map_clean in MAP_TRANS_CACHE:
+        return MAP_TRANS_CACHE[map_clean]
+    if map_clean and map_clean in MAP_TRANS_NORMALIZED:
+        return MAP_TRANS_NORMALIZED[map_clean]
+    return None
+
+def update_map_translation_entry(map_name, map_display):
+    global MAP_TRANS_DIRTY
+    if not map_name or not map_display:
+        return False
+    map_clean = normalize_map_name(map_name)
+    map_key = map_name if map_name in MAP_TRANS_CACHE else (map_clean or map_name)
+    zh_cn = str(map_display).strip()
+    if not zh_cn:
+        return False
+    zh_tw = convert_to_traditional(zh_cn)
+    updated = False
+    with MAP_TRANS_LOCK:
+        entry = MAP_TRANS_CACHE.get(map_key)
+        if entry:
+            if not entry.get('zh_cn'):
+                entry['zh_cn'] = zh_cn
+                updated = True
+            if not entry.get('zh_tw'):
+                entry['zh_tw'] = zh_tw
+                updated = True
+            MAP_TRANS_CACHE[map_key] = entry
+        else:
+            MAP_TRANS_CACHE[map_key] = {"zh_cn": zh_cn, "zh_tw": zh_tw}
+            updated = True
+        if updated:
+            rebuild_translated_index()
+            MAP_TRANS_DIRTY = True
+    return updated
+
+def flush_map_translations(force=False):
+    global MAP_TRANS_DIRTY, MAP_TRANS_LAST_WRITE, MAP_TRANS_MTIME
+    if not MAP_TRANS_DIRTY and not force:
+        return
+    with MAP_TRANS_LOCK:
+        try:
+            with open(TRANS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(MAP_TRANS_CACHE, f, ensure_ascii=False, indent=4)
+            if os.path.exists(TRANS_FILE):
+                try:
+                    MAP_TRANS_MTIME = int(os.path.getmtime(TRANS_FILE))
+                except Exception:
+                    pass
+            MAP_TRANS_DIRTY = False
+            MAP_TRANS_LAST_WRITE = int(time.time())
+        except Exception as e:
+            print(f"[Cache] 翻译写入失败: {e}")
 
 def normalize_map_name(map_name):
     if not map_name or map_name == "-":
@@ -122,12 +255,15 @@ def get_map_image_url(map_name):
 
 def load_config():
     """加载 config.json 中的社区列表结构"""
-    global COMMUNITY_META
+    global COMMUNITY_META, STATS_EXPORT_RETENTION_DAYS
     try:
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 COMMUNITY_META = data.get('communities', [])
+                retention_days = data.get('stats_export_retention_days')
+                if isinstance(retention_days, int) and retention_days > 0:
+                    STATS_EXPORT_RETENTION_DAYS = retention_days
                 print(f"[Config] 已加载 {len(COMMUNITY_META)} 个社区配置")
         else:
             print("[Config] 配置文件不存在")
@@ -151,7 +287,7 @@ def fetch_exg_data_from_api():
             'Accept': 'application/json'
         }
         
-        resp = EXG_SESSION.get(EXG_API_URL, timeout=10, verify=False, headers=headers)
+        resp = EXG_SESSION.get(EXG_API_URL, timeout=10, verify=EXG_VERIFY_SSL, headers=headers)
         
         if resp.status_code == 200:
             data = resp.json()
@@ -213,13 +349,14 @@ def fetch_exg_data_from_api():
                     
                     # 中文翻译（优先使用 API 提供的）
                     if map_display:
+                        update_map_translation_entry(map_name, map_display)
                         server_obj['map_cn'] = map_display
-                    elif map_name in MAP_TRANS_CACHE:
-                        server_obj['map_cn'] = MAP_TRANS_CACHE[map_name]
+                        server_obj['map_tw'] = convert_to_traditional(map_display)
                     else:
-                        map_clean = normalize_map_name(map_name)
-                        if map_clean and map_clean in MAP_TRANS_CACHE:
-                            server_obj['map_cn'] = MAP_TRANS_CACHE[map_clean]
+                        entry = get_map_translation_entry(map_name)
+                        if entry:
+                            server_obj['map_cn'] = entry.get('zh_cn', '')
+                            server_obj['map_tw'] = entry.get('zh_tw', '')
                     
                     servers.append(server_obj)
                     
@@ -285,12 +422,10 @@ def fetch_a2s_data(server_cfg, game_type='cs2'):
             res['image_url'] = image_url
         
         # 翻译匹配
-        if info.map_name in MAP_TRANS_CACHE:
-            res['map_cn'] = MAP_TRANS_CACHE[info.map_name]
-        else:
-            map_clean = normalize_map_name(info.map_name)
-            if map_clean and map_clean in MAP_TRANS_CACHE:
-                res['map_cn'] = MAP_TRANS_CACHE[map_clean]
+        entry = get_map_translation_entry(info.map_name)
+        if entry:
+            res['map_cn'] = entry.get('zh_cn', '')
+            res['map_tw'] = entry.get('zh_tw', '')
             
     except Exception as e:
         pass
@@ -373,6 +508,7 @@ def update_all_data():
 
     SERVER_CACHE = new_cache
     save_stats()
+    flush_map_translations()
 
 # --- 5. 数据库逻辑 ---
 def init_db():
@@ -398,9 +534,67 @@ def save_stats():
     conn.commit()
     conn.close()
 
+def export_stats_to_excel():
+    try:
+        from openpyxl import Workbook
+    except Exception as e:
+        print(f"[Stats] Excel export skipped: openpyxl not available ({e})")
+        return
+
+    stat_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Statistic')
+    os.makedirs(stat_dir, exist_ok=True)
+    base_name = f"ZEData_{beijing_date().strftime('%Y_%m_%d')}"
+    filename = f"{base_name}.xlsx"
+    filepath = os.path.join(stat_dir, filename)
+    if os.path.exists(filepath):
+        suffix = 1
+        while True:
+            candidate = os.path.join(stat_dir, f"{base_name}_{suffix}.xlsx")
+            if not os.path.exists(candidate):
+                filepath = candidate
+                break
+            suffix += 1
+
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT timestamp, community, count FROM player_stats ORDER BY timestamp ASC")
+    rows = c.fetchall()
+    conn.close()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "ZE Stats"
+    ws.append(["timestamp_utc", "timestamp_beijing", "community", "count"])
+    for ts, cid, count in rows:
+        ts_utc = datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        ts_bj = (datetime.utcfromtimestamp(ts) + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S')
+        ws.append([ts_utc, ts_bj, cid, count])
+    try:
+        wb.save(filepath)
+        print(f"[Stats] Exported stats to {filepath}")
+    except Exception as e:
+        print(f"[Stats] Export failed: {e}")
+
+def cleanup_stat_exports():
+    stat_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Statistic')
+    if not os.path.isdir(stat_dir):
+        return
+    cutoff = time.time() - STATS_EXPORT_RETENTION_DAYS * 24 * 3600
+    for name in os.listdir(stat_dir):
+        if not name.startswith('ZEData_') or not name.endswith('.xlsx'):
+            continue
+        path = os.path.join(stat_dir, name)
+        try:
+            if os.path.getmtime(path) < cutoff:
+                os.remove(path)
+        except Exception as e:
+            print(f"[Stats] Cleanup failed for {path}: {e}")
+
 # --- 6. 任务调度 ---
 scheduler = BackgroundScheduler()
 scheduler.add_job(update_all_data, 'interval', seconds=15, id='updater')
+scheduler.add_job(export_stats_to_excel, 'interval', hours=48, id='stats_export')
+scheduler.add_job(cleanup_stat_exports, 'interval', days=1, id='stats_cleanup')
 
 def start_scheduler():
     if not scheduler.running:
@@ -481,12 +675,10 @@ def update_agent_data():
             else:
                 srv.pop('image_url', None)
             map_name = srv.get('map')
-            if map_name in MAP_TRANS_CACHE:
-                srv['map_cn'] = MAP_TRANS_CACHE[map_name]
-            else:
-                map_clean = normalize_map_name(map_name)
-                if map_clean and map_clean in MAP_TRANS_CACHE:
-                    srv['map_cn'] = MAP_TRANS_CACHE[map_clean]
+            entry = get_map_translation_entry(map_name)
+            if entry:
+                srv['map_cn'] = entry.get('zh_cn', '')
+                srv['map_tw'] = entry.get('zh_tw', '')
             normalized.append(srv)
         AGENT_CACHE[cid] = normalized
         AGENT_CACHE_UPDATED_AT[cid] = int(time.time())
@@ -541,7 +733,7 @@ def get_stats():
 
     if rows:
         timestamps = sorted(list(set([r[0] for r in rows])))
-        line_chart['labels'] = [datetime.fromtimestamp(ts).strftime('%H:%M') for ts in timestamps]
+        line_chart['labels'] = timestamps
         
         data_map = {}
         for ts, cid, count in rows:
@@ -592,6 +784,7 @@ if __name__ == '__main__':
     print("\n[Startup] 执行初始数据更新...")
     print("-" * 70)
     update_all_data()
+    flush_map_translations(force=True)
     print("-" * 70)
     print("\n✓ 初始化完成，服务器启动中...\n")
 
