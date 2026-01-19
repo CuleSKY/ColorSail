@@ -49,9 +49,12 @@ AGENT_CACHE = {}
 AGENT_CACHE_UPDATED_AT = {}
 COMMUNITY_META = []
 MAP_IMAGE_INDEX = {}
+MAP_IMAGE_MTIME = 0
 MAP_TRANS_CACHE = {}
 MAP_TRANS_NORMALIZED = {}
 MAP_TRANS_LOCK = threading.Lock()
+SERVER_CACHE_LOCK = threading.Lock()
+AGENT_CACHE_LOCK = threading.Lock()
 MAP_TRANS_DIRTY = False
 MAP_TRANS_LAST_WRITE = 0
 MAP_CACHE_UPDATED_AT = 0
@@ -84,7 +87,7 @@ def generate_distinct_colors(n):
 
 def refresh_local_caches(force=False):
     """刷新地图图片索引和翻译文件"""
-    global MAP_IMAGE_INDEX, MAP_TRANS_CACHE, MAP_TRANS_NORMALIZED, MAP_CACHE_UPDATED_AT
+    global MAP_IMAGE_INDEX, MAP_IMAGE_MTIME, MAP_TRANS_CACHE, MAP_TRANS_NORMALIZED, MAP_CACHE_UPDATED_AT
     now = int(time.time())
     if not force and (now - MAP_CACHE_UPDATED_AT) < CACHE_REFRESH_INTERVAL_SECONDS:
         return
@@ -420,74 +423,79 @@ def is_exg_stats_eligible(server):
     normalized = name.casefold()
     return not any(keyword.casefold() in normalized for keyword in EXG_STATS_EXCLUDE_KEYWORDS)
 
-# --- 4. 主更新循环 ---
-def update_all_data():
-    """定时任务：更新所有社区数据"""
+def update_single_comm(comm):
+    """更新单个社区数据并写入缓存"""
     global SERVER_CACHE, EXG_CACHE_UPDATED_AT
-    load_config()
-    refresh_local_caches()
-    
-    new_cache = {}
-    
-    for comm in COMMUNITY_META:
-        cid = comm['id']
-        if comm.get('location') != 'cn':
+    cid = comm['id']
+    result = []
+    now = int(time.time())
+
+    def agent_fallback(reason):
+        print(f"[Update] {comm['name']}: {reason}")
+        with SERVER_CACHE_LOCK:
+            return SERVER_CACHE.get(cid, [])
+
+    if comm.get('location') != 'cn':
+        with AGENT_CACHE_LOCK:
             agent_servers = AGENT_CACHE.get(cid)
-            if agent_servers is None:
-                new_cache[cid] = []
-                print(f"[Update] {comm['name']}: 等待 agent 数据 (non-cn)")
-                continue
-            new_cache[cid] = agent_servers
+            agent_updated_at = AGENT_CACHE_UPDATED_AT.get(cid, 0)
+        if agent_servers is None:
+            result = agent_fallback("等待 agent 数据 (non-cn)")
+        elif now - agent_updated_at > AGENT_STALE_SECONDS:
+            result = agent_fallback("agent 数据过期 (non-cn)")
+        else:
+            result = agent_servers
             online_count = sum(1 for s in agent_servers if s.get('online'))
             total_players = sum(s['players'] for s in agent_servers if s.get('online'))
             print(f"[Update] {comm['name']}: {online_count}/{len(agent_servers)} 在线, {total_players} 玩家 (agent)")
-            continue
+    else:
         use_agent = comm.get('source') == 'agent' or comm.get('agent') is True
-        if use_agent:
+        with AGENT_CACHE_LOCK:
             agent_servers = AGENT_CACHE.get(cid, [])
-            new_cache[cid] = agent_servers
-            online_count = sum(1 for s in agent_servers if s.get('online'))
-            total_players = sum(s['players'] for s in agent_servers if s.get('online'))
-            print(f"[Update] {comm['name']}: {online_count}/{len(agent_servers)} 在线, {total_players} 玩家 (agent)")
-            continue
-        if cid in AGENT_CACHE:
-            agent_servers = AGENT_CACHE.get(cid, [])
-            new_cache[cid] = agent_servers
-            online_count = sum(1 for s in agent_servers if s.get('online'))
-            total_players = sum(s['players'] for s in agent_servers if s.get('online'))
-            print(f"[Update] {comm['name']}: {online_count}/{len(agent_servers)} 在线, {total_players} 玩家 (agent)")
-            continue
-        
-        # === EXG 特殊处理：直接从 API 获取 ===
-        if cid == 'exg':
+            agent_updated_at = AGENT_CACHE_UPDATED_AT.get(cid, 0)
+            has_agent_data = cid in AGENT_CACHE
+        if use_agent or has_agent_data:
+            if agent_updated_at and now - agent_updated_at > AGENT_STALE_SECONDS:
+                result = agent_fallback("agent 数据过期")
+            else:
+                result = agent_servers
+                online_count = sum(1 for s in agent_servers if s.get('online'))
+                total_players = sum(s['players'] for s in agent_servers if s.get('online'))
+                print(f"[Update] {comm['name']}: {online_count}/{len(agent_servers)} 在线, {total_players} 玩家 (agent)")
+        elif cid == 'exg':
             exg_data = fetch_exg_data_from_api()
             if exg_data:
-                new_cache[cid] = exg_data
+                result = exg_data
             else:
-                new_cache[cid] = SERVER_CACHE.get(cid, [])
-            online_count = sum(1 for s in new_cache[cid] if s.get('online'))
-            total_players = sum(s['players'] for s in new_cache[cid] if s.get('online'))
-            print(f"[Update] {comm['name']}: {online_count}/{len(new_cache[cid])} 在线, {total_players} 玩家")
-        
-        # === 其他社区：使用 A2S ===
+                with SERVER_CACHE_LOCK:
+                    result = SERVER_CACHE.get(cid, [])
+            online_count = sum(1 for s in result if s.get('online'))
+            total_players = sum(s['players'] for s in result if s.get('online'))
+            print(f"[Update] {comm['name']}: {online_count}/{len(result)} 在线, {total_players} 玩家")
         else:
             server_list = comm.get('servers', [])
-            if not server_list:
-                new_cache[cid] = []
-                continue
-            
-            game = comm.get('game', 'cs2')
-            
-            with ThreadPoolExecutor(max_workers=20) as exe:
-                results = list(exe.map(lambda s: fetch_a2s_data(s, game), server_list))
-            
-            online_count = sum(1 for s in results if s.get('online'))
-            total_players = sum(s['players'] for s in results if s.get('online'))
-            
-            new_cache[cid] = results
-            print(f"[Update] {comm['name']}: {online_count}/{len(results)} 在线, {total_players} 玩家")
+            if server_list:
+                game = comm.get('game', 'cs2')
+                max_workers = min(20, max(1, len(server_list)))
+                with ThreadPoolExecutor(max_workers=max_workers) as exe:
+                    result = list(exe.map(lambda s: fetch_a2s_data(s, game), server_list))
+                online_count = sum(1 for s in result if s.get('online'))
+                total_players = sum(s['players'] for s in result if s.get('online'))
+                print(f"[Update] {comm['name']}: {online_count}/{len(result)} 在线, {total_players} 玩家")
+            else:
+                result = []
 
-    SERVER_CACHE = new_cache
+    with SERVER_CACHE_LOCK:
+        SERVER_CACHE[cid] = result
+    return result
+
+
+def update_all_data():
+    """立即刷新所有社区数据（仅用于启动或手动调用）"""
+    load_config()
+    refresh_local_caches()
+    for comm in COMMUNITY_META:
+        update_single_comm(comm)
     save_stats()
     flush_map_translations()
 
@@ -501,11 +509,13 @@ def init_db():
 
 def save_stats():
     timestamp = int(time.time())
+    with SERVER_CACHE_LOCK:
+        snapshot = dict(SERVER_CACHE)
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("DELETE FROM player_stats WHERE timestamp < ?", (timestamp - 48 * 3600,))
     
-    for cid, servers in SERVER_CACHE.items():
+    for cid, servers in snapshot.items():
         if cid == "exg":
             count = sum(s['players'] for s in servers if s.get('online') and is_exg_stats_eligible(s))
         else:
@@ -572,13 +582,54 @@ def cleanup_stat_exports():
             print(f"[Stats] Cleanup failed for {path}: {e}")
 
 # --- 6. 任务调度 ---
+SCHEDULE_INTERVAL_SECONDS = 15
+SCHEDULE_CONFIG_SYNC_SECONDS = 300
+SCHEDULE_STATS_SAVE_SECONDS = 60
+AGENT_STALE_SECONDS = 60
+
 scheduler = BackgroundScheduler()
-scheduler.add_job(update_all_data, 'interval', seconds=15, id='updater')
 scheduler.add_job(export_stats_to_excel, 'interval', hours=48, id='stats_export')
 scheduler.add_job(cleanup_stat_exports, 'interval', days=1, id='stats_cleanup')
 
+def schedule_community_jobs():
+    """为每个社区建立错位轮询任务"""
+    load_config()
+    refresh_local_caches()
+    if not COMMUNITY_META:
+        return
+    job_ids = {f"comm_update_{c['id']}" for c in COMMUNITY_META}
+    for job in scheduler.get_jobs():
+        if job.id.startswith("comm_update_") and job.id not in job_ids:
+            scheduler.remove_job(job.id)
+    spread = SCHEDULE_INTERVAL_SECONDS / max(1, len(COMMUNITY_META))
+    now = datetime.now()
+    for index, comm in enumerate(COMMUNITY_META):
+        job_id = f"comm_update_{comm['id']}"
+        if scheduler.get_job(job_id):
+            continue
+        offset = index * spread
+        scheduler.add_job(
+            update_single_comm,
+            'interval',
+            seconds=SCHEDULE_INTERVAL_SECONDS,
+            id=job_id,
+            args=[comm],
+            next_run_time=now + timedelta(seconds=offset),
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=5
+        )
+
+def save_stats_snapshot():
+    save_stats()
+    flush_map_translations()
+
+scheduler.add_job(schedule_community_jobs, 'interval', seconds=SCHEDULE_CONFIG_SYNC_SECONDS, id='config_sync')
+scheduler.add_job(save_stats_snapshot, 'interval', seconds=SCHEDULE_STATS_SAVE_SECONDS, id='stats_snapshot')
+
 def start_scheduler():
     if not scheduler.running:
+        schedule_community_jobs()
         scheduler.start()
 
 # --- 7. Flask 路由 ---
@@ -616,7 +667,9 @@ def get_config_meta():
 @app.route('/api/servers/<cid>')
 def get_servers(cid):
     """返回指定社区的实时服务器列表"""
-    return jsonify(SERVER_CACHE.get(cid, []))
+    with SERVER_CACHE_LOCK:
+        data = SERVER_CACHE.get(cid, [])
+    return jsonify(data)
 
 @app.route('/api/agent/update', methods=['POST'])
 def update_agent_data():
@@ -661,8 +714,9 @@ def update_agent_data():
                 srv['map_cn'] = entry.get('zh_cn', '')
                 srv['map_tw'] = entry.get('zh_tw', '')
             normalized.append(srv)
-        AGENT_CACHE[cid] = normalized
-        AGENT_CACHE_UPDATED_AT[cid] = int(time.time())
+        with AGENT_CACHE_LOCK:
+            AGENT_CACHE[cid] = normalized
+            AGENT_CACHE_UPDATED_AT[cid] = int(time.time())
 
     return jsonify({"status": "ok", "updated": list(communities.keys())})
 
