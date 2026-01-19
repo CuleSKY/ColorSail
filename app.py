@@ -56,8 +56,6 @@ MAP_TRANS_DIRTY = False
 MAP_TRANS_LAST_WRITE = 0
 MAP_CACHE_UPDATED_AT = 0
 CACHE_REFRESH_INTERVAL_SECONDS = 300
-MAP_TRANS_MTIME = 0
-MAP_IMAGE_MTIME = 0
 OPENCC = OpenCC('s2t') if OpenCC else None
 
 EXG_SERVER_STALE_SECONDS = 15
@@ -84,15 +82,9 @@ def generate_distinct_colors(n):
         colors.append(f'#{r:02x}{g:02x}{b:02x}')
     return colors
 
-def beijing_timestamp():
-    return int(time.time()) + 8 * 3600
-
-def beijing_date():
-    return datetime.utcnow() + timedelta(hours=8)
-
 def refresh_local_caches(force=False):
     """刷新地图图片索引和翻译文件"""
-    global MAP_IMAGE_INDEX, MAP_TRANS_CACHE, MAP_TRANS_NORMALIZED, MAP_CACHE_UPDATED_AT, MAP_TRANS_MTIME, MAP_IMAGE_MTIME
+    global MAP_IMAGE_INDEX, MAP_TRANS_CACHE, MAP_TRANS_NORMALIZED, MAP_CACHE_UPDATED_AT
     now = int(time.time())
     if not force and (now - MAP_CACHE_UPDATED_AT) < CACHE_REFRESH_INTERVAL_SECONDS:
         return
@@ -115,17 +107,12 @@ def refresh_local_caches(force=False):
     try:
         with MAP_TRANS_LOCK:
             if os.path.exists(TRANS_FILE):
-                file_mtime = int(os.path.getmtime(TRANS_FILE))
-                if not force and file_mtime == MAP_TRANS_MTIME:
-                    MAP_CACHE_UPDATED_AT = now
-                    return
                 with open(TRANS_FILE, 'r', encoding='utf-8') as f:
                     raw_trans = json.load(f)
             else:
                 raw_trans = {}
                 with open(TRANS_FILE, 'w', encoding='utf-8') as f:
                     json.dump({}, f)
-                file_mtime = int(os.path.getmtime(TRANS_FILE))
             normalized = {}
             cleaned = {}
             for key, value in raw_trans.items():
@@ -144,7 +131,6 @@ def refresh_local_caches(force=False):
                     normalized[normalized_key] = entry
             MAP_TRANS_CACHE = cleaned
             MAP_TRANS_NORMALIZED = normalized
-            MAP_TRANS_MTIME = file_mtime
             print(f"[Cache] 已加载 {len(MAP_TRANS_CACHE)} 个地图翻译")
     except Exception as e:
         print(f"[Cache] 翻译加载失败: {e}")
@@ -213,18 +199,13 @@ def update_map_translation_entry(map_name, map_display):
     return updated
 
 def flush_map_translations(force=False):
-    global MAP_TRANS_DIRTY, MAP_TRANS_LAST_WRITE, MAP_TRANS_MTIME
+    global MAP_TRANS_DIRTY, MAP_TRANS_LAST_WRITE
     if not MAP_TRANS_DIRTY and not force:
         return
     with MAP_TRANS_LOCK:
         try:
             with open(TRANS_FILE, 'w', encoding='utf-8') as f:
                 json.dump(MAP_TRANS_CACHE, f, ensure_ascii=False, indent=4)
-            if os.path.exists(TRANS_FILE):
-                try:
-                    MAP_TRANS_MTIME = int(os.path.getmtime(TRANS_FILE))
-                except Exception:
-                    pass
             MAP_TRANS_DIRTY = False
             MAP_TRANS_LAST_WRITE = int(time.time())
         except Exception as e:
