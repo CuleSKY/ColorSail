@@ -4,3 +4,4 @@ apscheduler
 requests
 beautifulsoup4
 cryptography
+opencc-python-reimplemented
