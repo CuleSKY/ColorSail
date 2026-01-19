@@ -123,6 +123,10 @@
         .jump-pill:hover { background: var(--accent); color: white; border-color: var(--accent); transform: translateY(-1px); }
         .jump-pill img { width: 16px; height: 16px; border-radius: 50%; object-fit: contain; background: rgba(255,255,255,0.2); }
 
+        .server-search-bar { display: flex; align-items: center; padding: 12px 30px; border-bottom: 1px solid var(--card-border); background: var(--bg-color); gap: 12px; }
+        .server-search-input { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--card-bg); color: var(--text-primary); font-size: 14px; outline: none; }
+        .server-search-input::placeholder { color: var(--text-secondary); }
+
         #main-content { flex: 1; padding: 20px 30px 80px 30px; overflow-y: auto; scroll-behavior: smooth; width: 100%; }
         [id^="comm-"] { scroll-margin-top: 20px; }
 
@@ -379,7 +383,7 @@
                             <div class="sub-pop-item" v-for="(sub, idx) in subscriptions.slice(0, 5)" :key="idx">
                                 <div class="sub-pop-info">
                                     <div class="sub-pop-map">[[ sub.map ]]</div>
-                                    <div class="sub-pop-trans" v-if="isChineseLang && mapTranslations[sub.map]">[[ mapTranslations[sub.map] ]]</div>
+                                    <div class="sub-pop-trans" v-if="isChineseLang && getMapTranslation(sub.map)">[[ getMapTranslation(sub.map) ]]</div>
                                 </div>
                                 <div class="sub-pop-del" @click.stop="removeSubscription(idx)" :title="t('unsubscribe')">
                                     <div class="icon-svg" v-html="icons.trash" style="width:14px;"></div>
@@ -411,6 +415,10 @@
             </div>
         </div>
 
+        <div class="server-search-bar" v-if="curView === 'servers'">
+            <input class="server-search-input" type="text" v-model="serverMapQueryInput" :placeholder="t('server_search_ph')">
+        </div>
+
         <div id="main-content">
             
             <div v-if="curView === 'servers'" class="animate-enter">
@@ -432,7 +440,7 @@
                                         <div class="srv-name" :title="s.name">[[ s.name ]]</div>
                                     </div>
                                     <div class="info-block">
-                                        <div class="info-row"><span class="info-label">[[ t('map') ]]</span> <div class="map-info"><span>[[ s.map || '-' ]]</span><div class="map-trans" v-if="isChineseLang"><span v-if="s.map_cn">[[ s.map_cn ]]</span><span v-if="!s.map_cn && s.map!='-'" style="opacity:0.6">[[ t('no_trans') ]]</span></div></div></div>
+                                        <div class="info-row"><span class="info-label">[[ t('map') ]]</span> <div class="map-info"><span>[[ s.map || '-' ]]</span><div class="map-trans" v-if="isChineseLang"><span v-if="getServerMapTranslation(s)">[[ getServerMapTranslation(s) ]]</span><span v-if="!getServerMapTranslation(s) && s.map!='-'" style="opacity:0.6">[[ t('no_trans') ]]</span></div></div></div>
                                         <div class="info-row"><span class="info-label">[[ t('players') ]]</span> <span>[[ s.players ]]/[[ s.max_players ]]</span></div>
                                     </div>
                                 </div>
@@ -449,7 +457,7 @@
                         <div class="list-row" :class="{ 'online': s.online }" v-for="s in getServers(comm.id)" :key="s.display_ip">
                             <div class="col-status"></div>
                             <div class="col-name" :title="s.name">[[ s.name ]]</div>
-                            <div class="col-map"><span class="map-name">[[ s.map || '-' ]]</span><span class="col-map-cn" v-if="isChineseLang">[[ s.map_cn || (s.map!='-' ? t('no_trans') : '') ]]</span></div>
+                            <div class="col-map"><span class="map-name">[[ s.map || '-' ]]</span><span class="col-map-cn" v-if="isChineseLang">[[ getServerMapTranslation(s) || (s.map!='-' ? t('no_trans') : '') ]]</span></div>
                             <div class="col-players">[[ s.players ]]/[[ s.max_players ]]</div>
                             <div class="col-actions"><a :href="getConnectUrl(s, comm.game)" class="btn btn-primary">[[ t('join') ]]</a><button class="btn btn-sec" @click="copyCmd(s)">[[ t('copy_console') ]] </button><button class="btn btn-sec" @click="copyIp(s)">[[ t('copy_ip') ]]</button></div>
                         </div>
@@ -457,7 +465,7 @@
 
                     <div class="mobile-list-container" v-if="isMobile">
                         <div class="mobile-item" v-for="s in getServers(comm.id)" :key="s.display_ip">
-                            <div class="mobile-item-left"><div class="mobile-srv-name">[[ s.name ]]</div><div class="mobile-map-name"><span>[[ s.map || '-' ]]</span><span class="mobile-trans" v-if="isChineseLang"> [[ s.map_cn || (s.map!='-' ? t('no_trans') : '') ]]</span></div></div>
+                            <div class="mobile-item-left"><div class="mobile-srv-name">[[ s.name ]]</div><div class="mobile-map-name"><span>[[ s.map || '-' ]]</span><span class="mobile-trans" v-if="isChineseLang"> [[ getServerMapTranslation(s) || (s.map!='-' ? t('no_trans') : '') ]]</span></div></div>
                             <div class="mobile-item-right"><div :style="{color: s.online ? 'var(--text-primary)' : 'var(--status-offline)'}">[[ s.online ? s.players + '/' + s.max_players : t('offline') ]]</div></div>
                         </div>
                     </div>
@@ -509,7 +517,7 @@
                         <div class="sub-row" v-for="(sub, idx) in subscriptions" :key="idx">
                             <div class="sub-col-info">
                                 <div class="sub-map-key">[[ sub.map ]]</div>
-                                <div class="sub-map-val" v-if="isChineseLang && mapTranslations[sub.map]">[[ mapTranslations[sub.map] ]]</div>
+                                <div class="sub-map-val" v-if="isChineseLang && getMapTranslation(sub.map)">[[ getMapTranslation(sub.map) ]]</div>
                                 <div class="sub-comms">[[ formatSubComms(sub.comms) ]]</div>
                             </div>
                             <button class="btn-unsub" @click="removeSubscription(idx)">[[ t('unsubscribe') ]]</button>
@@ -607,6 +615,8 @@ createApp({
         const isMobile = ref(window.innerWidth <= 768);
         const isEditMode = ref(false);
         const sortByPlayers = ref(false);
+        const serverMapQuery = ref('');
+        const serverMapQueryInput = ref('');
         
         const currentStats = ref([]);
         const totalPlayers = ref(0);
@@ -632,15 +642,24 @@ createApp({
         const curLang = ref(defaultLang);
 
         const I18N = {
-            'zh-CN': { app_title: 'NERV CS2ZE', servers: '服务器列表', mapcd: '地图冷却', stats: '数据统计(仅ZE)', map: '地图', players: '人数', offline: '离线', join: '进入游戏', copy_console: '复制命令', copy_ip: '复制IP', exg_only: '仅限 EXG', stats_title: 'ZE 在线趋势 (48小时)', copied: '已复制: ', no_trans: '暂无', edit_order: '编辑社区排列顺序', exit_edit: '完成排序', drag_hint: '拖拽社区以排序', sort_btn: '人数排序', switch_view: '切换视图', view_list: '列表模式', view_grid: '卡片模式', sort_players: '按人数排序', sub_menu: '查询/订阅地图', sub_search_ph: '搜索地图 (英文名或中文)...', sub_notify: '地图变更通知', subscribed: '已订阅', subscribe: '订阅', unsubscribe: '取消订阅', no_map_found: '未找到地图，请尝试其他关键词', test_notify: '测试通知', sub_title: '地图订阅', my_subs: '我的订阅', no_subs: '暂无订阅', sub_confirm_title: '确认订阅地图', sub_select_comm: '选择接收通知的社区', all_comm: '所有社区', subscribe_confirm: '确认订阅', notify_warn: '您尚未开启通知权限，点击此处开启以接收地图推送。', manage_all: '管理所有订阅', keep_open_hint: '请保持此页面在浏览器中开启（可后台运行）以接收通知' },
-            'zh-TW': { app_title: 'NERV CS2ZE', servers: '伺服器列表', mapcd: '地圖冷卻', stats: '數據統計(僅ZE)', map: '地圖', players: '人數', offline: '離線', join: '進入遊戲', copy_console: '複製命令', copy_ip: '複製IP', exg_only: '僅限 EXG', stats_title: 'ZE 在線趨勢 (48小時)', copied: '已複製: ', no_trans: '暫無', edit_order: '編輯社區排列順序', exit_edit: '完成排序', drag_hint: '拖動社區以排序', sort_btn: '人數排序', switch_view: '切換視圖', view_list: '列表模式', view_grid: '卡片模式', sort_players: '按人數排序', sub_menu: '查詢/訂閱地圖', sub_search_ph: '搜尋地圖 (英文名或中文)...', sub_notify: '地圖變更通知', subscribed: '已訂閱', subscribe: '訂閱', unsubscribe: '取消訂閱', no_map_found: '未找到地圖，請嘗試其他關鍵詞', test_notify: '測試通知', sub_title: '地圖訂閱', my_subs: '我的訂閱', no_subs: '暫無訂閱', sub_confirm_title: '確認訂閱地圖', sub_select_comm: '選擇接收通知的社區', all_comm: '所有社區', subscribe_confirm: '確認訂閱', notify_warn: '您尚未開啟通知權限，點擊此處開啟以接收地圖推送。', manage_all: '管理所有訂閱', keep_open_hint: '請保持此頁面在瀏覽器中開啟（可後臺運行）以接收通知' },
-            'en': { app_title: 'NERV CS2ZE', servers: 'Servers', mapcd: 'Map CD', stats: 'Statistics(ZE ONLY)', map: 'Map', players: 'Players', offline: 'Offline', join: 'Join', copy_console: 'Console CMD', copy_ip: 'Copy IP', exg_only: 'EXG Only', stats_title: 'ZE Player Trend (48h)', copied: 'Copied: ', no_trans: 'N/A', edit_order: 'Edit Community Order', exit_edit: 'Done', drag_hint: 'Drag to reorder', sort_btn: 'Sort Players', switch_view: 'Switch View', view_list: 'List View', view_grid: 'Grid View', sort_players: 'Sort by Players', sub_menu: 'Map Search/Sub', sub_search_ph: 'Search map (English or Chinese)...', sub_notify: 'Map Change Alert', subscribed: 'Subscribed', subscribe: 'Subscribe', unsubscribe: 'Unsubscribe', no_map_found: 'No map found, try other keywords', test_notify: 'Test Notification', sub_title: 'Subscriptions', my_subs: 'My Subscriptions', no_subs: 'No subscriptions', sub_confirm_title: 'Subscribe to Map', sub_select_comm: 'Select Communities for Notification', all_comm: 'All Communities', subscribe_confirm: 'Confirm Subscription', notify_warn: 'Notifications disabled. Click here to enable alerts.', manage_all: 'Manage All Subscriptions', keep_open_hint: 'Please keep this tab open to receive notifications.' }
+            'zh-CN': { app_title: 'NERV CS2ZE', servers: '服务器列表', mapcd: '地图冷却', stats: '数据统计(仅ZE)', map: '地图', players: '人数', offline: '离线', join: '进入游戏', copy_console: '复制命令', copy_ip: '复制IP', exg_only: '仅限 EXG', stats_title: 'ZE 在线趋势 (48小时)', copied: '已复制: ', no_trans: '暂无', edit_order: '编辑社区排列顺序', exit_edit: '完成排序', drag_hint: '拖拽社区以排序', sort_btn: '人数排序', switch_view: '切换视图', view_list: '列表模式', view_grid: '卡片模式', sort_players: '按人数排序', sub_menu: '查询/订阅地图', sub_search_ph: '搜索地图 (英文名或中文)...', server_search_ph: '搜索服务器地图 (英文/中文)...', sub_notify: '地图变更通知', subscribed: '已订阅', subscribe: '订阅', unsubscribe: '取消订阅', no_map_found: '未找到地图，请尝试其他关键词', test_notify: '测试通知', sub_title: '地图订阅', my_subs: '我的订阅', no_subs: '暂无订阅', sub_confirm_title: '确认订阅地图', sub_select_comm: '选择接收通知的社区', all_comm: '所有社区', subscribe_confirm: '确认订阅', notify_warn: '您尚未开启通知权限，点击此处开启以接收地图推送。', manage_all: '管理所有订阅', keep_open_hint: '请保持此页面在浏览器中开启（可后台运行）以接收通知' },
+            'zh-TW': { app_title: 'NERV CS2ZE', servers: '伺服器列表', mapcd: '地圖冷卻', stats: '數據統計(僅ZE)', map: '地圖', players: '人數', offline: '離線', join: '進入遊戲', copy_console: '複製命令', copy_ip: '複製IP', exg_only: '僅限 EXG', stats_title: 'ZE 在線趨勢 (48小時)', copied: '已複製: ', no_trans: '暫無', edit_order: '編輯社區排列順序', exit_edit: '完成排序', drag_hint: '拖動社區以排序', sort_btn: '人數排序', switch_view: '切換視圖', view_list: '列表模式', view_grid: '卡片模式', sort_players: '按人數排序', sub_menu: '查詢/訂閱地圖', sub_search_ph: '搜尋地圖 (英文名或中文)...', server_search_ph: '搜尋伺服器地圖 (英文/中文)...', sub_notify: '地圖變更通知', subscribed: '已訂閱', subscribe: '訂閱', unsubscribe: '取消訂閱', no_map_found: '未找到地圖，請嘗試其他關鍵詞', test_notify: '測試通知', sub_title: '地圖訂閱', my_subs: '我的訂閱', no_subs: '暫無訂閱', sub_confirm_title: '確認訂閱地圖', sub_select_comm: '選擇接收通知的社區', all_comm: '所有社區', subscribe_confirm: '確認訂閱', notify_warn: '您尚未開啟通知權限，點擊此處開啟以接收地圖推送。', manage_all: '管理所有訂閱', keep_open_hint: '請保持此頁面在瀏覽器中開啟（可後臺運行）以接收通知' },
+            'en': { app_title: 'NERV CS2ZE', servers: 'Servers', mapcd: 'Map CD', stats: 'Statistics(ZE ONLY)', map: 'Map', players: 'Players', offline: 'Offline', join: 'Join', copy_console: 'Console CMD', copy_ip: 'Copy IP', exg_only: 'EXG Only', stats_title: 'ZE Player Trend (48h)', copied: 'Copied: ', no_trans: 'N/A', edit_order: 'Edit Community Order', exit_edit: 'Done', drag_hint: 'Drag to reorder', sort_btn: 'Sort Players', switch_view: 'Switch View', view_list: 'List View', view_grid: 'Grid View', sort_players: 'Sort by Players', sub_menu: 'Map Search/Sub', sub_search_ph: 'Search map (English or Chinese)...', server_search_ph: 'Search server maps (English/Chinese)...', sub_notify: 'Map Change Alert', subscribed: 'Subscribed', subscribe: 'Subscribe', unsubscribe: 'Unsubscribe', no_map_found: 'No map found, try other keywords', test_notify: 'Test Notification', sub_title: 'Subscriptions', my_subs: 'My Subscriptions', no_subs: 'No subscriptions', sub_confirm_title: 'Subscribe to Map', sub_select_comm: 'Select Communities for Notification', all_comm: 'All Communities', subscribe_confirm: 'Confirm Subscription', notify_warn: 'Notifications disabled. Click here to enable alerts.', manage_all: 'Manage All Subscriptions', keep_open_hint: 'Please keep this tab open to receive notifications.' }
         };
 
         const t = (key) => I18N[curLang.value][key] || I18N['en'][key];
         const langLabel = computed(() => curLang.value === 'zh-CN' ? '简体中文' : (curLang.value === 'zh-TW' ? '繁體中文' : 'English'));
         const isChineseLang = computed(() => curLang.value.includes('zh'));
         const currentLogoPath = computed(() => isDark.value ? LOGO_PATHS.W : LOGO_PATHS.B);
+        let searchDebounceTimer = null;
+        watch(serverMapQueryInput, (next) => {
+            if (searchDebounceTimer) {
+                clearTimeout(searchDebounceTimer);
+            }
+            searchDebounceTimer = setTimeout(() => {
+                serverMapQuery.value = next;
+            }, 200);
+        });
 
         const updateFavicon = () => {
             const icon = document.getElementById('favicon');
@@ -782,17 +801,75 @@ createApp({
         const loadTranslations = async () => {
             try {
                 const res = await fetch('/api/map_translations');
-                mapTranslations.value = await res.json();
+                const data = await res.json();
+                const normalized = {};
+                for (const [key, value] of Object.entries(data)) {
+                    if (typeof value === 'string') {
+                        normalized[key] = { zh_cn: value, zh_tw: value };
+                    } else {
+                        normalized[key] = {
+                            zh_cn: (value && (value.zh_cn || value.cn)) || '',
+                            zh_tw: (value && (value.zh_tw || value.tw)) || ''
+                        };
+                    }
+                }
+                mapTranslations.value = normalized;
             } catch(e) {}
+        };
+
+        const normalizeSearchText = (value) => (value || '').toString().toLowerCase().replace(/\s+/g, '');
+        const normalizeMapKey = (value) => {
+            if (!value) return '';
+            let mapKey = value.toString().trim().toLowerCase();
+            mapKey = mapKey.replace(/\\/g, '/').split('?', 1)[0];
+            if (mapKey.endsWith('.bsp')) mapKey = mapKey.slice(0, -4);
+            if (mapKey.startsWith('workshop/')) {
+                const parts = mapKey.split('/');
+                mapKey = parts[parts.length - 1] || mapKey;
+            } else {
+                mapKey = mapKey.split('/').pop();
+            }
+            return mapKey;
+        };
+
+        const getMapTranslationEntry = (mapName, serverEntry) => {
+            if (!mapName) return { zh_cn: '', zh_tw: '' };
+            if (mapTranslations.value[mapName]) return mapTranslations.value[mapName];
+            const normalizedKey = normalizeMapKey(mapName);
+            if (normalizedKey && mapTranslations.value[normalizedKey]) return mapTranslations.value[normalizedKey];
+            if (serverEntry) {
+                return {
+                    zh_cn: serverEntry.map_cn || '',
+                    zh_tw: serverEntry.map_tw || ''
+                };
+            }
+            return { zh_cn: '', zh_tw: '' };
+        };
+
+        const getMapTranslation = (mapName) => {
+            const entry = getMapTranslationEntry(mapName);
+            if (curLang.value === 'zh-TW') return entry.zh_tw || entry.zh_cn || '';
+            if (curLang.value === 'zh-CN') return entry.zh_cn || '';
+            return '';
+        };
+
+        const getServerMapTranslation = (serverEntry) => {
+            if (!serverEntry) return '';
+            const entry = getMapTranslationEntry(serverEntry.map, serverEntry);
+            if (curLang.value === 'zh-TW') return entry.zh_tw || entry.zh_cn || '';
+            if (curLang.value === 'zh-CN') return entry.zh_cn || '';
+            return '';
         };
 
         const searchMaps = () => {
             if (!subSearchQuery.value) { searchResults.value = []; return; }
-            const q = subSearchQuery.value.toLowerCase();
+            const q = normalizeSearchText(subSearchQuery.value);
             const res = [];
             for (const [k, v] of Object.entries(mapTranslations.value)) {
-                if (k.toLowerCase().includes(q) || v.toLowerCase().includes(q)) {
-                    res.push({ key: k, val: v });
+                const zhCn = v.zh_cn || '';
+                const zhTw = v.zh_tw || '';
+                if (normalizeSearchText(k).includes(q) || normalizeSearchText(zhCn).includes(q) || normalizeSearchText(zhTw).includes(q)) {
+                    res.push({ key: k, val: curLang.value === 'zh-TW' ? (zhTw || zhCn) : zhCn });
                     if (res.length > 20) break;
                 }
             }
@@ -901,6 +978,7 @@ createApp({
 
         const serverStaleMs = 15000;
         const refreshIntervalMs = 15000;
+        const statsRefreshIntervalMs = 15000;
 
         const fetchConfig = async () => {
             try {
@@ -958,6 +1036,20 @@ createApp({
 
         const getServers = (cid) => {
             let list = servers.value[cid] ? [...servers.value[cid]] : [];
+            const query = normalizeSearchText(serverMapQuery.value);
+            if (query) {
+                list = list.filter((serverEntry) => {
+                    const mapName = serverEntry.map || '';
+                    const entry = getMapTranslationEntry(mapName, serverEntry);
+                    const candidates = [
+                        mapName,
+                        normalizeMapKey(mapName),
+                        entry.zh_cn || '',
+                        entry.zh_tw || ''
+                    ];
+                    return candidates.some((item) => normalizeSearchText(item).includes(query));
+                });
+            }
             if (sortByPlayers.value) {
                 list.sort((a, b) => {
                     if (a.online && !b.online) return -1; if (!a.online && b.online) return 1;
@@ -1090,10 +1182,10 @@ createApp({
             hasFeature, goToView, loadStats, openMapLink, getConnectUrl, copyCmd, copyIp, langLabel, currentLogoPath, isChineseLang,
             scrollToComm, viewMode, toggleViewMode, isMobile,
             isEditMode, toggleEditMode, 
-            sortByPlayers, toggleSortByPlayers, getServers,
+            sortByPlayers, toggleSortByPlayers, getServers, serverMapQuery, serverMapQueryInput,
             draggedIndex, dragOverIndex, onDragStart, onDragEnter, onDragLeave, onDrop,
             subSearchQuery, searchResults, searchMaps, selectedMap, selectMapToSub, newSubComms, toggleSubComm, addSubscription, subscriptions, removeSubscription, formatSubComms,
-            mapTranslations, isSubscribed, toggleSubscription, testNotification,
+            mapTranslations, getMapTranslation, getServerMapTranslation, isSubscribed, toggleSubscription, testNotification,
             notificationPermission, requestPerm,
             showSubPopover, toggleSubPopover, toggleLangMenu, goToSubPage, closeDropdowns,
             currentStats, totalPlayers, topCommunity
