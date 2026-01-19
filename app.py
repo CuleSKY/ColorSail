@@ -14,6 +14,10 @@ from flask import Flask, render_template, jsonify, request
 import a2s
 from apscheduler.schedulers.background import BackgroundScheduler
 from concurrent.futures import ThreadPoolExecutor
+try:
+    from opencc import OpenCC
+except Exception:
+    OpenCC = None
 
 # 禁用 SSL 警告
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -45,10 +49,18 @@ AGENT_CACHE_UPDATED_AT = {}
 COMMUNITY_META = []
 MAP_IMAGE_INDEX = {}
 MAP_TRANS_CACHE = {}
+MAP_TRANS_NORMALIZED = {}
+MAP_TRANS_LOCK = threading.Lock()
+MAP_TRANS_DIRTY = False
+MAP_TRANS_LAST_WRITE = 0
+MAP_CACHE_UPDATED_AT = 0
+CACHE_REFRESH_INTERVAL_SECONDS = 300
+OPENCC = OpenCC('s2t') if OpenCC else None
 
 EXG_SERVER_STALE_SECONDS = 15
 EXG_FETCH_INTERVAL_SECONDS = 15
 HTTP_SESSION = requests.Session()
+EXG_VERIFY_SSL = os.environ.get('EXG_VERIFY_SSL', 'true').lower() in ('1', 'true', 'yes')
 
 EXG_STATS_EXCLUDE_KEYWORDS = ("pve", "大厅", "躲猫猫", "mg")
 STATS_CACHE_TTL_SECONDS = 30 * 60
@@ -68,9 +80,12 @@ def generate_distinct_colors(n):
         colors.append(f'#{r:02x}{g:02x}{b:02x}')
     return colors
 
-def refresh_local_caches():
+def refresh_local_caches(force=False):
     """刷新地图图片索引和翻译文件"""
-    global MAP_IMAGE_INDEX, MAP_TRANS_CACHE
+    global MAP_IMAGE_INDEX, MAP_TRANS_CACHE, MAP_TRANS_NORMALIZED, MAP_CACHE_UPDATED_AT
+    now = int(time.time())
+    if not force and (now - MAP_CACHE_UPDATED_AT) < CACHE_REFRESH_INTERVAL_SECONDS:
+        return
     try:
         if os.path.exists(STATIC_MAP_DIR):
             files = {}
@@ -85,17 +100,111 @@ def refresh_local_caches():
         MAP_IMAGE_INDEX = {}
 
     try:
-        if os.path.exists(TRANS_FILE):
-            with open(TRANS_FILE, 'r', encoding='utf-8') as f:
-                MAP_TRANS_CACHE = json.load(f)
+        with MAP_TRANS_LOCK:
+            if os.path.exists(TRANS_FILE):
+                with open(TRANS_FILE, 'r', encoding='utf-8') as f:
+                    raw_trans = json.load(f)
+            else:
+                raw_trans = {}
+                with open(TRANS_FILE, 'w', encoding='utf-8') as f:
+                    json.dump({}, f)
+            normalized = {}
+            cleaned = {}
+            for key, value in raw_trans.items():
+                if isinstance(value, dict):
+                    zh_cn = (value.get('zh_cn') or value.get('cn') or '').strip()
+                    zh_tw = (value.get('zh_tw') or value.get('tw') or '').strip()
+                    if zh_cn and not zh_tw:
+                        zh_tw = convert_to_traditional(zh_cn)
+                else:
+                    zh_cn = str(value).strip()
+                    zh_tw = convert_to_traditional(zh_cn) if zh_cn else ''
+                entry = {"zh_cn": zh_cn, "zh_tw": zh_tw}
+                cleaned[key] = entry
+                normalized_key = normalize_map_name(key)
+                if normalized_key and normalized_key not in normalized:
+                    normalized[normalized_key] = entry
+            MAP_TRANS_CACHE = cleaned
+            MAP_TRANS_NORMALIZED = normalized
             print(f"[Cache] 已加载 {len(MAP_TRANS_CACHE)} 个地图翻译")
-        else:
-            with open(TRANS_FILE, 'w', encoding='utf-8') as f:
-                json.dump({}, f)
-            MAP_TRANS_CACHE = {}
     except Exception as e:
         print(f"[Cache] 翻译加载失败: {e}")
         MAP_TRANS_CACHE = {}
+        MAP_TRANS_NORMALIZED = {}
+    MAP_CACHE_UPDATED_AT = now
+
+def convert_to_traditional(text):
+    if not text:
+        return ''
+    try:
+        if not OPENCC:
+            return text
+        return OPENCC.convert(text)
+    except Exception:
+        return text
+
+def rebuild_translated_index():
+    global MAP_TRANS_NORMALIZED
+    normalized = {}
+    for key, entry in MAP_TRANS_CACHE.items():
+        normalized_key = normalize_map_name(key)
+        if normalized_key and normalized_key not in normalized:
+            normalized[normalized_key] = entry
+    MAP_TRANS_NORMALIZED = normalized
+
+def get_map_translation_entry(map_name):
+    if not map_name:
+        return None
+    if map_name in MAP_TRANS_CACHE:
+        return MAP_TRANS_CACHE[map_name]
+    map_clean = normalize_map_name(map_name)
+    if map_clean and map_clean in MAP_TRANS_CACHE:
+        return MAP_TRANS_CACHE[map_clean]
+    if map_clean and map_clean in MAP_TRANS_NORMALIZED:
+        return MAP_TRANS_NORMALIZED[map_clean]
+    return None
+
+def update_map_translation_entry(map_name, map_display):
+    global MAP_TRANS_DIRTY
+    if not map_name or not map_display:
+        return False
+    map_clean = normalize_map_name(map_name)
+    map_key = map_name if map_name in MAP_TRANS_CACHE else (map_clean or map_name)
+    zh_cn = str(map_display).strip()
+    if not zh_cn:
+        return False
+    zh_tw = convert_to_traditional(zh_cn)
+    updated = False
+    with MAP_TRANS_LOCK:
+        entry = MAP_TRANS_CACHE.get(map_key)
+        if entry:
+            if not entry.get('zh_cn'):
+                entry['zh_cn'] = zh_cn
+                updated = True
+            if not entry.get('zh_tw'):
+                entry['zh_tw'] = zh_tw
+                updated = True
+            MAP_TRANS_CACHE[map_key] = entry
+        else:
+            MAP_TRANS_CACHE[map_key] = {"zh_cn": zh_cn, "zh_tw": zh_tw}
+            updated = True
+        if updated:
+            rebuild_translated_index()
+            MAP_TRANS_DIRTY = True
+    return updated
+
+def flush_map_translations(force=False):
+    global MAP_TRANS_DIRTY, MAP_TRANS_LAST_WRITE
+    if not MAP_TRANS_DIRTY and not force:
+        return
+    with MAP_TRANS_LOCK:
+        try:
+            with open(TRANS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(MAP_TRANS_CACHE, f, ensure_ascii=False, indent=4)
+            MAP_TRANS_DIRTY = False
+            MAP_TRANS_LAST_WRITE = int(time.time())
+        except Exception as e:
+            print(f"[Cache] 翻译写入失败: {e}")
 
 def normalize_map_name(map_name):
     if not map_name or map_name == "-":
@@ -151,7 +260,7 @@ def fetch_exg_data_from_api():
             'Accept': 'application/json'
         }
         
-        resp = EXG_SESSION.get(EXG_API_URL, timeout=10, verify=False, headers=headers)
+        resp = EXG_SESSION.get(EXG_API_URL, timeout=10, verify=EXG_VERIFY_SSL, headers=headers)
         
         if resp.status_code == 200:
             data = resp.json()
@@ -213,13 +322,14 @@ def fetch_exg_data_from_api():
                     
                     # 中文翻译（优先使用 API 提供的）
                     if map_display:
+                        update_map_translation_entry(map_name, map_display)
                         server_obj['map_cn'] = map_display
-                    elif map_name in MAP_TRANS_CACHE:
-                        server_obj['map_cn'] = MAP_TRANS_CACHE[map_name]
+                        server_obj['map_tw'] = convert_to_traditional(map_display)
                     else:
-                        map_clean = normalize_map_name(map_name)
-                        if map_clean and map_clean in MAP_TRANS_CACHE:
-                            server_obj['map_cn'] = MAP_TRANS_CACHE[map_clean]
+                        entry = get_map_translation_entry(map_name)
+                        if entry:
+                            server_obj['map_cn'] = entry.get('zh_cn', '')
+                            server_obj['map_tw'] = entry.get('zh_tw', '')
                     
                     servers.append(server_obj)
                     
@@ -285,12 +395,10 @@ def fetch_a2s_data(server_cfg, game_type='cs2'):
             res['image_url'] = image_url
         
         # 翻译匹配
-        if info.map_name in MAP_TRANS_CACHE:
-            res['map_cn'] = MAP_TRANS_CACHE[info.map_name]
-        else:
-            map_clean = normalize_map_name(info.map_name)
-            if map_clean and map_clean in MAP_TRANS_CACHE:
-                res['map_cn'] = MAP_TRANS_CACHE[map_clean]
+        entry = get_map_translation_entry(info.map_name)
+        if entry:
+            res['map_cn'] = entry.get('zh_cn', '')
+            res['map_tw'] = entry.get('zh_tw', '')
             
     except Exception as e:
         pass
@@ -373,6 +481,7 @@ def update_all_data():
 
     SERVER_CACHE = new_cache
     save_stats()
+    flush_map_translations()
 
 # --- 5. 数据库逻辑 ---
 def init_db():
@@ -481,12 +590,10 @@ def update_agent_data():
             else:
                 srv.pop('image_url', None)
             map_name = srv.get('map')
-            if map_name in MAP_TRANS_CACHE:
-                srv['map_cn'] = MAP_TRANS_CACHE[map_name]
-            else:
-                map_clean = normalize_map_name(map_name)
-                if map_clean and map_clean in MAP_TRANS_CACHE:
-                    srv['map_cn'] = MAP_TRANS_CACHE[map_clean]
+            entry = get_map_translation_entry(map_name)
+            if entry:
+                srv['map_cn'] = entry.get('zh_cn', '')
+                srv['map_tw'] = entry.get('zh_tw', '')
             normalized.append(srv)
         AGENT_CACHE[cid] = normalized
         AGENT_CACHE_UPDATED_AT[cid] = int(time.time())
@@ -592,6 +699,7 @@ if __name__ == '__main__':
     print("\n[Startup] 执行初始数据更新...")
     print("-" * 70)
     update_all_data()
+    flush_map_translations(force=True)
     print("-" * 70)
     print("\n✓ 初始化完成，服务器启动中...\n")
 
