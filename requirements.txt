@@ -1,0 +1,6 @@
+flask
+python-a2s
+apscheduler
+requests
+beautifulsoup4
+cryptography
