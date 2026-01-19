@@ -1,5 +1,6 @@
 {
   "map_cd_url": "https://list.darkrp.cn:9000/serverlist/cs2maplist",
+  "stats_export_retention_days": 30,
   "communities": [
     {
       "id": "exg",

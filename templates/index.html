@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NERV ZE Browser</title>
+    <title>NERV CS2ZE Browser</title>
     <link id="favicon" rel="icon" href="/static/NERV_Logo.png" type="image/png">
     
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
@@ -62,9 +62,11 @@
 
         #app { display: flex; width: 100%; height: 100%; }
 
-        * { transition: background-color 0.3s var(--ease-fluent), border-color 0.3s var(--ease-fluent), color 0.3s var(--ease-fluent), box-shadow 0.3s var(--ease-fluent); }
+        * { transition: background-color 0.3s var(--ease-fluent), border-color 0.3s var(--ease-fluent), color 0.3s var(--ease-fluent), box-shadow 0.3s var(--ease-fluent), transform 0.3s var(--ease-fluent), opacity 0.3s var(--ease-fluent); }
+        #app * { animation: fluentFadeIn 0.35s var(--ease-fluent) both; }
         .animate-enter { animation: fadeSlideUp 0.4s var(--ease-fluent) forwards; }
         @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fluentFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
         /* --- 2. 侧边栏 --- */
         #sidebar {
@@ -192,7 +194,8 @@
         .summary-sub { font-size: 12px; color: var(--accent); display: flex; align-items: center; gap: 4px; }
         .stats-charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start; }
         .chart-wrapper { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); display: flex; flex-direction: column; height: 400px; }
-        .chart-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); }
+        .chart-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: var(--text-primary); }
+        .chart-subtitle { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; }
         .chart-content { flex: 1; position: relative; min-height: 0; }
         .community-list-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 0; box-shadow: var(--shadow); display: flex; flex-direction: column; height: auto; overflow: visible; }
         .comm-list-header { padding: 16px; font-weight: 600; border-bottom: 1px solid var(--card-border); }
@@ -535,23 +538,24 @@
                 <div class="stats-dashboard">
                     <div class="stats-summary-row">
                         <div class="summary-card">
-                            <div class="summary-label">ZE Total Online Players / ZE 在线总人数</div>
+                            <div class="summary-label">[[ t('stats_total_label') ]]</div>
                             <div class="summary-value">[[ totalPlayers ]]</div>
                         </div>
                         <div class="summary-card" v-if="topCommunity">
-                            <div class="summary-label">ZE Top Community / ZE热门社区</div>
+                            <div class="summary-label">[[ t('stats_top_label') ]]</div>
                             <div class="summary-value">[[ topCommunity.name ]]</div>
-                            <div class="summary-sub">[[ topCommunity.count ]] players</div>
+                            <div class="summary-sub">[[ topCommunity.count ]] [[ t('stats_players_label') ]]</div>
                         </div>
                     </div>
 
                     <div class="stats-charts-row">
                         <div class="chart-wrapper">
-                            <div class="chart-title">[[ t('stats_title') ]]</div>
+                        <div class="chart-title">[[ t('stats_title') ]]</div>
+                        <div class="chart-subtitle">[[ t('stats_time_note') ]]</div>
                             <div class="chart-content"><canvas id="statsLineChart"></canvas></div>
                         </div>
                         <div class="community-list-card">
-                            <div class="comm-list-header">ZE Player Distribution / ZE玩家分布</div>
+                            <div class="comm-list-header">[[ t('stats_distribution_label') ]]</div>
                             <div class="pie-container">
                                 <canvas id="statsPieChart"></canvas>
                             </div>
@@ -1098,6 +1102,13 @@ createApp({
             topCommunity.value = top;
 
             curView.value = 'stats';
+            if (data.line_chart && Array.isArray(data.line_chart.labels)) {
+                data.line_chart.labels = data.line_chart.labels.map((ts) => {
+                    if (typeof ts !== 'number') return ts;
+                    const date = new Date(ts * 1000);
+                    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                });
+            }
             
             setTimeout(() => {
                 const lineCtx = document.getElementById('statsLineChart');

@@ -10,6 +10,7 @@ import colorsys
 import socket
 import urllib3
 from datetime import datetime
+from datetime import timedelta
 from flask import Flask, render_template, jsonify, request
 import a2s
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -66,6 +67,7 @@ EXG_STATS_EXCLUDE_KEYWORDS = ("pve", "大厅", "躲猫猫", "mg")
 STATS_CACHE_TTL_SECONDS = 30 * 60
 STATS_CACHE = None
 STATS_CACHE_UPDATED_AT = 0
+STATS_EXPORT_RETENTION_DAYS = 30
 
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 
@@ -88,13 +90,16 @@ def refresh_local_caches(force=False):
         return
     try:
         if os.path.exists(STATIC_MAP_DIR):
-            files = {}
-            for f in os.listdir(STATIC_MAP_DIR):
-                if f.lower().endswith(('.jpg', '.png', '.webp', '.jpeg')):
-                    map_name = f.rsplit('.', 1)[0].lower()
-                    files[map_name] = f
-            MAP_IMAGE_INDEX = files
-            print(f"[Cache] 已加载 {len(MAP_IMAGE_INDEX)} 个地图图片")
+            dir_mtime = int(os.path.getmtime(STATIC_MAP_DIR))
+            if force or dir_mtime != MAP_IMAGE_MTIME:
+                files = {}
+                for f in os.listdir(STATIC_MAP_DIR):
+                    if f.lower().endswith(('.jpg', '.png', '.webp', '.jpeg')):
+                        map_name = f.rsplit('.', 1)[0].lower()
+                        files[map_name] = f
+                MAP_IMAGE_INDEX = files
+                MAP_IMAGE_MTIME = dir_mtime
+                print(f"[Cache] 已加载 {len(MAP_IMAGE_INDEX)} 个地图图片")
     except Exception as e:
         print(f"[Cache] 图片索引加载失败: {e}")
         MAP_IMAGE_INDEX = {}
@@ -231,12 +236,15 @@ def get_map_image_url(map_name):
 
 def load_config():
     """加载 config.json 中的社区列表结构"""
-    global COMMUNITY_META
+    global COMMUNITY_META, STATS_EXPORT_RETENTION_DAYS
     try:
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 COMMUNITY_META = data.get('communities', [])
+                retention_days = data.get('stats_export_retention_days')
+                if isinstance(retention_days, int) and retention_days > 0:
+                    STATS_EXPORT_RETENTION_DAYS = retention_days
                 print(f"[Config] 已加载 {len(COMMUNITY_META)} 个社区配置")
         else:
             print("[Config] 配置文件不存在")
@@ -507,9 +515,67 @@ def save_stats():
     conn.commit()
     conn.close()
 
+def export_stats_to_excel():
+    try:
+        from openpyxl import Workbook
+    except Exception as e:
+        print(f"[Stats] Excel export skipped: openpyxl not available ({e})")
+        return
+
+    stat_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Statistic')
+    os.makedirs(stat_dir, exist_ok=True)
+    base_name = f"ZEData_{beijing_date().strftime('%Y_%m_%d')}"
+    filename = f"{base_name}.xlsx"
+    filepath = os.path.join(stat_dir, filename)
+    if os.path.exists(filepath):
+        suffix = 1
+        while True:
+            candidate = os.path.join(stat_dir, f"{base_name}_{suffix}.xlsx")
+            if not os.path.exists(candidate):
+                filepath = candidate
+                break
+            suffix += 1
+
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT timestamp, community, count FROM player_stats ORDER BY timestamp ASC")
+    rows = c.fetchall()
+    conn.close()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "ZE Stats"
+    ws.append(["timestamp_utc", "timestamp_beijing", "community", "count"])
+    for ts, cid, count in rows:
+        ts_utc = datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        ts_bj = (datetime.utcfromtimestamp(ts) + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S')
+        ws.append([ts_utc, ts_bj, cid, count])
+    try:
+        wb.save(filepath)
+        print(f"[Stats] Exported stats to {filepath}")
+    except Exception as e:
+        print(f"[Stats] Export failed: {e}")
+
+def cleanup_stat_exports():
+    stat_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Statistic')
+    if not os.path.isdir(stat_dir):
+        return
+    cutoff = time.time() - STATS_EXPORT_RETENTION_DAYS * 24 * 3600
+    for name in os.listdir(stat_dir):
+        if not name.startswith('ZEData_') or not name.endswith('.xlsx'):
+            continue
+        path = os.path.join(stat_dir, name)
+        try:
+            if os.path.getmtime(path) < cutoff:
+                os.remove(path)
+        except Exception as e:
+            print(f"[Stats] Cleanup failed for {path}: {e}")
+
 # --- 6. 任务调度 ---
 scheduler = BackgroundScheduler()
 scheduler.add_job(update_all_data, 'interval', seconds=15, id='updater')
+scheduler.add_job(export_stats_to_excel, 'interval', hours=48, id='stats_export')
+scheduler.add_job(cleanup_stat_exports, 'interval', days=1, id='stats_cleanup')
 
 def start_scheduler():
     if not scheduler.running:
@@ -648,7 +714,7 @@ def get_stats():
 
     if rows:
         timestamps = sorted(list(set([r[0] for r in rows])))
-        line_chart['labels'] = [datetime.fromtimestamp(ts).strftime('%H:%M') for ts in timestamps]
+        line_chart['labels'] = timestamps
         
         data_map = {}
         for ts, cid, count in rows:
