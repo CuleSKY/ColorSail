@@ -727,12 +727,14 @@ def start_scheduler():
 @app.route('/servers')
 @app.route('/map-sub')
 @app.route('/stats')
+@app.route('/feedback')
 def index():
     view_map = {
         '/': 'servers',
         '/servers': 'servers',
         '/map-sub': 'map_sub',
-        '/stats': 'stats'
+        '/stats': 'stats',
+        '/feedback': 'feedback'
     }
     initial_view = view_map.get(request.path, 'servers')
     return render_template('index.html', initial_view=initial_view)
