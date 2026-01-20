@@ -5,6 +5,8 @@ import os
 import a2s
 import base64
 import random
+import hashlib
+import hmac
 from concurrent.futures import ThreadPoolExecutor
 import socket
 import urllib3
@@ -14,8 +16,8 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # --- 配置 ---
-MASTER_URL = "http://23.224.49.85:5000"  # ⚠️ 请修改为您中国主服的 IP
-AGENT_TOKEN = "ZE61QNWgB7rXqNHcg84u"    # 与 app.py 保持一致
+MASTER_URL = os.environ.get("MASTER_URL", "http://23.224.49.85:5000")  # ⚠️ 请修改为您中国主服的 IP
+AGENT_TOKEN = os.environ.get("AGENT_SHARED_TOKEN", "")    # 与 app.py 保持一致
 SECRETS_FILE = 'secrets.json'
 
 # 全局 Steam API Key (将从 secrets.json 中解密加载)
@@ -115,6 +117,9 @@ def run_agent():
     load_secrets()
     
     print(f"[*] Agent 启动 | 目标主服: {MASTER_URL}")
+    if not AGENT_TOKEN:
+        print("[Error] 未配置 AGENT_SHARED_TOKEN，无法推送数据。")
+        return
     if not STEAM_API_KEY:
         print("[Warning] 未能加载 Steam API Key，将仅使用 A2S 查询。")
 
@@ -161,11 +166,23 @@ def run_agent():
             print(f"[Job] {comm['name']}: {online_count}/{len(results)} 在线 (A2S {a2s_count}, Steam {steam_count})")
 
             payload = {"communities": {comm['id']: results}}
+            payload_json = json.dumps(payload, separators=(',', ':'), sort_keys=True)
+            timestamp = str(int(time.time()))
+            signature = hmac.new(
+                AGENT_TOKEN.encode('utf-8'),
+                f"{timestamp}.{payload_json}".encode('utf-8'),
+                hashlib.sha256
+            ).hexdigest()
             try:
                 resp = requests.post(
                     f"{MASTER_URL}/api/agent/update",
-                    json=payload,
-                    headers={"Authorization": f"Bearer {AGENT_TOKEN}"},
+                    data=payload_json,
+                    headers={
+                        "Authorization": f"Bearer {AGENT_TOKEN}",
+                        "X-Agent-Timestamp": timestamp,
+                        "X-Agent-Signature": signature,
+                        "Content-Type": "application/json"
+                    },
                     timeout=5
                 )
                 if resp.ok:
