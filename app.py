@@ -9,6 +9,9 @@ import threading
 import colorsys
 import socket
 import urllib3
+import hashlib
+import hmac
+import ipaddress
 from datetime import datetime
 from datetime import timedelta
 from flask import Flask, render_template, jsonify, request
@@ -76,6 +79,11 @@ STATS_CACHE_UPDATED_AT = 0
 STATS_EXPORT_RETENTION_DAYS = 30
 
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
+app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_REQUEST_BYTES', 2 * 1024 * 1024))
+
+AGENT_ALLOWED_CIDRS = [cidr.strip() for cidr in os.environ.get('AGENT_ALLOWED_CIDRS', '').split(',') if cidr.strip()]
+AGENT_TRUSTED_PROXIES = [cidr.strip() for cidr in os.environ.get('AGENT_TRUSTED_PROXIES', '').split(',') if cidr.strip()]
+AGENT_SIGNATURE_TTL_SECONDS = int(os.environ.get('AGENT_SIGNATURE_TTL_SECONDS', '300'))
 
 # --- 1. 辅助函数 ---
 def generate_distinct_colors(n):
@@ -153,6 +161,61 @@ def convert_to_traditional(text):
         return OPENCC.convert(text)
     except Exception:
         return text
+
+def ip_in_cidrs(client_ip, cidrs):
+    if not cidrs:
+        return False
+    try:
+        ip_obj = ipaddress.ip_address(client_ip)
+    except ValueError:
+        return False
+    for cidr in cidrs:
+        try:
+            if ip_obj in ipaddress.ip_network(cidr, strict=False):
+                return True
+        except ValueError:
+            continue
+    return False
+
+def get_client_ip(req):
+    remote_ip = req.remote_addr
+    if not remote_ip:
+        return None
+    if AGENT_TRUSTED_PROXIES and ip_in_cidrs(remote_ip, AGENT_TRUSTED_PROXIES):
+        forwarded_for = req.headers.get('X-Forwarded-For', '')
+        if forwarded_for:
+            first_ip = forwarded_for.split(',')[0].strip()
+            if first_ip:
+                return first_ip
+    return remote_ip
+
+def client_ip_allowed(client_ip):
+    if not AGENT_ALLOWED_CIDRS:
+        return True
+    if not client_ip:
+        return False
+    return ip_in_cidrs(client_ip, AGENT_ALLOWED_CIDRS)
+
+def canonicalize_payload(raw_body):
+    try:
+        parsed = json.loads(raw_body)
+    except json.JSONDecodeError:
+        return None, None
+    canonical = json.dumps(parsed, separators=(',', ':'), sort_keys=True)
+    return parsed, canonical
+
+def verify_agent_signature(token, timestamp, signature, canonical_body):
+    if not token or not timestamp or not signature:
+        return False
+    try:
+        ts = int(timestamp)
+    except ValueError:
+        return False
+    now = int(time.time())
+    if abs(now - ts) > AGENT_SIGNATURE_TTL_SECONDS:
+        return False
+    expected = hmac.new(token.encode('utf-8'), f"{timestamp}.{canonical_body}".encode('utf-8'), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature)
 
 def rebuild_translated_index():
     global MAP_TRANS_NORMALIZED
@@ -703,11 +766,21 @@ def update_agent_data():
     token = os.environ.get('AGENT_SHARED_TOKEN')
     if not token:
         return jsonify({"error": "agent token not configured"}), 403
+    client_ip = get_client_ip(request)
+    if not client_ip_allowed(client_ip):
+        return jsonify({"error": "ip not allowed"}), 403
     auth = request.headers.get('Authorization', '')
     if auth != f"Bearer {token}":
         return jsonify({"error": "unauthorized"}), 401
+    raw_body = request.get_data(cache=True, as_text=True) or ''
+    signature = request.headers.get('X-Agent-Signature')
+    timestamp = request.headers.get('X-Agent-Timestamp')
+    payload, canonical_body = canonicalize_payload(raw_body)
+    if payload is None or canonical_body is None:
+        return jsonify({"error": "invalid payload"}), 400
+    if not verify_agent_signature(token, timestamp, signature, canonical_body):
+        return jsonify({"error": "invalid signature"}), 401
 
-    payload = request.get_json(silent=True) or {}
     communities = payload.get('communities', {})
     if not isinstance(communities, dict):
         return jsonify({"error": "invalid payload"}), 400
