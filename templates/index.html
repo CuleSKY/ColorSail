@@ -126,6 +126,17 @@
         .toolbar-btn .icon-svg svg { display: block; }
         .toolbar-btn span { line-height: 1; }
 
+        .auth-panel { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; }
+        .auth-panel .auth-role { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+        .auth-role-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; background: rgba(0,120,212,0.12); color: var(--accent); text-transform: uppercase; letter-spacing: 0.4px; }
+        .auth-role-badge.admin { background: rgba(209,52,56,0.15); color: #d13438; }
+        .auth-role-badge.prime { background: rgba(16,124,16,0.16); color: #107c10; }
+        .auth-panel .auth-status { color: var(--text-secondary); font-weight: 500; }
+        .auth-btn { border: none; border-radius: 16px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; background: var(--accent); color: white; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
+        .steam-logo { width: 16px; height: 16px; object-fit: contain; }
+        .auth-btn.secondary { background: rgba(128,128,128,0.2); color: var(--text-primary); }
+        .auth-actions { display: flex; align-items: center; gap: 8px; }
+
         .top-controls { display: flex; gap: 12px; align-items: center; position: relative; z-index: 210; }
         .control-btn { background: transparent; border: none; cursor: pointer; padding: 8px; border-radius: 50%; color: var(--text-primary); display: flex; align-items: center; justify-content: center; transition: background 0.2s; position: relative; }
         .control-btn:hover { background: rgba(128,128,128,0.1); }
@@ -199,6 +210,68 @@
         .mobile-map-name { font-size: 13px; color: var(--text-secondary); display: flex; flex-direction: column; }
         .mobile-trans { font-size: 12px; opacity: 0.8; }
         .mobile-item-right { font-weight: bold; font-size: 14px; white-space: nowrap; margin-left: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+
+        .login-required { padding: 24px; border-radius: var(--radius); border: 1px dashed var(--card-border); background: var(--card-bg); text-align: center; color: var(--text-secondary); }
+        .login-required strong { color: var(--text-primary); }
+
+        .feedback-panel { max-width: 720px; margin: 0 auto; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 16px; }
+        .feedback-panel h3 { margin: 0; font-size: 18px; }
+        .feedback-panel p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
+        .feedback-field { display: flex; flex-direction: column; gap: 8px; }
+        .feedback-field label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .feedback-field input, .feedback-field textarea { border: 1px solid var(--card-border); border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; background: var(--bg-color); color: var(--text-primary); }
+        .feedback-field textarea { min-height: 140px; resize: vertical; }
+        .feedback-meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); }
+
+        .nav-item.disabled { opacity: 0.55; cursor: not-allowed; }
+        .tooltip { visibility: hidden; }
+        #sidebar.collapsed .nav-item:hover .tooltip { visibility: visible; }
+
+        .steam-login-btn { background: #171a21; color: #ffffff; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
+        .steam-login-btn:hover { background: #0f1115; }
+        .steam-login-btn.secondary { background: rgba(23,26,33,0.7); color: #ffffff; }
+
+        .login-overlay {
+            position: fixed;
+            inset: 0;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(12px);
+        }
+        .login-modal {
+            width: min(420px, 90vw);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .login-modal h3 { margin: 0; font-size: 20px; }
+        .login-modal p { margin: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+        .login-modal-actions { display: flex; flex-direction: column; gap: 10px; }
+        .login-skip { background: transparent; border: none; color: var(--text-secondary); font-size: 13px; cursor: pointer; text-decoration: underline; }
+        .login-skip:hover { color: var(--text-primary); }
+
+        .app-blurred #sidebar,
+        .app-blurred .content-wrapper {
+            filter: blur(8px);
+            pointer-events: none;
+        }
+
+        @media (max-width: 1024px) {
+            header { grid-template-columns: 1fr; height: auto; row-gap: 12px; padding: 12px 16px; }
+            .header-right { justify-self: start; flex-wrap: wrap; width: 100%; }
+            .auth-panel { width: 100%; justify-content: space-between; }
+            .header-toolbar { flex-wrap: wrap; }
+            .top-controls { width: 100%; justify-content: flex-end; }
+        }
 
         /* --- Stats Dashboard --- */
         .stats-dashboard { display: flex; flex-direction: column; gap: 20px; max-width: 1200px; margin: 0 auto; }
@@ -304,7 +377,21 @@
 </head>
 <body data-initial-view="{{ initial_view or 'servers' }}">
 
-<div id="app" :style="isMobile ? {} : { display: 'flex', width: '100%', height: '100%' }" @click="closeDropdowns">
+<div id="app" :class="{ 'app-blurred': showLoginPrompt }" :style="isMobile ? {} : { display: 'flex', width: '100%', height: '100%' }" @click="closeDropdowns">
+
+    <div class="login-overlay" v-if="showLoginPrompt">
+        <div class="login-modal">
+            <h3>[[ t('steam_prompt_title') ]]</h3>
+            <p>[[ t('steam_prompt_desc') ]]</p>
+            <div class="login-modal-actions">
+                <button class="auth-btn steam-login-btn" @click.stop="startSteamLogin">
+                    <img class="steam-logo" src="https://cdn.cloudflare.steamstatic.com/store/favicon.ico" alt="Steam">
+                    [[ t('steam_login') ]]
+                </button>
+                <button class="login-skip" @click.stop="dismissLoginPrompt">[[ t('steam_skip') ]]</button>
+            </div>
+        </div>
+    </div>
 
     <div id="sidebar" :class="{ collapsed: isCollapsed }" @click.stop>
         <button class="hamburger-btn" @click="toggleSidebar">
@@ -344,13 +431,19 @@
             <div class="tooltip" v-if="isCollapsed">[[ t('sub_menu') ]]</div>
         </div>
 
-        <div class="nav-item" :class="{active: curView === 'stats'}" @click="goToView('stats')">
+        <div class="nav-item" v-if="isLoggedIn" :class="{active: curView === 'stats', disabled: !isLoggedIn}" @click="goToView('stats')">
             <div class="icon-svg" v-html="icons.stats"></div>
             <div v-if="!isCollapsed" style="display:flex; flex-direction:column; justify-content:center; line-height:1.2;">
                 <span>[[ t('stats') ]]</span>
                 <span style="font-size: 10px; opacity: 0.7;">[[ t('stats_note') ]]</span>
+                <span v-if="!isLoggedIn" style="font-size: 10px; opacity: 0.7;">[[ t('login_required_short') ]]</span>
             </div>
             <div class="tooltip" v-if="isCollapsed">[[ t('stats') ]]</div>
+        </div>
+        <div class="nav-item" v-if="isLoggedIn" :class="{active: curView === 'feedback', disabled: !isLoggedIn}" @click="goToView('feedback')">
+            <div class="icon-svg" v-html="icons.feedback"></div>
+            <span v-if="!isCollapsed">[[ t('feedback') ]]</span>
+            <div class="tooltip" v-if="isCollapsed">[[ t('feedback') ]]</div>
         </div>
         <div class="nav-item" @click="openMapLink" v-if="hasFeature('map_cd')">
             <div class="icon-svg" v-html="icons.map"></div>
@@ -379,10 +472,21 @@
                     <h1 v-if="curView === 'servers'">[[ t('app_title') ]]</h1>
                     <h1 v-if="curView === 'map_sub'">[[ t('sub_menu') ]]</h1>
                     <h1 v-if="curView === 'stats'">[[ t('stats') ]]</h1>
+                    <h1 v-if="curView === 'feedback'">[[ t('feedback') ]]</h1>
                 </div>
             </div>
 
             <div class="header-right">
+                <div class="auth-panel">
+                    <div class="auth-actions">
+                        <button class="auth-btn steam-login-btn" v-if="!isLoggedIn" @click.stop="startSteamLogin">
+                            <img class="steam-logo" src="https://cdn.cloudflare.steamstatic.com/store/favicon.ico" alt="Steam">
+                            [[ t('steam_login') ]]
+                        </button>
+                        <button class="auth-btn secondary" v-if="steamAuthPending" @click.stop="completeSteamLogin">[[ t('steam_done') ]]</button>
+                        <button class="auth-btn secondary" v-if="isLoggedIn" @click.stop="logout">[[ t('logout') ]]</button>
+                    </div>
+                </div>
                 <div class="header-toolbar" v-if="curView === 'servers'">
                     <button class="toolbar-btn" @click.stop="toggleViewMode" :title="t('switch_view')">
                         <div class="icon-svg" v-html="viewMode === 'grid' ? icons.list : icons.grid"></div>
@@ -472,8 +576,8 @@
                                 </div>
                                 <div class="actions">
                                     <a :href="getConnectUrl(s, comm.game)" class="btn btn-primary">[[ t('join') ]]</a>
-                                    <button class="btn btn-sec" @click="copyCmd(s)">[[ t('copy_console') ]] </button>
-                                    <button class="btn btn-sec" @click="copyIp(s)">[[ t('copy_ip') ]]</button>
+                                    <button class="btn btn-sec" v-if="isLoggedIn" @click="copyCmd(s)">[[ t('copy_console') ]] </button>
+                                    <button class="btn btn-sec" v-if="isLoggedIn" @click="copyIp(s)">[[ t('copy_ip') ]]</button>
                                 </div>
                             </div>
                         </div>
@@ -485,7 +589,11 @@
                             <div class="col-name" :title="s.name">[[ s.name ]]</div>
                             <div class="col-map"><span class="map-name">[[ s.map || '-' ]]</span><span class="col-map-cn" v-if="isChineseLang">[[ getServerMapTranslation(s) || (s.map!='-' ? t('no_trans') : '') ]]</span></div>
                             <div class="col-players">[[ s.players ]]/[[ s.max_players ]]</div>
-                            <div class="col-actions"><a :href="getConnectUrl(s, comm.game)" class="btn btn-primary">[[ t('join') ]]</a><button class="btn btn-sec" @click="copyCmd(s)">[[ t('copy_console') ]] </button><button class="btn btn-sec" @click="copyIp(s)">[[ t('copy_ip') ]]</button></div>
+                            <div class="col-actions">
+                                <a :href="getConnectUrl(s, comm.game)" class="btn btn-primary">[[ t('join') ]]</a>
+                                <button class="btn btn-sec" v-if="isLoggedIn" @click="copyCmd(s)">[[ t('copy_console') ]] </button>
+                                <button class="btn btn-sec" v-if="isLoggedIn" @click="copyIp(s)">[[ t('copy_ip') ]]</button>
+                            </div>
                         </div>
                     </div>
 
@@ -558,7 +666,7 @@
             </div>
             
             <div v-if="curView === 'stats'" class="animate-enter">
-                <div class="stats-dashboard">
+                <div v-if="isLoggedIn" class="stats-dashboard">
                     <div class="stats-summary-row">
                         <div class="summary-card">
                             <div class="summary-label">[[ t('stats_total_label') ]]</div>
@@ -598,9 +706,36 @@
                         </div>
                     </div>
                 </div>
+                <div v-else class="login-required">
+                    <strong>[[ t('login_required_title') ]]</strong>
+                    <div>[[ t('login_required_stats') ]]</div>
+                </div>
+            </div>
+
+            <div v-if="curView === 'feedback'" class="animate-enter">
+                <div v-if="!isLoggedIn" class="login-required">
+                    <strong>[[ t('login_required_title') ]]</strong>
+                    <div>[[ t('login_required_feedback') ]]</div>
+                </div>
+                <div v-else class="feedback-panel">
+                    <h3>[[ t('feedback_title') ]]</h3>
+                    <p>[[ t('feedback_desc') ]]</p>
+                    <div class="feedback-field">
+                        <label>[[ t('feedback_subject') ]]</label>
+                        <input type="text" v-model="feedbackSubject" :placeholder="t('feedback_subject_ph')">
+                    </div>
+                    <div class="feedback-field">
+                        <label>[[ t('feedback_message') ]]</label>
+                        <textarea v-model="feedbackMessage" :placeholder="t('feedback_message_ph')"></textarea>
+                    </div>
+                    <div class="feedback-meta">
+                        <span>[[ t('feedback_role') ]]: [[ authRoleLabel ]]</span>
+                        <span>[[ t('feedback_notice') ]]</span>
+                    </div>
+                    <button class="auth-btn" style="align-self: flex-start;" @click="submitFeedback">[[ t('feedback_submit') ]]</button>
+                </div>
             </div>
         </div>
-        
         <div class="fixed-logo"><img :src="currentLogoPath" alt="NERV_Logo"></div>
     </div>
     <div class="toast" v-if="toastMsg" :class="{show: toastMsg}">[[ toastMsg ]]</div>
@@ -613,6 +748,7 @@ const ICONS = {
     map: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M8.5 4.358v12.465l-4.32 3.038a.75.75 0 0 1-1.174-.509l-.007-.104V8.615a.75.75 0 0 1 .238-.548l.08-.065L8.5 4.358Zm12.494.29.007.104v10.633a.75.75 0 0 1-.238.548l-.08.065L15.5 19.64V7.174l4.32-3.035a.75.75 0 0 1 1.174.509ZM10 4.359l4 2.812v12.467l-4-2.814V4.359Z" fill="currentColor"/></svg>`,
     server: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 2a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V5a3 3 0 0 0-3-3H9Zm-.5 4.75A.75.75 0 0 1 9.25 6h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75Zm0 11a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75Zm0-3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75Z" fill="currentColor"/></svg>`,
     stats: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 5.23a2.25 2.25 0 0 1 2.25-2.25h1.5A2.25 2.25 0 0 1 15 5.23V21H9V5.23ZM7.5 10H5.25A2.25 2.25 0 0 0 3 12.25v8c0 .415.336.75.75.75H7.5V10ZM16.5 21h3.75a.75.75 0 0 0 .75-.75v-11A2.25 2.25 0 0 0 18.75 7H16.5v14Z" fill="currentColor"/></svg>`,
+    feedback: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4l3.2 3.2a.75.75 0 0 0 1.28-.53V17H19a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5Zm2.5 5.75a.75.75 0 0 1 .75-.75h7a.75.75 0 0 1 0 1.5h-7a.75.75 0 0 1-.75-.75Zm.75 3.25a.75.75 0 0 0 0 1.5H13a.75.75 0 0 0 0-1.5H8.25Z" fill="currentColor"/></svg>`,
     lang: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M18 2a1 1 0 1 0-2 0v1h-4a1 1 0 0 0-1 1v1.25a1 1 0 1 0 2 0V5h8v.25a1 1 0 1 0 2 0V4a1 1 0 0 0-1-1h-4V2ZM8.563 7.505l.056.117 5.307 13.005a1 1 0 0 1-1.801.86l-.05-.105L10.692 18H4.407l-1.49 3.407a1 1 0 0 1-1.208.555l-.11-.04a1 1 0 0 1-.555-1.208l.04-.11L6.777 7.6c.337-.77 1.395-.795 1.786-.094Zm-.902 3.062L5.282 16h4.595l-2.216-5.432ZM13.499 7a1 1 0 0 1 1-1h5a1 1 0 0 1 .708 1.707L18.414 9.5H22a1 1 0 1 1 0 2h-4v2.984a2.5 2.5 0 0 1-3.219 2.394l-.569-.17a1 1 0 1 1 .575-1.916l.569.17a.5.5 0 0 0 .643-.478V11.5H12a1 1 0 1 1 0-2h4a1 1 0 0 1 .292-.707L17.085 8H14.5a1 1 0 0 1-1-1Z" fill="currentColor"/></svg>`,
     theme: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Zm0-2V4a8 8 0 1 1 0 16Z" fill="currentColor"/></svg>`,
     grid: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6Zm10-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V6ZM4 16a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4Zm10-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-4Z" fill="currentColor"/></svg>`,
@@ -627,7 +763,7 @@ const ICONS = {
 
 const LOGO_PATHS = { B: '/static/NERV_Logo.png', W: '/static/NERV_Logo.png' };
 const FAVICON_PATHS = { light: '/static/NERV_Logo.png', dark: '/static/NERV_Logo.png' };
-const VIEW_ROUTES = { servers: '/', map_sub: '/map-sub', stats: '/stats' };
+const VIEW_ROUTES = { servers: '/', map_sub: '/map-sub', stats: '/stats', feedback: '/feedback' };
 
 createApp({
     delimiters: ['[[', ']]'],
@@ -648,6 +784,11 @@ createApp({
         const sortByPlayers = ref(false);
         const serverMapQuery = ref('');
         const serverMapQueryInput = ref('');
+        const authState = ref({ loggedIn: false, role: 'guest' });
+        const steamAuthPending = ref(false);
+        const showLoginPrompt = ref(false);
+        const feedbackSubject = ref('');
+        const feedbackMessage = ref('');
         
         const currentStats = ref([]);
         const totalPlayers = ref(0);
@@ -673,6 +814,13 @@ createApp({
         else if (sysLang.match(/HK|TW|MO/)) defaultLang = 'zh-TW';
         const curLang = ref(defaultLang);
 
+        const ROLE_LABELS = {
+            guest: { label: 'Guest' },
+            member: { label: 'Member' },
+            prime: { label: 'Prime' },
+            admin: { label: 'Admin' }
+        };
+
         const I18N = {
             'zh-CN': {
                 app_title: 'NERV CS2僵尸逃跑启动器',
@@ -680,12 +828,37 @@ createApp({
                 mapcd: '地图冷却',
                 stats: '数据统计',
                 stats_note: '仅ZE',
+                feedback: '反馈中心',
                 map: '地图',
                 players: '人数',
                 offline: '离线',
                 join: '进入游戏',
                 copy_console: '复制命令',
                 copy_ip: '复制IP',
+                steam_login: '使用Steam登录',
+                steam_done: '完成授权',
+                logout: '退出登录',
+                steam_prompt_title: '使用 Steam 登录',
+                steam_prompt_desc: '登录后可使用复制命令、复制 IP、查看统计数据与反馈功能。',
+                steam_skip: '暂不登录',
+                login_as: '已登录',
+                guest_mode: '访客模式',
+                login_required_title: '需要登录',
+                login_required_short: '需登录',
+                login_required_stats: '请使用 Steam 授权登录后查看服务器统计信息。',
+                login_required_feedback: '请使用 Steam 授权登录后向管理员反馈。',
+                feedback_title: '向管理员反馈',
+                feedback_desc: '请详细描述你的问题或建议，管理员会在后台处理。',
+                feedback_subject: '反馈标题',
+                feedback_subject_ph: '例如：服务器延迟偏高',
+                feedback_message: '反馈内容',
+                feedback_message_ph: '请描述问题发生的时间、服务器名、截图等信息...',
+                feedback_role: '当前权限组',
+                feedback_notice: 'Prime 与 Member 暂时拥有相同权限。',
+                feedback_submit: '提交反馈',
+                feedback_sent: '反馈已发送，管理员将尽快处理。',
+                feedback_required: '请填写标题或反馈内容。',
+                login_required_copy: '请先使用 Steam 登录后再复制。',
                 exg_only: '仅限 EXG',
                 stats_title: 'ZE 在线趋势 (48小时)',
                 stats_time_note: '时间为你的本地时间',
@@ -731,12 +904,37 @@ createApp({
                 mapcd: '地圖冷卻',
                 stats: '數據統計',
                 stats_note: '僅ZE',
+                feedback: '回饋中心',
                 map: '地圖',
                 players: '人數',
                 offline: '離線',
                 join: '進入遊戲',
                 copy_console: '複製命令',
                 copy_ip: '複製IP',
+                steam_login: '使用Steam登入',
+                steam_done: '完成授權',
+                logout: '登出',
+                steam_prompt_title: '使用 Steam 登入',
+                steam_prompt_desc: '登入後可使用複製命令、複製 IP、查看統計資料與回饋功能。',
+                steam_skip: '暫不登入',
+                login_as: '已登入',
+                guest_mode: '訪客模式',
+                login_required_title: '需要登入',
+                login_required_short: '需登入',
+                login_required_stats: '請使用 Steam 授權登入後查看伺服器統計資訊。',
+                login_required_feedback: '請使用 Steam 授權登入後向管理員回饋。',
+                feedback_title: '向管理員回饋',
+                feedback_desc: '請詳細描述你的問題或建議，管理員會在後台處理。',
+                feedback_subject: '回饋標題',
+                feedback_subject_ph: '例如：伺服器延遲偏高',
+                feedback_message: '回饋內容',
+                feedback_message_ph: '請描述問題發生時間、伺服器名稱、截圖等資訊...',
+                feedback_role: '目前權限組',
+                feedback_notice: 'Prime 與 Member 暫時擁有相同權限。',
+                feedback_submit: '提交回饋',
+                feedback_sent: '回饋已送出，管理員將儘快處理。',
+                feedback_required: '請填寫標題或回饋內容。',
+                login_required_copy: '請先使用 Steam 登入後再複製。',
                 exg_only: '僅限 EXG',
                 stats_title: 'ZE 在線趨勢 (48小時)',
                 stats_time_note: '時間為你的本地時間',
@@ -782,12 +980,37 @@ createApp({
                 mapcd: 'Map CD',
                 stats: 'Statistics',
                 stats_note: 'ZE Only',
+                feedback: 'Feedback',
                 map: 'Map',
                 players: 'Players',
                 offline: 'Offline',
                 join: 'Join',
                 copy_console: 'Console CMD',
                 copy_ip: 'Copy IP',
+                steam_login: 'Sign in with Steam',
+                steam_done: 'Authorization Done',
+                logout: 'Sign out',
+                steam_prompt_title: 'Sign in with Steam',
+                steam_prompt_desc: 'Sign in to copy commands/IPs, view stats, and send feedback.',
+                steam_skip: 'Skip for now',
+                login_as: 'Signed in',
+                guest_mode: 'Guest',
+                login_required_title: 'Login Required',
+                login_required_short: 'Login required',
+                login_required_stats: 'Please sign in with Steam to view server statistics.',
+                login_required_feedback: 'Please sign in with Steam to send feedback to Admin.',
+                feedback_title: 'Send Feedback to Admin',
+                feedback_desc: 'Share details about your issue or suggestion. Admin will review it.',
+                feedback_subject: 'Subject',
+                feedback_subject_ph: 'e.g. High server latency',
+                feedback_message: 'Message',
+                feedback_message_ph: 'Describe the time, server name, screenshots, etc.',
+                feedback_role: 'Current Role',
+                feedback_notice: 'Prime currently has the same permissions as Member.',
+                feedback_submit: 'Submit Feedback',
+                feedback_sent: 'Feedback sent. Admin will review it shortly.',
+                feedback_required: 'Please fill in a subject or message.',
+                login_required_copy: 'Please sign in with Steam before copying.',
                 exg_only: 'EXG Only',
                 stats_title: 'ZE Player Trend (48h)',
                 stats_time_note: 'Times shown are your local time.',
@@ -830,6 +1053,9 @@ createApp({
         };
 
         const t = (key) => I18N[curLang.value][key] || I18N['en'][key];
+        const isLoggedIn = computed(() => authState.value.loggedIn);
+        const authRoleLabel = computed(() => ROLE_LABELS[authState.value.role]?.label || ROLE_LABELS.guest.label);
+        const authRoleClass = computed(() => authState.value.role);
         const formatTemplate = (template, vars = {}) => template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? '');
         const langLabel = computed(() => curLang.value === 'zh-CN' ? '简体中文' : (curLang.value === 'zh-TW' ? '繁體中文' : 'English'));
         const isChineseLang = computed(() => curLang.value.includes('zh'));
@@ -880,6 +1106,19 @@ createApp({
                 const savedView = localStorage.getItem('view_mode');
                 if(savedView) viewMode.value = savedView;
             } catch(e) {}
+
+            try {
+                const savedAuth = localStorage.getItem('auth_state');
+                if (savedAuth) {
+                    const parsed = JSON.parse(savedAuth);
+                    if (parsed && typeof parsed.loggedIn === 'boolean') {
+                        authState.value = {
+                            loggedIn: parsed.loggedIn,
+                            role: ROLE_LABELS[parsed.role] ? parsed.role : (parsed.loggedIn ? 'member' : 'guest')
+                        };
+                    }
+                }
+            } catch(e) { localStorage.removeItem('auth_state'); authState.value = { loggedIn: false, role: 'guest' }; }
             
             try {
                 const subs = localStorage.getItem('map_subs');
@@ -895,7 +1134,17 @@ createApp({
 
             await loadTranslations();
             await fetchConfig();
-            if (initialView === 'stats') {
+            if ((initialView === 'stats' || initialView === 'feedback') && !isLoggedIn.value) {
+                curView.value = 'servers';
+                toastMsg.value = t('login_required_title');
+            }
+            if (!isMobile.value) {
+                const dismissed = localStorage.getItem('steam_prompt_dismissed');
+                if (!isLoggedIn.value && dismissed !== 'true') {
+                    showLoginPrompt.value = true;
+                }
+            }
+            if (initialView === 'stats' && isLoggedIn.value) {
                 await loadStats();
             }
         });
@@ -933,8 +1182,47 @@ createApp({
         const toggleEditMode = () => isEditMode.value = !isEditMode.value;
         const toggleSortByPlayers = () => sortByPlayers.value = !sortByPlayers.value;
 
+        const saveAuthState = (next) => {
+            authState.value = next;
+            try {
+                localStorage.setItem('auth_state', JSON.stringify(next));
+            } catch(e) {}
+        };
+
+        const startSteamLogin = () => {
+            steamAuthPending.value = true;
+            const steamUrl = 'https://steamcommunity.com/openid/login';
+            window.open(steamUrl, 'steamAuth', 'width=920,height=720');
+            showLoginPrompt.value = false;
+            localStorage.setItem('steam_prompt_dismissed', 'true');
+        };
+
+        const completeSteamLogin = () => {
+            steamAuthPending.value = false;
+            const nextRole = authState.value.role !== 'guest' ? authState.value.role : 'member';
+            saveAuthState({ loggedIn: true, role: nextRole });
+            toastMsg.value = t('login_as');
+            showLoginPrompt.value = false;
+            localStorage.setItem('steam_prompt_dismissed', 'true');
+        };
+
+        const logout = () => {
+            steamAuthPending.value = false;
+            saveAuthState({ loggedIn: false, role: 'guest' });
+            toastMsg.value = t('guest_mode');
+        };
+
+        const dismissLoginPrompt = () => {
+            showLoginPrompt.value = false;
+            localStorage.setItem('steam_prompt_dismissed', 'true');
+        };
+
         const hasFeature = (feat) => communities.value.some(c => c.features.includes(feat));
         const goToView = (view) => {
+            if ((view === 'stats' || view === 'feedback') && !isLoggedIn.value) {
+                toastMsg.value = t('login_required_title');
+                return;
+            }
             const target = VIEW_ROUTES[view] || '/';
             if (window.location.pathname !== target) {
                 window.location.href = target;
@@ -1287,6 +1575,9 @@ createApp({
         };
 
         const loadStats = async () => {
+            if (!isLoggedIn.value) {
+                return;
+            }
             try {
                 await loadChartJs();
             } catch (e) {
@@ -1384,12 +1675,34 @@ createApp({
         };
 
         const copyCmd = (srv) => {
+            if (!isLoggedIn.value) {
+                toastMsg.value = t('login_required_copy');
+                setTimeout(()=>toastMsg.value='', 3000);
+                return;
+            }
             const address = getConnectAddress(srv);
             copyText(`connect ${address}`);
         };
         const copyIp = (srv) => {
+            if (!isLoggedIn.value) {
+                toastMsg.value = t('login_required_copy');
+                setTimeout(()=>toastMsg.value='', 3000);
+                return;
+            }
             const address = getConnectAddress(srv);
             copyText(address);
+        };
+
+        const submitFeedback = () => {
+            if (!feedbackSubject.value.trim() && !feedbackMessage.value.trim()) {
+                toastMsg.value = t('feedback_required');
+                setTimeout(()=>toastMsg.value='', 3000);
+                return;
+            }
+            feedbackSubject.value = '';
+            feedbackMessage.value = '';
+            toastMsg.value = t('feedback_sent');
+            setTimeout(()=>toastMsg.value='', 3000);
         };
         // ------------------------------------------
 
@@ -1406,7 +1719,10 @@ createApp({
             notificationPermission, requestPerm,
             showSubPopover, toggleSubPopover, toggleLangMenu, goToSubPage, closeDropdowns,
             currentStats, totalPlayers, totalPeak48h, topCommunity,
-            filteredCommunities, serverSearchNotice
+            filteredCommunities, serverSearchNotice,
+            isLoggedIn, authRoleLabel, authRoleClass, steamAuthPending,
+            startSteamLogin, completeSteamLogin, logout, showLoginPrompt, dismissLoginPrompt,
+            feedbackSubject, feedbackMessage, submitFeedback
         };
     }
 }).mount('#app');
