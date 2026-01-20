@@ -2,9 +2,7 @@ import json
 import time
 import sqlite3
 import requests
-import sys
 import os
-import base64
 import threading
 import colorsys
 import socket
@@ -35,6 +33,7 @@ app = Flask(__name__, static_folder=STATIC_DIR)
 # --- 基础配置 ---
 CONFIG_FILE = 'config.json'
 TRANS_FILE = 'map_translations.json'
+LANGUAGE_FILE = 'language.json'
 DB_FILE = "stats.db"
 STATIC_MAP_DIR = os.path.join(STATIC_DIR, 'maps')
 
@@ -63,11 +62,11 @@ MAP_TRANS_DIRTY = False
 MAP_TRANS_LAST_WRITE = 0
 MAP_CACHE_UPDATED_AT = 0
 CACHE_REFRESH_INTERVAL_SECONDS = 300
-OPENCC = OpenCC('s2t') if OpenCC else None
+OPENCC_S2T = OpenCC('s2t') if OpenCC else None
+OPENCC_S2HK = OpenCC('s2hk') if OpenCC else None
+OPENCC_S2TWP = OpenCC('s2twp') if OpenCC else None
 
-EXG_SERVER_STALE_SECONDS = 15
 EXG_FETCH_INTERVAL_SECONDS = 15
-HTTP_SESSION = requests.Session()
 EXG_VERIFY_SSL = os.environ.get('EXG_VERIFY_SSL', 'true').lower() in ('1', 'true', 'yes')
 
 EXG_STATS_EXCLUDE_KEYWORDS = ("pve", "大厅", "躲猫猫", "mg")
@@ -156,9 +155,9 @@ def convert_to_traditional(text):
     if not text:
         return ''
     try:
-        if not OPENCC:
+        if not OPENCC_S2T:
             return text
-        return OPENCC.convert(text)
+        return OPENCC_S2T.convert(text)
     except Exception:
         return text
 
@@ -339,6 +338,9 @@ def fetch_exg_data_from_api():
     返回格式与 A2S 查询结果一致
     """
     global EXG_CACHE, EXG_CACHE_UPDATED_AT
+    now = int(time.time())
+    if EXG_CACHE and (now - EXG_CACHE_UPDATED_AT) < EXG_FETCH_INTERVAL_SECONDS:
+        return EXG_CACHE
     servers = []
     success = False
     
@@ -425,7 +427,7 @@ def fetch_exg_data_from_api():
                     continue
             
             EXG_CACHE = servers
-            EXG_CACHE_UPDATED_AT = int(time.time())
+            EXG_CACHE_UPDATED_AT = now
             print(f"[EXG API] 成功获取 {len(servers)} 个服务器")
                     
         else:
@@ -518,7 +520,7 @@ def count_players_for_stats(cid, servers):
 
 def update_single_comm(comm):
     """更新单个社区数据并写入缓存"""
-    global SERVER_CACHE, EXG_CACHE_UPDATED_AT
+    global SERVER_CACHE
     cid = comm['id']
     result = []
     now = int(time.time())
@@ -825,6 +827,30 @@ def update_agent_data():
 @app.route('/api/map_translations')
 def get_translations():
     return jsonify(MAP_TRANS_CACHE)
+
+@app.route('/api/language')
+def get_language_pack():
+    try:
+        if os.path.exists(LANGUAGE_FILE):
+            with open(LANGUAGE_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                zh_cn = data.get('zh-CN')
+                if isinstance(zh_cn, dict):
+                    if 'zh-TW' not in data:
+                        if OPENCC_S2TWP:
+                            data['zh-TW'] = {key: OPENCC_S2TWP.convert(str(value)) for key, value in zh_cn.items()}
+                        else:
+                            data['zh-TW'] = dict(zh_cn)
+                    if 'zh-HK' not in data:
+                        if OPENCC_S2HK:
+                            data['zh-HK'] = {key: OPENCC_S2HK.convert(str(value)) for key, value in zh_cn.items()}
+                        else:
+                            data['zh-HK'] = dict(zh_cn)
+                return jsonify(data)
+    except Exception as e:
+        print(f"[Language] 加载失败: {e}")
+    return jsonify({})
 
 @app.route('/api/stats')
 def get_stats():
