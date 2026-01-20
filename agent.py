@@ -89,7 +89,8 @@ def fetch_server_data(server_cfg):
             "query_source": "a2s"
         })
         return res
-    except: pass
+    except Exception:
+        pass
 
     # 2. Steam API 兜底 (前提是 Key 解密成功)
     if STEAM_API_KEY:
@@ -108,7 +109,8 @@ def fetch_server_data(server_cfg):
                         "ping": -1,
                         "query_source": "steam_api"
                     })
-        except: pass
+        except Exception:
+            pass
 
     return res
 
