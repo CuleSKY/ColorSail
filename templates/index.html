@@ -230,6 +230,12 @@
         .steam-login-btn { background: #171a21; color: #ffffff; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
         .steam-login-btn:hover { background: #0f1115; }
         .steam-login-btn.secondary { background: rgba(23,26,33,0.7); color: #ffffff; }
+        .profile-btn { background: transparent; border: 1px solid var(--card-border); border-radius: 999px; padding: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color 0.2s; }
+        .profile-btn:hover { border-color: var(--accent); }
+        .profile-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; display: block; }
+        .profile-menu { min-width: 200px; }
+        .profile-name { font-weight: 600; color: var(--text-primary); }
+        .logout-item { color: #ff5d5d; font-weight: 600; }
 
         .login-overlay {
             position: fixed;
@@ -384,8 +390,8 @@
             <h3>[[ t('steam_prompt_title') ]]</h3>
             <p>[[ t('steam_prompt_desc') ]]</p>
             <div class="login-modal-actions">
-                <button class="auth-btn steam-login-btn" @click.stop="startSteamLogin">
-                    <img class="steam-logo" src="https://cdn.cloudflare.steamstatic.com/store/favicon.ico" alt="Steam">
+                <button class="auth-btn steam-login-btn" :disabled="steamAuthPending" @click.stop="startSteamLogin">
+                    <img class="steam-logo" :src="steamLogoPath" alt="Steam">
                     [[ t('steam_login') ]]
                 </button>
                 <button class="login-skip" @click.stop="dismissLoginPrompt">[[ t('steam_skip') ]]</button>
@@ -477,14 +483,21 @@
             </div>
 
             <div class="header-right">
-                <div class="auth-panel">
+                <div class="auth-panel" v-if="!isMobile">
                     <div class="auth-actions">
-                        <button class="auth-btn steam-login-btn" v-if="!isLoggedIn" @click.stop="startSteamLogin">
-                            <img class="steam-logo" src="https://cdn.cloudflare.steamstatic.com/store/favicon.ico" alt="Steam">
+                        <button class="auth-btn steam-login-btn" v-if="!isLoggedIn" :disabled="steamAuthPending" @click.stop="startSteamLogin">
+                            <img class="steam-logo" :src="steamLogoPath" alt="Steam">
                             [[ t('steam_login') ]]
                         </button>
-                        <button class="auth-btn secondary" v-if="steamAuthPending" @click.stop="completeSteamLogin">[[ t('steam_done') ]]</button>
-                        <button class="auth-btn secondary" v-if="isLoggedIn" @click.stop="logout">[[ t('logout') ]]</button>
+                        <div v-if="isLoggedIn" style="position: relative;">
+                            <button class="profile-btn" @click.stop="toggleProfileMenu">
+                                <img class="profile-avatar" :src="steamProfileAvatar" alt="Steam Avatar">
+                            </button>
+                            <div class="dropdown-menu profile-menu" :class="{show: showProfileMenu}" @click.stop>
+                                <div class="dropdown-item profile-name">[[ steamProfileName ]]</div>
+                                <div class="dropdown-item logout-item" @click.stop="logout">[[ t('logout') ]]</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="header-toolbar" v-if="curView === 'servers'">
@@ -536,7 +549,7 @@
 
         <div class="community-nav" v-if="curView === 'servers'">
             <div class="jump-pill" v-for="comm in filteredCommunities" :key="comm.id" @click="scrollToComm(comm.id)">
-                <img v-if="comm.logo" :src="comm.logo">
+                <img v-if="getCommunityLogo(comm)" :src="getCommunityLogo(comm)">
                 <span>[[ comm.name ]]</span>
             </div>
         </div>
@@ -554,7 +567,7 @@
                 <div v-for="comm in filteredCommunities" :key="comm.id" :id="'comm-' + comm.id" style="margin-bottom: 40px;">
                     <h3 class="desktop-header" v-if="!isMobile" style="border-left: 4px solid var(--accent); padding-left: 10px; margin: 0 0 16px 0;">[[ comm.name ]]</h3>
                     <div class="community-title-bar" v-if="isMobile" :id="'comm-mob-' + comm.id">
-                        <img v-if="comm.logo" :src="comm.logo">
+                        <img v-if="getCommunityLogo(comm)" :src="getCommunityLogo(comm)">
                         [[ comm.name ]]
                     </div>
 
@@ -712,26 +725,9 @@
             </div>
 
             <div v-if="curView === 'feedback'" class="animate-enter">
-                <div v-if="!isLoggedIn" class="login-required">
-                    <strong>[[ t('login_required_title') ]]</strong>
-                    <div>[[ t('login_required_feedback') ]]</div>
-                </div>
-                <div v-else class="feedback-panel">
-                    <h3>[[ t('feedback_title') ]]</h3>
-                    <p>[[ t('feedback_desc') ]]</p>
-                    <div class="feedback-field">
-                        <label>[[ t('feedback_subject') ]]</label>
-                        <input type="text" v-model="feedbackSubject" :placeholder="t('feedback_subject_ph')">
-                    </div>
-                    <div class="feedback-field">
-                        <label>[[ t('feedback_message') ]]</label>
-                        <textarea v-model="feedbackMessage" :placeholder="t('feedback_message_ph')"></textarea>
-                    </div>
-                    <div class="feedback-meta">
-                        <span>[[ t('feedback_role') ]]: [[ authRoleLabel ]]</span>
-                        <span>[[ t('feedback_notice') ]]</span>
-                    </div>
-                    <button class="auth-btn" style="align-self: flex-start;" @click="submitFeedback">[[ t('feedback_submit') ]]</button>
+                <div class="feedback-panel">
+                    <h3>反馈功能开发中</h3>
+                    <p>该页面暂时关闭，我们正在完善反馈功能，请稍后再试。</p>
                 </div>
             </div>
         </div>
@@ -740,6 +736,9 @@
     <div class="toast" v-if="toastMsg" :class="{show: toastMsg}">[[ toastMsg ]]</div>
 </div>
 
+<script>
+window.__INITIAL_CONFIG__ = {{ initial_config|tojson }};
+</script>
 <script>
 const { createApp, ref, computed, onMounted, onUnmounted, watch } = Vue;
 
@@ -762,12 +761,14 @@ const ICONS = {
 
 const LOGO_PATHS = { B: '/static/NERV_Logo.png', W: '/static/NERV_Logo.png' };
 const FAVICON_PATHS = { light: '/static/NERV_Logo.png', dark: '/static/NERV_Logo.png' };
+const STEAM_LOGO_PATHS = { light: '/static/Steam_Logo_Dark.png', dark: '/static/Steam_Logo_Light.png' };
 const VIEW_ROUTES = { servers: '/', map_sub: '/map-sub', stats: '/stats', feedback: '/feedback' };
+const INITIAL_CONFIG = window.__INITIAL_CONFIG__ || [];
 
 createApp({
     delimiters: ['[[', ']]'],
     setup() {
-        const communities = ref([]);
+        const communities = ref(Array.isArray(INITIAL_CONFIG) ? INITIAL_CONFIG : []);
         const servers = ref({});
         const serverCache = ref({});
         const initialView = document.body.dataset.initialView || 'servers';
@@ -776,7 +777,8 @@ createApp({
         const isCollapsed = ref(false); 
         const showLangMenu = ref(false);
         const showSubPopover = ref(false); 
-        const viewMode = ref('grid');
+        const showProfileMenu = ref(false);
+        const viewMode = ref('list');
         const isDark = ref(window.matchMedia('(prefers-color-scheme: dark)').matches);
         const isMobile = ref(window.innerWidth <= 768);
         const isEditMode = ref(false);
@@ -785,6 +787,7 @@ createApp({
         const serverMapQueryInput = ref('');
         const authState = ref({ loggedIn: false, role: 'guest' });
         const steamAuthPending = ref(false);
+        const steamProfile = ref({ name: null, avatar: null });
         const showLoginPrompt = ref(false);
         const feedbackSubject = ref('');
         const feedbackMessage = ref('');
@@ -837,6 +840,15 @@ createApp({
         const langLabel = computed(() => (curLang.value || '').startsWith('zh') ? '中文' : 'English');
         const isChineseLang = computed(() => curLang.value.includes('zh'));
         const currentLogoPath = computed(() => isDark.value ? LOGO_PATHS.W : LOGO_PATHS.B);
+        const steamLogoPath = computed(() => isDark.value ? STEAM_LOGO_PATHS.dark : STEAM_LOGO_PATHS.light);
+        const steamProfileName = computed(() => steamProfile.value.name || 'Steam User');
+        const steamProfileAvatar = computed(() => steamProfile.value.avatar || steamLogoPath.value);
+        const getCommunityLogo = (comm) => {
+            if (!comm) return '';
+            if (isDark.value && comm.logo_dark) return comm.logo_dark;
+            if (!isDark.value && comm.logo_light) return comm.logo_light;
+            return comm.logo || '';
+        };
         let searchDebounceTimer = null;
         watch(serverMapQueryInput, (next) => {
             if (searchDebounceTimer) {
@@ -859,16 +871,57 @@ createApp({
         
         const handleGlobalClick = (e) => {
             const target = e.target;
-            const inLang = target.closest('.dropdown-menu') || target.closest('.control-btn');
+            const inLang = target.closest('.dropdown-menu') || target.closest('.control-btn') || target.closest('.profile-btn');
             if (!inLang) {
                 showLangMenu.value = false;
                 showSubPopover.value = false;
+                showProfileMenu.value = false;
+            }
+        };
+
+        const fetchSteamStatus = async (silent = false) => {
+            try {
+                const res = await fetch('/api/steam/status', { credentials: 'same-origin' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                authState.value = {
+                    loggedIn: Boolean(data && data.logged_in),
+                    role: data && data.logged_in ? (data.role || 'member') : 'guest'
+                };
+                steamProfile.value = data && data.profile ? {
+                    name: data.profile.name || null,
+                    avatar: data.profile.avatar || null
+                } : { name: null, avatar: null };
+                return data;
+            } catch (e) {
+                if (!silent) {
+                    toastMsg.value = t('login_required_title');
+                }
+                authState.value = { loggedIn: false, role: 'guest' };
+                steamProfile.value = { name: null, avatar: null };
+                return null;
+            }
+        };
+
+        const handleSteamMessage = async (event) => {
+            if (event.origin !== window.location.origin) return;
+            const payload = event.data || {};
+            if (payload.type !== 'steam-auth') return;
+            steamAuthPending.value = false;
+            await fetchSteamStatus(true);
+            if (payload.status === 'ok') {
+                toastMsg.value = t('login_as');
+                showLoginPrompt.value = false;
+                localStorage.setItem('steam_prompt_dismissed', 'true');
+            } else {
+                toastMsg.value = t('steam_prompt_desc');
             }
         };
 
         onMounted(async () => {
             window.addEventListener('resize', handleResize);
             window.addEventListener('click', handleGlobalClick);
+            window.addEventListener('message', handleSteamMessage);
             
             if(isDark.value) document.documentElement.setAttribute('data-theme', 'dark');
             updateFavicon();
@@ -884,18 +937,11 @@ createApp({
                 if(savedView) viewMode.value = savedView;
             } catch(e) {}
 
-            try {
-                const savedAuth = localStorage.getItem('auth_state');
-                if (savedAuth) {
-                    const parsed = JSON.parse(savedAuth);
-                    if (parsed && typeof parsed.loggedIn === 'boolean') {
-                        authState.value = {
-                            loggedIn: parsed.loggedIn,
-                            role: ROLE_LABELS[parsed.role] ? parsed.role : (parsed.loggedIn ? 'member' : 'guest')
-                        };
-                    }
-                }
-            } catch(e) { localStorage.removeItem('auth_state'); authState.value = { loggedIn: false, role: 'guest' }; }
+            await fetchSteamStatus(true);
+
+            if (communities.value.length) {
+                applyCommunities(communities.value);
+            }
             
             try {
                 const subs = localStorage.getItem('map_subs');
@@ -930,6 +976,7 @@ createApp({
         onUnmounted(() => {
             window.removeEventListener('resize', handleResize);
             window.removeEventListener('click', handleGlobalClick);
+            window.removeEventListener('message', handleSteamMessage);
         });
 
         const toggleLangMenu = () => {
@@ -939,6 +986,11 @@ createApp({
         const toggleSubPopover = () => {
             showLangMenu.value = false;
             showSubPopover.value = !showSubPopover.value;
+        };
+        const toggleProfileMenu = () => {
+            showLangMenu.value = false;
+            showSubPopover.value = false;
+            showProfileMenu.value = !showProfileMenu.value;
         };
 
         const toggleSidebar = () => {
@@ -951,6 +1003,7 @@ createApp({
         const closeDropdowns = () => {
             showLangMenu.value = false;
             showSubPopover.value = false;
+            showProfileMenu.value = false;
         };
 
         const toggleViewMode = () => {
@@ -960,33 +1013,21 @@ createApp({
         const toggleEditMode = () => isEditMode.value = !isEditMode.value;
         const toggleSortByPlayers = () => sortByPlayers.value = !sortByPlayers.value;
 
-        const saveAuthState = (next) => {
-            authState.value = next;
-            try {
-                localStorage.setItem('auth_state', JSON.stringify(next));
-            } catch(e) {}
-        };
-
         const startSteamLogin = () => {
+            if (steamAuthPending.value) return;
             steamAuthPending.value = true;
-            const steamUrl = 'https://steamcommunity.com/openid/login';
-            window.open(steamUrl, 'steamAuth', 'width=920,height=720');
+            window.open('/api/steam/login', 'steamAuth', 'width=920,height=720');
             showLoginPrompt.value = false;
             localStorage.setItem('steam_prompt_dismissed', 'true');
         };
 
-        const completeSteamLogin = () => {
+        const logout = async () => {
             steamAuthPending.value = false;
-            const nextRole = authState.value.role !== 'guest' ? authState.value.role : 'member';
-            saveAuthState({ loggedIn: true, role: nextRole });
-            toastMsg.value = t('login_as');
-            showLoginPrompt.value = false;
-            localStorage.setItem('steam_prompt_dismissed', 'true');
-        };
-
-        const logout = () => {
-            steamAuthPending.value = false;
-            saveAuthState({ loggedIn: false, role: 'guest' });
+            showProfileMenu.value = false;
+            try {
+                await fetch('/api/steam/logout', { method: 'POST', credentials: 'same-origin' });
+            } catch (e) {}
+            await fetchSteamStatus(true);
             toastMsg.value = t('guest_mode');
         };
 
@@ -1258,6 +1299,15 @@ createApp({
         const statsRefreshIntervalMs = 15000;
         const languageRefreshIntervalMs = 15000;
 
+        const applyCommunities = (data) => {
+            communities.value = Array.isArray(data) ? data : [];
+            communities.value.forEach(c => {
+                if (!servers.value[c.id]) servers.value[c.id] = [];
+                if (!serverCache.value[c.id]) serverCache.value[c.id] = {};
+                refreshCommunity(c.id);
+            });
+        };
+
         const fetchConfig = async () => {
             try {
                 const res = await fetch('/api/config');
@@ -1274,12 +1324,7 @@ createApp({
                     }
                 } catch(e) { localStorage.removeItem('comm_order'); }
 
-                communities.value = data;
-                communities.value.forEach(c => {
-                    servers.value[c.id] = [];
-                    serverCache.value[c.id] = {};
-                    refreshCommunity(c.id);
-                });
+                applyCommunities(data);
             } catch(e) { console.error("Config fetch failed", e); }
         };
 
@@ -1520,19 +1565,19 @@ createApp({
         return {
             t, curLang, isDark, curView, communities, servers, toastMsg, icons: ICONS,
             isCollapsed, toggleSidebar, toggleTheme, showLangMenu, setLang,
-            hasFeature, goToView, loadStats, openMapLink, getConnectUrl, copyCmd, copyIp, langLabel, currentLogoPath, isChineseLang,
+            hasFeature, goToView, loadStats, openMapLink, getConnectUrl, copyCmd, copyIp, langLabel, currentLogoPath, steamLogoPath, steamProfileName, steamProfileAvatar, isChineseLang,
             scrollToComm, viewMode, toggleViewMode, isMobile,
             isEditMode, toggleEditMode, 
             sortByPlayers, toggleSortByPlayers, getServers, serverMapQuery, serverMapQueryInput,
             draggedIndex, dragOverIndex, onDragStart, onDragEnter, onDragLeave, onDrop,
             subSearchQuery, searchResults, searchMaps, selectedMap, selectMapToSub, newSubComms, toggleSubComm, addSubscription, subscriptions, removeSubscription, removeSubscriptionByMap, formatSubComms,
-            mapTranslations, getMapTranslation, getServerMapTranslation, isSubscribed, toggleSubscription, testNotification,
+            mapTranslations, getMapTranslation, getServerMapTranslation, isSubscribed, toggleSubscription, testNotification, getCommunityLogo,
             notificationPermission, requestPerm,
-            showSubPopover, toggleSubPopover, toggleLangMenu, goToSubPage, closeDropdowns,
+            showSubPopover, toggleSubPopover, toggleLangMenu, toggleProfileMenu, goToSubPage, closeDropdowns, showProfileMenu,
             currentStats, totalPlayers, totalPeak48h, topCommunity,
             filteredCommunities, serverSearchNotice,
             isLoggedIn, authRoleLabel, authRoleClass, steamAuthPending,
-            startSteamLogin, completeSteamLogin, logout, showLoginPrompt, dismissLoginPrompt,
+            startSteamLogin, logout, showLoginPrompt, dismissLoginPrompt,
             feedbackSubject, feedbackMessage, submitFeedback,
             defaultChineseLang
         };
