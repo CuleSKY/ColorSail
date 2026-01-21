@@ -10,9 +10,12 @@ import urllib3
 import hashlib
 import hmac
 import ipaddress
+import secrets
+import re
+from urllib.parse import urlencode
 from datetime import datetime
 from datetime import timedelta
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, redirect, session, url_for, make_response
 import a2s
 from apscheduler.schedulers.background import BackgroundScheduler
 from concurrent.futures import ThreadPoolExecutor
@@ -29,6 +32,7 @@ if not os.path.isdir(STATIC_DIR) and os.path.isdir('Static'):
     STATIC_DIR = 'Static'
 
 app = Flask(__name__, static_folder=STATIC_DIR)
+app.secret_key = os.environ.get('APP_SECRET_KEY') or os.environ.get('SECRET_KEY') or 'change-me'
 
 # --- 基础配置 ---
 CONFIG_FILE = 'config.json'
@@ -50,6 +54,7 @@ SERVER_CACHE = {}
 AGENT_CACHE = {}
 AGENT_CACHE_UPDATED_AT = {}
 COMMUNITY_META = []
+ADMIN_STEAM_IDS = set()
 FYS_COMMUNITY_IDS = set()
 MAP_IMAGE_INDEX = {}
 MAP_IMAGE_MTIME = 0
@@ -76,6 +81,11 @@ STATS_CACHE_TTL_SECONDS = 10 * 60
 STATS_CACHE = None
 STATS_CACHE_UPDATED_AT = 0
 STATS_EXPORT_RETENTION_DAYS = 30
+
+STEAM_OPENID_ENDPOINT = "https://steamcommunity.com/openid/login"
+STEAM_OPENID_NS = "http://specs.openid.net/auth/2.0"
+STEAM_AUTH_STATE_TTL_SECONDS = 10 * 60
+STEAM_PROFILE_CACHE_TTL_SECONDS = 10 * 60
 
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_REQUEST_BYTES', 2 * 1024 * 1024))
@@ -195,6 +205,105 @@ def client_ip_allowed(client_ip):
         return False
     return ip_in_cidrs(client_ip, AGENT_ALLOWED_CIDRS)
 
+def build_steam_openid_url():
+    state = secrets.token_urlsafe(24)
+    session['steam_login_state'] = state
+    session['steam_login_created_at'] = int(time.time())
+    realm = request.url_root.rstrip('/')
+    return_to = url_for('steam_callback', _external=True, state=state)
+    params = {
+        "openid.ns": STEAM_OPENID_NS,
+        "openid.mode": "checkid_setup",
+        "openid.return_to": return_to,
+        "openid.realm": realm,
+        "openid.identity": f"{STEAM_OPENID_NS}/identifier_select",
+        "openid.claimed_id": f"{STEAM_OPENID_NS}/identifier_select"
+    }
+    return f"{STEAM_OPENID_ENDPOINT}?{urlencode(params)}"
+
+def verify_steam_openid(args):
+    payload = dict(args)
+    payload["openid.mode"] = "check_authentication"
+    try:
+        resp = requests.post(STEAM_OPENID_ENDPOINT, data=payload, timeout=10)
+    except Exception as e:
+        print(f"[Steam] 验证失败: {e}")
+        return None
+    if resp.status_code != 200 or "is_valid:true" not in resp.text:
+        print(f"[Steam] OpenID 校验失败: {resp.status_code}")
+        return None
+    claimed_id = args.get("openid.claimed_id", "")
+    match = re.search(r"https?://steamcommunity\\.com/openid/id/(\\d+)", claimed_id)
+    if not match:
+        return None
+    return match.group(1)
+
+def render_steam_callback(status, reason, steam_id=None):
+    payload = {
+        "type": "steam-auth",
+        "status": status,
+        "reason": reason,
+        "steamId": steam_id
+    }
+    payload_json = json.dumps(payload)
+    html = f"""<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Steam Login</title>
+</head>
+<body>
+    <p>Steam login {status}. You can close this window.</p>
+    <script>
+        (function() {{
+            const payload = {payload_json};
+            if (window.opener && !window.opener.closed) {{
+                window.opener.postMessage(payload, window.location.origin);
+            }}
+            window.close();
+        }})();
+    </script>
+</body>
+</html>"""
+    resp = make_response(html)
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return resp
+
+def fetch_steam_profile(steam_id):
+    if not steam_id:
+        return None
+    url = f"https://steamcommunity.com/profiles/{steam_id}/?xml=1"
+    try:
+        resp = requests.get(url, timeout=10)
+    except Exception as e:
+        print(f"[Steam] 获取资料失败: {e}")
+        return None
+    if resp.status_code != 200:
+        print(f"[Steam] 获取资料失败: {resp.status_code}")
+        return None
+    text = resp.text
+    name_match = re.search(r"<steamID><!\\[CDATA\\[(.*?)\\]\\]></steamID>", text)
+    avatar_match = re.search(r"<avatarMedium><!\\[CDATA\\[(.*?)\\]\\]></avatarMedium>", text)
+    return {
+        "name": name_match.group(1) if name_match else None,
+        "avatar": avatar_match.group(1) if avatar_match else None
+    }
+
+def get_cached_steam_profile(steam_id):
+    cached = session.get('steam_profile')
+    updated_at = session.get('steam_profile_updated_at', 0)
+    if cached and updated_at:
+        try:
+            if int(time.time()) - int(updated_at) < STEAM_PROFILE_CACHE_TTL_SECONDS:
+                return cached
+        except Exception:
+            pass
+    profile = fetch_steam_profile(steam_id)
+    if profile:
+        session['steam_profile'] = profile
+        session['steam_profile_updated_at'] = int(time.time())
+    return profile
+
 def canonicalize_payload(raw_body):
     try:
         parsed = json.loads(raw_body)
@@ -304,12 +413,13 @@ def get_map_image_url(map_name):
 
 def load_config():
     """加载 config.json 中的社区列表结构"""
-    global COMMUNITY_META, STATS_EXPORT_RETENTION_DAYS, FYS_COMMUNITY_IDS
+    global COMMUNITY_META, STATS_EXPORT_RETENTION_DAYS, FYS_COMMUNITY_IDS, ADMIN_STEAM_IDS
     try:
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 COMMUNITY_META = data.get('communities', [])
+                ADMIN_STEAM_IDS = {str(sid).strip() for sid in data.get('admin_steam_ids', []) if str(sid).strip()}
                 fys_ids = set()
                 for comm in COMMUNITY_META:
                     cid = str(comm.get('id', '')).strip()
@@ -327,9 +437,27 @@ def load_config():
             print("[Config] 配置文件不存在")
             COMMUNITY_META = []
             FYS_COMMUNITY_IDS = set()
+            ADMIN_STEAM_IDS = set()
     except Exception as e:
         print(f"[Config] 加载失败: {e}")
         FYS_COMMUNITY_IDS = set()
+        ADMIN_STEAM_IDS = set()
+
+def build_community_meta():
+    meta = []
+    for c in COMMUNITY_META:
+        meta.append({
+            "id": c['id'],
+            "name": c['name'],
+            "logo": c.get('logo', ''),
+            "logo_light": c.get('logo_light', ''),
+            "logo_dark": c.get('logo_dark', ''),
+            "game": c.get('game', 'cs2'),
+            "features": c.get('features', []),
+            "map_url": c.get('map_cd_url', '') if "map_cd" in c.get('features', []) else "",
+            "short_name": c.get('short_name', c['name'])
+        })
+    return meta
 
 # --- 2. 核心：EXG API 直接抓取（实时数据）---
 def fetch_exg_data_from_api():
@@ -739,24 +867,62 @@ def index():
         '/feedback': 'feedback'
     }
     initial_view = view_map.get(request.path, 'servers')
-    return render_template('index.html', initial_view=initial_view)
+    load_config()
+    initial_config = build_community_meta()
+    return render_template('index.html', initial_view=initial_view, initial_config=initial_config)
+
+@app.route('/api/steam/login')
+def steam_login():
+    login_url = build_steam_openid_url()
+    return redirect(login_url)
+
+@app.route('/api/steam/callback')
+def steam_callback():
+    state = request.args.get('state', '')
+    expected_state = session.get('steam_login_state')
+    created_at = session.get('steam_login_created_at', 0)
+    if not state or state != expected_state:
+        return render_steam_callback("error", "invalid_state")
+    if created_at and int(time.time()) - int(created_at) > STEAM_AUTH_STATE_TTL_SECONDS:
+        return render_steam_callback("error", "state_expired")
+    steam_id = verify_steam_openid(request.args)
+    if not steam_id:
+        return render_steam_callback("error", "invalid_auth")
+    session['steam_id'] = steam_id
+    session['steam_logged_in'] = True
+    session.pop('steam_login_state', None)
+    session.pop('steam_login_created_at', None)
+    return render_steam_callback("ok", "authenticated", steam_id=steam_id)
+
+@app.route('/api/steam/status')
+def steam_status():
+    load_config()
+    steam_id = session.get('steam_id')
+    logged_in = bool(session.get('steam_logged_in')) and bool(steam_id)
+    profile = get_cached_steam_profile(steam_id) if logged_in else None
+    role = "admin" if logged_in and steam_id in ADMIN_STEAM_IDS else "member"
+    return jsonify({
+        "logged_in": logged_in,
+        "steam_id": steam_id if logged_in else None,
+        "role": role if logged_in else "guest",
+        "profile": profile
+    })
+
+@app.route('/api/steam/logout', methods=['POST'])
+def steam_logout():
+    session.pop('steam_id', None)
+    session.pop('steam_logged_in', None)
+    session.pop('steam_login_state', None)
+    session.pop('steam_login_created_at', None)
+    session.pop('steam_profile', None)
+    session.pop('steam_profile_updated_at', None)
+    return jsonify({"logged_in": False})
 
 @app.route('/api/config')
 def get_config_meta():
     """返回社区的元数据"""
     load_config()
-    meta = []
-    for c in COMMUNITY_META:
-        meta.append({
-            "id": c['id'],
-            "name": c['name'],
-            "logo": c.get('logo', ''),
-            "game": c.get('game', 'cs2'),
-            "features": c.get('features', []),
-            "map_url": c.get('map_cd_url', '') if "map_cd" in c.get('features', []) else "",
-            "short_name": c.get('short_name', c['name'])
-        })
-    return jsonify(meta)
+    return jsonify(build_community_meta())
 
 @app.route('/api/servers/<cid>')
 def get_servers(cid):
