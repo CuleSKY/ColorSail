@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # --- 配置 ---
-MASTER_URL = os.environ.get("MASTER_URL", ") 
+MASTER_URL = os.environ.get("MASTER_URL", "")
 AGENT_TOKEN = os.environ.get("AGENT_SHARED_TOKEN", "")    # 与 app.py 保持一致
 SECRETS_FILE = 'secrets.json'
 
@@ -202,8 +202,7 @@ def run_agent():
         time.sleep(per_comm_delay + jitter)
 
 if __name__ == "__main__":
-    if "YOUR_" in MASTER_URL:
-        print("❌ 请先修改脚本中的 MASTER_URL！")
+    if not MASTER_URL:
+        print("❌ 请先设置环境变量 MASTER_URL！")
     else:
         run_agent()
-
