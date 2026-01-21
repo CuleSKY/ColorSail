@@ -444,6 +444,12 @@ def load_config():
         ADMIN_STEAM_IDS = set()
 
 def build_community_meta():
+    def is_svg_asset(value):
+        if not value:
+            return False
+        value = str(value)
+        return value.lower().split('?', 1)[0].endswith('.svg')
+
     meta = []
     for c in COMMUNITY_META:
         meta.append({
@@ -452,6 +458,9 @@ def build_community_meta():
             "logo": c.get('logo', ''),
             "logo_light": c.get('logo_light', ''),
             "logo_dark": c.get('logo_dark', ''),
+            "logo_is_svg": is_svg_asset(c.get('logo')),
+            "logo_light_is_svg": is_svg_asset(c.get('logo_light')),
+            "logo_dark_is_svg": is_svg_asset(c.get('logo_dark')),
             "game": c.get('game', 'cs2'),
             "features": c.get('features', []),
             "map_url": c.get('map_cd_url', '') if "map_cd" in c.get('features', []) else "",
@@ -992,6 +1001,7 @@ def update_agent_data():
 
 @app.route('/api/map_translations')
 def get_translations():
+    refresh_local_caches()
     return jsonify(MAP_TRANS_CACHE)
 
 @app.route('/api/language')

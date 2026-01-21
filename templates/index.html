@@ -359,6 +359,7 @@
         .draggable-item.drag-over { border-top: 2px solid var(--accent); background: rgba(128,128,128,0.05); }
         .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: #333; color: white; padding: 10px 24px; border-radius: 20px; opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 1000; }
         .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .logo-svg.logo-invert { filter: invert(1); }
 
         @media (max-width: 768px) {
             html, body { overflow-x: hidden; overflow-y: auto !important; height: auto !important; -webkit-overflow-scrolling: touch; }
@@ -549,7 +550,7 @@
 
         <div class="community-nav" v-if="curView === 'servers'">
             <div class="jump-pill" v-for="comm in filteredCommunities" :key="comm.id" @click="scrollToComm(comm.id)">
-                <img v-if="getCommunityLogo(comm)" :src="getCommunityLogo(comm)">
+                <img v-if="getCommunityLogoMeta(comm).url" :src="getCommunityLogoMeta(comm).url" :class="{ 'logo-svg': getCommunityLogoMeta(comm).isSvg, 'logo-invert': getCommunityLogoMeta(comm).isSvg && isDark }">
                 <span>[[ comm.name ]]</span>
             </div>
         </div>
@@ -567,7 +568,7 @@
                 <div v-for="comm in filteredCommunities" :key="comm.id" :id="'comm-' + comm.id" style="margin-bottom: 40px;">
                     <h3 class="desktop-header" v-if="!isMobile" style="border-left: 4px solid var(--accent); padding-left: 10px; margin: 0 0 16px 0;">[[ comm.name ]]</h3>
                     <div class="community-title-bar" v-if="isMobile" :id="'comm-mob-' + comm.id">
-                        <img v-if="getCommunityLogo(comm)" :src="getCommunityLogo(comm)">
+                        <img v-if="getCommunityLogoMeta(comm).url" :src="getCommunityLogoMeta(comm).url" :class="{ 'logo-svg': getCommunityLogoMeta(comm).isSvg, 'logo-invert': getCommunityLogoMeta(comm).isSvg && isDark }">
                         [[ comm.name ]]
                     </div>
 
@@ -843,11 +844,15 @@ createApp({
         const steamLogoPath = computed(() => isDark.value ? STEAM_LOGO_PATHS.dark : STEAM_LOGO_PATHS.light);
         const steamProfileName = computed(() => steamProfile.value.name || 'Steam User');
         const steamProfileAvatar = computed(() => steamProfile.value.avatar || steamLogoPath.value);
-        const getCommunityLogo = (comm) => {
-            if (!comm) return '';
-            if (isDark.value && comm.logo_dark) return comm.logo_dark;
-            if (!isDark.value && comm.logo_light) return comm.logo_light;
-            return comm.logo || '';
+        const getCommunityLogoMeta = (comm) => {
+            if (!comm) return { url: '', isSvg: false };
+            if (isDark.value && comm.logo_dark) {
+                return { url: comm.logo_dark, isSvg: Boolean(comm.logo_dark_is_svg) };
+            }
+            if (!isDark.value && comm.logo_light) {
+                return { url: comm.logo_light, isSvg: Boolean(comm.logo_light_is_svg) };
+            }
+            return { url: comm.logo || '', isSvg: Boolean(comm.logo_is_svg) };
         };
         let searchDebounceTimer = null;
         watch(serverMapQueryInput, (next) => {
@@ -1213,6 +1218,7 @@ createApp({
             selectedMap.value = null; 
             newSubComms.value = ['all'];
             subSearchQuery.value = '';
+            searchResults.value = [];
             toastMsg.value = t('subscribed'); 
             setTimeout(()=>toastMsg.value='', 2000);
         };
@@ -1571,7 +1577,7 @@ createApp({
             sortByPlayers, toggleSortByPlayers, getServers, serverMapQuery, serverMapQueryInput,
             draggedIndex, dragOverIndex, onDragStart, onDragEnter, onDragLeave, onDrop,
             subSearchQuery, searchResults, searchMaps, selectedMap, selectMapToSub, newSubComms, toggleSubComm, addSubscription, subscriptions, removeSubscription, removeSubscriptionByMap, formatSubComms,
-            mapTranslations, getMapTranslation, getServerMapTranslation, isSubscribed, toggleSubscription, testNotification, getCommunityLogo,
+            mapTranslations, getMapTranslation, getServerMapTranslation, isSubscribed, toggleSubscription, testNotification, getCommunityLogoMeta,
             notificationPermission, requestPerm,
             showSubPopover, toggleSubPopover, toggleLangMenu, toggleProfileMenu, goToSubPage, closeDropdowns, showProfileMenu,
             currentStats, totalPlayers, totalPeak48h, topCommunity,
