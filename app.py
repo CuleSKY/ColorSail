@@ -258,7 +258,7 @@ def render_steam_callback(status, reason, steam_id=None):
         (function() {{
             const payload = {payload_json};
             if (window.opener && !window.opener.closed) {{
-                window.opener.postMessage(payload, window.location.origin);
+                window.opener.postMessage(payload, "*");
             }}
             window.close();
         }})();
