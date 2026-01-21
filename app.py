@@ -16,6 +16,7 @@ from urllib.parse import urlencode
 from datetime import datetime
 from datetime import timedelta
 from flask import Flask, render_template, jsonify, request, redirect, session, url_for, make_response
+from werkzeug.middleware.proxy_fix import ProxyFix
 import a2s
 from apscheduler.schedulers.background import BackgroundScheduler
 from concurrent.futures import ThreadPoolExecutor
@@ -33,6 +34,7 @@ if not os.path.isdir(STATIC_DIR) and os.path.isdir('Static'):
 
 app = Flask(__name__, static_folder=STATIC_DIR)
 app.secret_key = os.environ.get('APP_SECRET_KEY') or os.environ.get('SECRET_KEY') or 'change-me'
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
 # --- 基础配置 ---
 CONFIG_FILE = 'config.json'
@@ -89,6 +91,8 @@ STEAM_PROFILE_CACHE_TTL_SECONDS = 10 * 60
 
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_REQUEST_BYTES', 2 * 1024 * 1024))
+app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', '').lower() in ('1', 'true', 'yes')
 
 AGENT_ALLOWED_CIDRS = [cidr.strip() for cidr in os.environ.get('AGENT_ALLOWED_CIDRS', '').split(',') if cidr.strip()]
 AGENT_TRUSTED_PROXIES = [cidr.strip() for cidr in os.environ.get('AGENT_TRUSTED_PROXIES', '').split(',') if cidr.strip()]
