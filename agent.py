@@ -22,6 +22,7 @@ SECRETS_FILE = 'secrets.json'
 
 # 全局 Steam API Key (将从 secrets.json 中解密加载)
 STEAM_API_KEY = None
+STEAM_API_SESSION = requests.Session()
 
 # EXG API
 EXG_API_URL = "https://list.darkrp.cn:9000/ServerList/CurrentStatus"
@@ -35,7 +36,14 @@ def load_secrets():
     """加载并解密 secrets.json 中的 Steam API Key"""
     global STEAM_API_KEY
     print("[Secrets] 正在加载密钥...")
-    
+
+    env_key = os.environ.get("STEAM_API_KEY")
+    if env_key:
+        STEAM_API_KEY = env_key.strip()
+        if STEAM_API_KEY:
+            print("[Secrets] ✅ 从环境变量 STEAM_API_KEY 读取 Key。")
+            return
+
     key_b64 = os.environ.get("APP_SECRET_KEY")
     if not key_b64:
         print("[Secrets] ❌ 环境变量 APP_SECRET_KEY 未设置！无法解密 API Key。")
@@ -85,20 +93,24 @@ def fetch_server_data(server_cfg):
     }
 
     # 1. A2S UDP 查询 (优先获取延迟)
-    try:
-        info = a2s.info((host, port), timeout=2.0)
-        res.update({
-            "online": True,
-            "name": info.server_name,
-            "map": info.map_name,
-            "players": info.player_count,
-            "max_players": info.max_players,
-            "ping": int(info.ping * 1000),
-            "query_source": "a2s"
-        })
-        return res
-    except Exception:
-        pass
+    a2s_targets = [resolved_ip, host] if resolved_ip else [host]
+    for target in a2s_targets:
+        for attempt, timeout in enumerate((2.0, 3.5), start=1):
+            try:
+                info = a2s.info((target, port), timeout=timeout)
+                res.update({
+                    "online": True,
+                    "name": info.server_name,
+                    "map": info.map_name,
+                    "players": info.player_count,
+                    "max_players": info.max_players,
+                    "ping": int(info.ping * 1000),
+                    "query_source": "a2s"
+                })
+                return res
+            except Exception:
+                if attempt >= 2:
+                    continue
 
     # 2. Steam API 兜底 (前提是 Key 解密成功)
     if STEAM_API_KEY:
@@ -106,17 +118,23 @@ def fetch_server_data(server_cfg):
             u = "https://api.steampowered.com/IGameServersService/GetServerList/v1/"
             query_addr = f"{resolved_ip or host}:{port}"
             p = {"key": STEAM_API_KEY, "filter": f"\\gameaddr\\{query_addr}", "limit": 1}
-            r = requests.get(u, params=p, timeout=5)
-            if r.status_code == 200:
-                d = r.json().get('response', {}).get('servers', [])
-                if d:
-                    s = d[0]
-                    res.update({
-                        "online": True, "name": s.get('name'), "map": s.get('map'),
-                        "players": s.get('players'), "max_players": s.get('max_players'),
-                        "ping": -1,
-                        "query_source": "steam_api"
-                    })
+            for timeout in (5, 8):
+                try:
+                    r = STEAM_API_SESSION.get(u, params=p, timeout=timeout)
+                    if r.status_code == 200:
+                        d = r.json().get('response', {}).get('servers', [])
+                        if d:
+                            s = d[0]
+                            res.update({
+                                "online": True, "name": s.get('name'), "map": s.get('map'),
+                                "players": s.get('players'), "max_players": s.get('max_players'),
+                                "ping": -1,
+                                "query_source": "steam_api"
+                            })
+                            return res
+                    break
+                except Exception:
+                    continue
         except Exception:
             pass
 
