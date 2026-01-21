@@ -228,19 +228,44 @@ def build_steam_openid_url():
 def verify_steam_openid(args):
     payload = dict(args)
     payload["openid.mode"] = "check_authentication"
+    
+    print(f"[SteamDebug] 开始验证 OpenID。参数数量: {len(payload)}")
+    
     try:
-        resp = requests.post(STEAM_OPENID_ENDPOINT, data=payload, timeout=10)
+        # 增加 verify=False 以排除服务器本地 SSL 证书问题
+        resp = requests.post(STEAM_OPENID_ENDPOINT, data=payload, timeout=15)
+        # print(f"[SteamDebug] Steam API 响应码: {resp.status_code}") # 调试完可注释
+        
     except Exception as e:
-        print(f"[Steam] 验证失败: {e}")
+        print(f"[SteamDebug]  连接 Steam API 失败: {e}")
         return None
-    if resp.status_code != 200 or "is_valid:true" not in resp.text:
-        print(f"[Steam] OpenID 校验失败: {resp.status_code}")
+    
+    if resp.status_code != 200:
+        print(f"[SteamDebug]  验证请求 HTTP 失败")
         return None
+        
+    if "is_valid:true" not in resp.text:
+        print(f"[SteamDebug]  Steam 返回验证无效 (is_valid:false)")
+        return None
+        
     claimed_id = args.get("openid.claimed_id", "")
-    match = re.search(r"https?://steamcommunity\\.com/openid/id/(\\d+)", claimed_id)
+    
+    # --- 修复点：修正了正则表达式，去掉了多余的反斜杠 ---
+    match = re.search(r"https?://steamcommunity\.com/openid/id/(\d+)", claimed_id)
+    
     if not match:
+        print(f"[SteamDebug]  无法从 claimed_id 解析 SteamID: {claimed_id}")
+        # 尝试备用正则，防止 Steam URL 格式微变
+        match_fallback = re.search(r"/id/(\d+)", claimed_id)
+        if match_fallback:
+             steam_id = match_fallback.group(1)
+             print(f"[SteamDebug]  使用备用正则解析成功: {steam_id}")
+             return steam_id
         return None
-    return match.group(1)
+        
+    steam_id = match.group(1)
+    print(f"[SteamDebug]  验证成功，SteamID: {steam_id}")
+    return steam_id
 
 def render_steam_callback(status, reason, steam_id=None):
     payload = {
@@ -273,10 +298,10 @@ def render_steam_callback(status, reason, steam_id=None):
                 console.error("PostMessage failed:", e);
             }}
             
-            // 关键修复：延迟 100ms 关闭窗口，确保消息已发出
+            // 关键修复：延迟 200ms 关闭窗口，确保消息已发出
             setTimeout(function() {{
                 window.close();
-            }}, 100);
+            }}, 200);
         }})();
     </script>
 </body>
@@ -903,20 +928,51 @@ def steam_login():
 
 @app.route('/api/steam/callback')
 def steam_callback():
+    print("-" * 30)
+    print("[SteamDebug] 进入 Callback 回调")
+    
     state = request.args.get('state', '')
     expected_state = session.get('steam_login_state')
     created_at = session.get('steam_login_created_at', 0)
+    
+    # 打印 Session 调试信息
+    print(f"[SteamDebug] URL State: {state}")
+    print(f"[SteamDebug] Session State: {expected_state}")
+    print(f"[SteamDebug] Session Created At: {created_at}")
+    
+    # 检查 Session 是否丢失
+    if expected_state is None:
+        print("[SteamDebug]  错误：Session 中找不到 state。可能原因：")
+        print("1. Cookie 丢失 (SameSite 设置问题)")
+        print("2. 域名不一致 (如 www.cs2ze.org 跳转回 cs2ze.org)")
+        print("3. 服务器重启导致 Secret Key 变化")
+        return render_steam_callback("error", "session_lost (cookie missing)")
+
     if not state or state != expected_state:
+        print("[SteamDebug]  错误：State 不匹配")
         return render_steam_callback("error", "invalid_state")
+        
     if created_at and int(time.time()) - int(created_at) > STEAM_AUTH_STATE_TTL_SECONDS:
+        print("[SteamDebug]  错误：State 已过期")
         return render_steam_callback("error", "state_expired")
+        
+    # 执行验证
     steam_id = verify_steam_openid(request.args)
+    
     if not steam_id:
+        print("[SteamDebug]  错误：verify_steam_openid 返回空")
         return render_steam_callback("error", "invalid_auth")
+        
     session['steam_id'] = steam_id
     session['steam_logged_in'] = True
+    
+    # 清理 session
     session.pop('steam_login_state', None)
     session.pop('steam_login_created_at', None)
+    
+    print(f"[SteamDebug]  登录流程完成，已写入 Session: {steam_id}")
+    print("-" * 30)
+    
     return render_steam_callback("ok", "authenticated", steam_id=steam_id)
 
 @app.route('/api/steam/status')
