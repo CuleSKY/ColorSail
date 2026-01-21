@@ -261,10 +261,22 @@ def render_steam_callback(status, reason, steam_id=None):
     <script>
         (function() {{
             const payload = {payload_json};
-            if (window.opener && !window.opener.closed) {{
-                window.opener.postMessage(payload, "*");
+            try {{
+                if (window.opener && !window.opener.closed) {{
+                    console.log("Sending payload to opener:", payload);
+                    window.opener.postMessage(payload, "*");
+                }} else {{
+                    console.error("Window opener lost or closed.");
+                    alert("登录状态同步失败：无法连接到主窗口。请刷新主页后重试。");
+                }}
+            }} catch(e) {{
+                console.error("PostMessage failed:", e);
             }}
-            window.close();
+            
+            // 关键修复：延迟 100ms 关闭窗口，确保消息已发出
+            setTimeout(function() {{
+                window.close();
+            }}, 100);
         }})();
     </script>
 </body>
