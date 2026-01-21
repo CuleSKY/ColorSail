@@ -75,7 +75,7 @@
         *::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
         * { transition: background-color 0.3s var(--ease-fluent), border-color 0.3s var(--ease-fluent), color 0.3s var(--ease-fluent), box-shadow 0.3s var(--ease-fluent), transform 0.3s var(--ease-fluent), opacity 0.3s var(--ease-fluent); }
-        #app * { animation: fluentFadeIn 0.35s var(--ease-fluent) both; }
+        #app *:not(.toast) { animation: fluentFadeIn 0.35s var(--ease-fluent) both; }
         .animate-enter { animation: fadeSlideUp 0.4s var(--ease-fluent) forwards; }
         @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fluentFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
@@ -775,6 +775,9 @@ createApp({
         const initialView = document.body.dataset.initialView || 'servers';
         const curView = ref(initialView);
         const toastMsg = ref('');
+        let toastTimer = null;
+        let steamLoginWindow = null;
+        let steamLoginTimer = null;
         const isCollapsed = ref(false); 
         const showLangMenu = ref(false);
         const showSubPopover = ref(false); 
@@ -884,6 +887,32 @@ createApp({
             }
         };
 
+        const clearToastTimer = () => {
+            if (toastTimer) {
+                clearTimeout(toastTimer);
+                toastTimer = null;
+            }
+        };
+
+        const showToast = (message, duration = 3000) => {
+            toastMsg.value = message;
+            clearToastTimer();
+            if (message) {
+                toastTimer = setTimeout(() => {
+                    toastMsg.value = '';
+                    toastTimer = null;
+                }, duration);
+            }
+        };
+
+        const stopSteamLoginWatcher = () => {
+            if (steamLoginTimer) {
+                clearInterval(steamLoginTimer);
+                steamLoginTimer = null;
+            }
+            steamLoginWindow = null;
+        };
+
         const fetchSteamStatus = async (silent = false) => {
             try {
                 const res = await fetch('/api/steam/status', { credentials: 'same-origin' });
@@ -900,7 +929,7 @@ createApp({
                 return data;
             } catch (e) {
                 if (!silent) {
-                    toastMsg.value = t('login_required_title');
+                    showToast(t('login_required_title'));
                 }
                 authState.value = { loggedIn: false, role: 'guest' };
                 steamProfile.value = { name: null, avatar: null };
@@ -909,17 +938,26 @@ createApp({
         };
 
         const handleSteamMessage = async (event) => {
-            if (event.origin !== window.location.origin) return;
+            const isTrustedOrigin = () => {
+                if (event.origin === window.location.origin) return true;
+                try {
+                    return new URL(event.origin).host === window.location.host;
+                } catch (e) {
+                    return false;
+                }
+            };
+            if (!isTrustedOrigin()) return;
             const payload = event.data || {};
             if (payload.type !== 'steam-auth') return;
+            stopSteamLoginWatcher();
             steamAuthPending.value = false;
-            await fetchSteamStatus(true);
-            if (payload.status === 'ok') {
-                toastMsg.value = t('login_as');
+            const status = await fetchSteamStatus(true);
+            if (payload.status === 'ok' && status && status.logged_in) {
+                showToast(t('login_as'));
                 showLoginPrompt.value = false;
                 localStorage.setItem('steam_prompt_dismissed', 'true');
             } else {
-                toastMsg.value = t('steam_prompt_desc');
+                showToast(t('steam_prompt_desc'));
             }
         };
 
@@ -965,7 +1003,7 @@ createApp({
             await fetchConfig();
             if ((initialView === 'stats' || initialView === 'feedback') && !isLoggedIn.value) {
                 curView.value = 'servers';
-                toastMsg.value = t('login_required_title');
+                showToast(t('login_required_title'));
             }
             if (!isMobile.value) {
                 const dismissed = localStorage.getItem('steam_prompt_dismissed');
@@ -982,6 +1020,8 @@ createApp({
             window.removeEventListener('resize', handleResize);
             window.removeEventListener('click', handleGlobalClick);
             window.removeEventListener('message', handleSteamMessage);
+            stopSteamLoginWatcher();
+            clearToastTimer();
         });
 
         const toggleLangMenu = () => {
@@ -1021,7 +1061,27 @@ createApp({
         const startSteamLogin = () => {
             if (steamAuthPending.value) return;
             steamAuthPending.value = true;
-            window.open('/api/steam/login', 'steamAuth', 'width=920,height=720');
+            stopSteamLoginWatcher();
+            steamLoginWindow = window.open('/api/steam/login', 'steamAuth', 'width=920,height=720');
+            if (steamLoginWindow) {
+                steamLoginTimer = setInterval(async () => {
+                    if (!steamLoginWindow || steamLoginWindow.closed) {
+                        stopSteamLoginWatcher();
+                        steamAuthPending.value = false;
+                        const status = await fetchSteamStatus(true);
+                        if (status && status.logged_in) {
+                            showToast(t('login_as'));
+                            showLoginPrompt.value = false;
+                            localStorage.setItem('steam_prompt_dismissed', 'true');
+                        } else {
+                            showToast(t('steam_prompt_desc'));
+                        }
+                    }
+                }, 600);
+            } else {
+                steamAuthPending.value = false;
+                showToast(t('steam_prompt_desc'));
+            }
             showLoginPrompt.value = false;
             localStorage.setItem('steam_prompt_dismissed', 'true');
         };
@@ -1033,7 +1093,7 @@ createApp({
                 await fetch('/api/steam/logout', { method: 'POST', credentials: 'same-origin' });
             } catch (e) {}
             await fetchSteamStatus(true);
-            toastMsg.value = t('guest_mode');
+            showToast(t('guest_mode'));
         };
 
         const dismissLoginPrompt = () => {
@@ -1044,7 +1104,7 @@ createApp({
         const hasFeature = (feat) => communities.value.some(c => c.features.includes(feat));
         const goToView = (view) => {
             if ((view === 'stats' || view === 'feedback') && !isLoggedIn.value) {
-                toastMsg.value = t('login_required_title');
+                showToast(t('login_required_title'));
                 return;
             }
             const target = VIEW_ROUTES[view] || '/';
@@ -1106,8 +1166,7 @@ createApp({
                 }
             } catch (e) {
                 if (!silent) {
-                    toastMsg.value = 'Language load failed';
-                    setTimeout(()=>toastMsg.value='', 3000);
+                    showToast('Language load failed');
                 }
             }
         };
@@ -1219,8 +1278,7 @@ createApp({
             newSubComms.value = ['all'];
             subSearchQuery.value = '';
             searchResults.value = [];
-            toastMsg.value = t('subscribed'); 
-            setTimeout(()=>toastMsg.value='', 2000);
+            showToast(t('subscribed'), 2000);
         };
 
         const removeSubscription = (idx) => {
@@ -1433,8 +1491,7 @@ createApp({
             try {
                 await loadChartJs();
             } catch (e) {
-                toastMsg.value = 'Chart.js load failed';
-                setTimeout(()=>toastMsg.value='', 3000);
+                showToast('Chart.js load failed');
                 return;
             }
             let data = null;
@@ -1445,8 +1502,7 @@ createApp({
                 }
                 data = await res.json();
             } catch (e) {
-                toastMsg.value = 'Stats load failed';
-                setTimeout(()=>toastMsg.value='', 3000);
+                showToast('Stats load failed');
                 return;
             }
             currentStats.value = data.current_stats;
@@ -1514,22 +1570,20 @@ createApp({
             try {
                 const successful = document.execCommand('copy');
                 if(successful) {
-                    toastMsg.value = t('copied') + text;
+                    showToast(t('copied') + text);
                 } else {
-                    toastMsg.value = "Copy failed";
+                    showToast("Copy failed");
                 }
             } catch (err) {
-                toastMsg.value = "Copy failed";
+                showToast("Copy failed");
             }
             document.body.removeChild(textArea);
-            setTimeout(()=>toastMsg.value='', 3000);
         };
 
         const copyText = (text) => {
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(text).then(() => {
-                    toastMsg.value = t('copied') + text;
-                    setTimeout(()=>toastMsg.value='', 3000);
+                    showToast(t('copied') + text);
                 }).catch(() => fallbackCopy(text));
             } else {
                 fallbackCopy(text);
@@ -1538,8 +1592,7 @@ createApp({
 
         const copyCmd = (srv) => {
             if (!isLoggedIn.value) {
-                toastMsg.value = t('login_required_copy');
-                setTimeout(()=>toastMsg.value='', 3000);
+                showToast(t('login_required_copy'));
                 return;
             }
             const address = getConnectAddress(srv);
@@ -1547,8 +1600,7 @@ createApp({
         };
         const copyIp = (srv) => {
             if (!isLoggedIn.value) {
-                toastMsg.value = t('login_required_copy');
-                setTimeout(()=>toastMsg.value='', 3000);
+                showToast(t('login_required_copy'));
                 return;
             }
             const address = getConnectAddress(srv);
@@ -1557,14 +1609,12 @@ createApp({
 
         const submitFeedback = () => {
             if (!feedbackSubject.value.trim() && !feedbackMessage.value.trim()) {
-                toastMsg.value = t('feedback_required');
-                setTimeout(()=>toastMsg.value='', 3000);
+                showToast(t('feedback_required'));
                 return;
             }
             feedbackSubject.value = '';
             feedbackMessage.value = '';
-            toastMsg.value = t('feedback_sent');
-            setTimeout(()=>toastMsg.value='', 3000);
+            showToast(t('feedback_sent'));
         };
         // ------------------------------------------
 
