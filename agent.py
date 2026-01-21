@@ -23,6 +23,14 @@ SECRETS_FILE = 'secrets.json'
 # 全局 Steam API Key (将从 secrets.json 中解密加载)
 STEAM_API_KEY = None
 
+# EXG API
+EXG_API_URL = "https://list.darkrp.cn:9000/ServerList/CurrentStatus"
+EXG_SESSION = requests.Session()
+EXG_CACHE = []
+EXG_CACHE_UPDATED_AT = 0
+EXG_FETCH_INTERVAL_SECONDS = 15
+EXG_VERIFY_SSL = os.environ.get('EXG_VERIFY_SSL', 'true').lower() in ('1', 'true', 'yes')
+
 def load_secrets():
     """加载并解密 secrets.json 中的 Steam API Key"""
     global STEAM_API_KEY
@@ -114,6 +122,80 @@ def fetch_server_data(server_cfg):
 
     return res
 
+def fetch_exg_data_from_api():
+    """从 EXG API 获取实时服务器数据"""
+    global EXG_CACHE, EXG_CACHE_UPDATED_AT
+    now = int(time.time())
+    if EXG_CACHE and (now - EXG_CACHE_UPDATED_AT) < EXG_FETCH_INTERVAL_SECONDS:
+        return EXG_CACHE
+
+    servers = []
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json'
+        }
+        resp = EXG_SESSION.get(EXG_API_URL, timeout=10, verify=EXG_VERIFY_SSL, headers=headers)
+        if resp.status_code == 200:
+            data = resp.json()
+            if not isinstance(data, list):
+                data = [data]
+
+            for item in data:
+                try:
+                    server_info = item.get('Server', {})
+                    status_info = item.get('Status', {})
+
+                    ip = server_info.get('Ip')
+                    port = server_info.get('Port')
+                    if not ip or not port:
+                        continue
+
+                    name = (status_info.get('FullTitle') or
+                            server_info.get('DisplayNameCN') or
+                            server_info.get('DisplayName') or
+                            f"EXG {port}")
+
+                    map_name = status_info.get('Map', '-')
+                    map_display = status_info.get('MapDisplayName', '')
+                    current_players = status_info.get('CurrentPlayers', 0)
+                    max_players = status_info.get('MaxPlayers', 64)
+
+                    server_obj = {
+                        "name": name.strip(),
+                        "ip": str(ip).strip(),
+                        "connect_ip": str(ip).strip(),
+                        "port": int(port),
+                        "display_ip": f"{ip}:{port}",
+                        "map": map_name,
+                        "players": int(current_players),
+                        "max_players": int(max_players),
+                        "online": True,
+                        "ping": -1,
+                        "game_type": "cs2",
+                        "query_source": "exg_api"
+                    }
+
+                    if map_display:
+                        server_obj['map_cn'] = map_display
+                        server_obj['map_tw'] = map_display
+
+                    servers.append(server_obj)
+                except Exception:
+                    continue
+
+            EXG_CACHE = servers
+            EXG_CACHE_UPDATED_AT = now
+            print(f"[EXG API] 成功获取 {len(servers)} 个服务器")
+        else:
+            print(f"[EXG API] HTTP 错误: {resp.status_code}")
+    except Exception as e:
+        print(f"[EXG API] 请求失败: {e}")
+
+    if servers:
+        return servers
+    return EXG_CACHE
+
 def run_agent():
     # 启动时加载密钥
     load_secrets()
@@ -140,27 +222,30 @@ def run_agent():
             with open("config.json", "r", encoding="utf-8") as f:
                 local_config = json.load(f)
 
-            non_cn_comms = [
+            cn_comms = [
                 comm for comm in local_config.get('communities', [])
-                if comm.get('location') != 'cn'
+                if comm.get('location') == 'cn'
             ]
 
-            if not non_cn_comms:
+            if not cn_comms:
                 time.sleep(10)
                 continue
-            comm_count = len(non_cn_comms)
+            comm_count = len(cn_comms)
 
-            comm = non_cn_comms[comm_index % len(non_cn_comms)]
+            comm = cn_comms[comm_index % len(cn_comms)]
             comm_index += 1
             server_list = comm.get('servers', [])
 
             print(f"[Job] 更新社区: {comm['name']}")
-            if server_list:
-                max_workers = min(10, max(1, len(server_list)))
-                with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                    results = list(executor.map(fetch_server_data, server_list))
+            if comm.get('id') == 'exg':
+                results = fetch_exg_data_from_api()
             else:
-                results = []
+                if server_list:
+                    max_workers = min(10, max(1, len(server_list)))
+                    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        results = list(executor.map(fetch_server_data, server_list))
+                else:
+                    results = []
 
             online_count = sum(1 for r in results if r.get("online"))
             a2s_count = sum(1 for r in results if r.get("query_source") == "a2s")
