@@ -68,6 +68,8 @@ AGENT_CACHE_LOCK = threading.Lock()
 MAP_TRANS_DIRTY = False
 MAP_TRANS_LAST_WRITE = 0
 MAP_CACHE_UPDATED_AT = 0
+APP_INIT_LOCK = threading.Lock()
+APP_INITIALIZED = False
 CACHE_REFRESH_INTERVAL_SECONDS = 300
 OPENCC_S2T = OpenCC('s2t') if OpenCC else None
 OPENCC_S2HK = OpenCC('s2hk') if OpenCC else None
@@ -878,6 +880,31 @@ def start_scheduler():
         schedule_community_jobs()
         scheduler.start()
 
+def initialize_app():
+    global APP_INITIALIZED
+    if APP_INITIALIZED:
+        return
+    with APP_INIT_LOCK:
+        if APP_INITIALIZED:
+            return
+        print("\n" + "=" * 70)
+        print(" " * 20 + "CS2ZE Browser 服务器")
+        print("=" * 70 + "\n")
+
+        init_db()
+        load_config()
+        refresh_local_caches()
+
+        print("\n[Startup] 执行初始数据更新...")
+        print("-" * 70)
+        update_all_data()
+        flush_map_translations(force=True)
+        print("-" * 70)
+        print("\n✓ 初始化完成，服务器启动中...\n")
+
+        start_scheduler()
+        APP_INITIALIZED = True
+
 # --- 7. Flask 路由 ---
 @app.route('/')
 @app.route('/servers')
@@ -990,6 +1017,7 @@ def get_servers(cid):
 
 @app.route('/api/agent/update', methods=['POST'])
 def update_agent_data():
+    initialize_app()
     token = os.environ.get('AGENT_SHARED_TOKEN')
     if not token:
         return jsonify({"error": "agent token not configured"}), 403
@@ -1044,6 +1072,8 @@ def update_agent_data():
         with AGENT_CACHE_LOCK:
             AGENT_CACHE[cid] = normalized
             AGENT_CACHE_UPDATED_AT[cid] = int(time.time())
+        with SERVER_CACHE_LOCK:
+            SERVER_CACHE[cid] = normalized
 
     return jsonify({"status": "ok", "updated": list(communities.keys())})
 
@@ -1164,21 +1194,6 @@ def set_cache_headers(response):
     return response
 
 if __name__ == '__main__':
-    print("\n" + "=" * 70)
-    print(" " * 20 + "CS2ZE Browser 服务器")
-    print("=" * 70 + "\n")
-    
-    init_db()
-    load_config()
-    refresh_local_caches()
-    
-    print("\n[Startup] 执行初始数据更新...")
-    print("-" * 70)
-    update_all_data()
-    flush_map_translations(force=True)
-    print("-" * 70)
-    print("\n✓ 初始化完成，服务器启动中...\n")
-
-    start_scheduler()
+    initialize_app()
     
     app.run(host='0.0.0.0', port=5000, debug=False)
