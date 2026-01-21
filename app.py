@@ -709,54 +709,30 @@ def update_single_comm(comm):
             return SERVER_CACHE.get(cid, [])
 
     if comm.get('location') != 'cn':
+        server_list = comm.get('servers', [])
+        if server_list:
+            game = comm.get('game', 'cs2')
+            max_workers = min(20, max(1, len(server_list)))
+            with ThreadPoolExecutor(max_workers=max_workers) as exe:
+                result = list(exe.map(lambda s: fetch_a2s_data(s, game), server_list))
+            online_count = sum(1 for s in result if s.get('online'))
+            total_players = sum(s['players'] for s in result if s.get('online'))
+            print(f"[Update] {comm['name']}: {online_count}/{len(result)} 在线, {total_players} 玩家")
+        else:
+            result = []
+    else:
         with AGENT_CACHE_LOCK:
             agent_servers = AGENT_CACHE.get(cid)
             agent_updated_at = AGENT_CACHE_UPDATED_AT.get(cid, 0)
         if agent_servers is None:
-            result = agent_fallback("等待 agent 数据 (non-cn)")
+            result = agent_fallback("等待 agent 数据 (cn)")
         elif now - agent_updated_at > AGENT_STALE_SECONDS:
-            result = agent_fallback("agent 数据过期 (non-cn)")
+            result = agent_fallback("agent 数据过期 (cn)")
         else:
             result = agent_servers
             online_count = sum(1 for s in agent_servers if s.get('online'))
             total_players = sum(s['players'] for s in agent_servers if s.get('online'))
             print(f"[Update] {comm['name']}: {online_count}/{len(agent_servers)} 在线, {total_players} 玩家 (agent)")
-    else:
-        use_agent = comm.get('source') == 'agent' or comm.get('agent') is True
-        with AGENT_CACHE_LOCK:
-            agent_servers = AGENT_CACHE.get(cid, [])
-            agent_updated_at = AGENT_CACHE_UPDATED_AT.get(cid, 0)
-            has_agent_data = cid in AGENT_CACHE
-        if use_agent or has_agent_data:
-            if agent_updated_at and now - agent_updated_at > AGENT_STALE_SECONDS:
-                result = agent_fallback("agent 数据过期")
-            else:
-                result = agent_servers
-                online_count = sum(1 for s in agent_servers if s.get('online'))
-                total_players = sum(s['players'] for s in agent_servers if s.get('online'))
-                print(f"[Update] {comm['name']}: {online_count}/{len(agent_servers)} 在线, {total_players} 玩家 (agent)")
-        elif cid == 'exg':
-            exg_data = fetch_exg_data_from_api()
-            if exg_data:
-                result = exg_data
-            else:
-                with SERVER_CACHE_LOCK:
-                    result = SERVER_CACHE.get(cid, [])
-            online_count = sum(1 for s in result if s.get('online'))
-            total_players = sum(s['players'] for s in result if s.get('online'))
-            print(f"[Update] {comm['name']}: {online_count}/{len(result)} 在线, {total_players} 玩家")
-        else:
-            server_list = comm.get('servers', [])
-            if server_list:
-                game = comm.get('game', 'cs2')
-                max_workers = min(20, max(1, len(server_list)))
-                with ThreadPoolExecutor(max_workers=max_workers) as exe:
-                    result = list(exe.map(lambda s: fetch_a2s_data(s, game), server_list))
-                online_count = sum(1 for s in result if s.get('online'))
-                total_players = sum(s['players'] for s in result if s.get('online'))
-                print(f"[Update] {comm['name']}: {online_count}/{len(result)} 在线, {total_players} 玩家")
-            else:
-                result = []
 
     with SERVER_CACHE_LOCK:
         SERVER_CACHE[cid] = result
