@@ -36,6 +36,25 @@ app = Flask(__name__, static_folder=STATIC_DIR)
 app.secret_key = os.environ.get('APP_SECRET_KEY') or os.environ.get('SECRET_KEY') or 'change-me'
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
+#SEO优化
+SEO_DATA = {
+    'zh-CN': {
+        'title': 'NERV CS2ZE Browser - CS2 僵尸逃跑服务器列表',
+        'desc': '实时查询 CS2 Zombie Escape (ZE) 服务器列表、在线人数、地图翻译及历史数据统计。支持国内外社区。',
+        'keywords': 'CS2, ZE, 僵尸逃跑, 服务器列表, 地图翻译, NERV, 社区统计'
+    },
+    'zh-TW': {
+        'title': 'NERV CS2ZE Browser - CS2 殭屍逃跑伺服器列表',
+        'desc': '即時查詢 CS2 Zombie Escape (ZE) 伺服器列表、在線人數、地圖翻譯及歷史數據統計。支援國內外社區。',
+        'keywords': 'CS2, ZE, 殭屍逃跑, 伺服器列表, 地圖翻譯, NERV, 社區統計'
+    },
+    'en': {
+        'title': 'NERV CS2ZE Browser - CS2 Zombie Escape Server List & Stats',
+        'desc': 'Real-time CS2 Zombie Escape (ZE) server list, player statistics, and historical data. Supporting ALL ZE communities.',
+        'keywords': 'CS2, Zombie Escape, ZE, Server List, Map Translation, NERV, CS2 Stats'
+    }
+}
+
 # --- 基础配置 ---
 CONFIG_FILE = 'config.json'
 TRANS_FILE = 'map_translations.json'
@@ -919,6 +938,20 @@ def initialize_app():
 @app.route('/stats')
 @app.route('/feedback')
 def index():
+    # [替换原来的逻辑]
+    
+    # 1. 处理语言参数
+    url_lang = request.args.get('lang')
+    render_lang = url_lang if url_lang else 'zh-CN' # 默认为中文，前端会再次进行自动适配
+    
+    # 简易归一化
+    if render_lang.startswith('en'): render_lang = 'en'
+    elif 'TW' in render_lang or 'HK' in render_lang: render_lang = 'zh-TW'
+    else: render_lang = 'zh-CN'
+    
+    seo_info = SEO_DATA.get(render_lang, SEO_DATA['zh-CN'])
+    
+    # 2. 正常的加载逻辑
     view_map = {
         '/': 'servers',
         '/servers': 'servers',
@@ -932,12 +965,18 @@ def index():
     with SERVER_CACHE_LOCK:
         for comm in initial_config:
             cid = comm['id']
-            # 如果缓存里有数据，直接塞进去
             if cid in SERVER_CACHE and SERVER_CACHE[cid]:
                 comm['servers'] = SERVER_CACHE[cid]
             else:
                 comm['servers'] = [] 
-    return render_template('index.html', initial_view=initial_view, initial_config=initial_config, server_cache=SERVER_CACHE)
+                
+    return render_template('index.html', 
+                           initial_view=initial_view, 
+                           initial_config=initial_config, 
+                           server_cache=SERVER_CACHE,
+                           seo_info=seo_info,      # 新增SEO
+                           current_lang=render_lang # 新增語言渲染
+                           )
 
 @app.route('/api/steam/login')
 def steam_login():
@@ -1222,6 +1261,47 @@ def set_cache_headers(response):
     if path.startswith('/static/'):
         response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
     return response
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    base_url = request.url_root.rstrip('/') # 自动获取当前域名
+    pages = ['', '/servers', '/map-sub', '/stats'] # 页面路径
+    langs = ['en', 'zh-TW'] # 除了默认中文外的语言
+    
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
+    
+    for p in pages:
+        # 添加默认(中文)条目
+        xml += '  <url>\n'
+        xml += f'    <loc>{base_url}{p}</loc>\n'
+        xml += '    <changefreq>daily</changefreq>\n'
+        # Hreflang 交叉引用
+        xml += f'    <xhtml:link rel="alternate" hreflang="x-default" href="{base_url}{p}"/>\n'
+        xml += f'    <xhtml:link rel="alternate" hreflang="zh" href="{base_url}{p}"/>\n'
+        for l in langs:
+            xml += f'    <xhtml:link rel="alternate" hreflang="{l}" href="{base_url}{p}?lang={l}"/>\n'
+        xml += '  </url>\n'
+        
+        # 添加其他语言条目
+        for l in langs:
+            xml += '  <url>\n'
+            xml += f'    <loc>{base_url}{p}?lang={l}</loc>\n'
+            xml += '    <changefreq>daily</changefreq>\n'
+            xml += f'    <xhtml:link rel="alternate" hreflang="x-default" href="{base_url}{p}"/>\n'
+            xml += f'    <xhtml:link rel="alternate" hreflang="zh" href="{base_url}{p}"/>\n'
+            for l2 in langs:
+                xml += f'    <xhtml:link rel="alternate" hreflang="{l2}" href="{base_url}{p}?lang={l2}"/>\n'
+            xml += '  </url>\n'
+            
+    xml += '</urlset>'
+    resp = make_response(xml)
+    resp.headers["Content-Type"] = "application/xml"
+    return resp
+
+@app.route('/robots.txt')
+def robots_txt():
+    return f"User-agent: *\nAllow: /\nSitemap: {request.url_root}sitemap.xml"
 
 if __name__ == '__main__':
     initialize_app()
