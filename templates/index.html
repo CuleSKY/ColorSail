@@ -404,6 +404,44 @@
         50% { opacity: 0.3; }
         100% { opacity: 0.6; }
     }
+    /* --- Skeleton Loading (骨架屏优化版) --- */
+    /* 列表模式骨架容器 */
+    .skeleton-list {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+    /* 网格模式骨架容器 (关键：保持与真实 .grid-container 一致的布局参数) */
+    .skeleton-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        width: 100%;
+        margin-bottom: 20px;
+    }
+    /* 列表条目占位 */
+    .skeleton-row {
+        height: 50px;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 6px;
+        animation: skeleton-pulse 1.5s infinite ease-in-out;
+    }
+    /* 卡片占位 (关键：高度设为 200px，与 .card 的 min-height 一致) */
+    .skeleton-card {
+        height: 200px; 
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: var(--radius);
+        animation: skeleton-pulse 1.5s infinite ease-in-out;
+    }
+    @keyframes skeleton-pulse {
+        0% { opacity: 0.6; }
+        50% { opacity: 0.3; }
+        100% { opacity: 0.6; }
+}
     </style>
 </head>
 <body data-initial-view="{{ initial_view or 'servers' }}">
@@ -595,9 +633,21 @@
                         <img v-if="getCommunityLogoMeta(comm).url" :src="getCommunityLogoMeta(comm).url" :class="{ 'logo-svg': getCommunityLogoMeta(comm).isSvg, 'logo-invert': getCommunityLogoMeta(comm).isSvg && isDark }">
                         [[ comm.name ]]
                     </div>
-                    <div v-if="(!getServers(comm.id) || getServers(comm.id).length === 0)" class="skeleton-loader">
-                        <div class="skeleton-row" v-for="i in 5" :key="i"></div>
+                        <div v-if="(!getServers(comm.id) || getServers(comm.id).length === 0)">
+        
+                        <!-- 情况 A: 列表模式 或 移动端 -> 显示列表骨架 -->
+                        <div v-if="viewMode === 'list' || isMobile" class="skeleton-list">
+                            <div class="skeleton-row" v-for="i in 5" :key="i"></div>
+                        </div>
+
+                        <!-- 情况 B: 网格模式 (且非移动端) -> 显示卡片骨架 -->
+                        <div v-else class="skeleton-grid">
+                        <!-- 显示 3 个卡片占位，足以撑开一行 -->
+                            <div class="skeleton-card" v-for="i in 3" :key="i"></div>
+                        </div>
+
                     </div>
+        
                     <div v-if="viewMode === 'grid' && !isMobile" class="grid-container">
                         <div class="card" :class="{ 'online': s.online, 'has-image': s.image_url }" v-for="s in getServers(comm.id)" :key="s.display_ip">
                             <div class="status-line"></div>
