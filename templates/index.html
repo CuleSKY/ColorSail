@@ -385,6 +385,25 @@
             .sub-search-box { width: 100%; }
             .desktop-only-icon { display: none !important; }
         }
+        /* --- Skeleton Loading (骨架屏) --- */
+    .skeleton-loader {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+        }
+    .skeleton-row {
+        height: 50px; /* 模拟服务器列表行的高度 */
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 6px;
+        animation: skeleton-pulse 1.5s infinite ease-in-out;
+    }
+    @keyframes skeleton-pulse {
+        0% { opacity: 0.6; }
+        50% { opacity: 0.3; }
+        100% { opacity: 0.6; }
+    }
     </style>
 </head>
 <body data-initial-view="{{ initial_view or 'servers' }}">
@@ -576,7 +595,9 @@
                         <img v-if="getCommunityLogoMeta(comm).url" :src="getCommunityLogoMeta(comm).url" :class="{ 'logo-svg': getCommunityLogoMeta(comm).isSvg, 'logo-invert': getCommunityLogoMeta(comm).isSvg && isDark }">
                         [[ comm.name ]]
                     </div>
-
+                    <div v-if="(!getServers(comm.id) || getServers(comm.id).length === 0)" class="skeleton-loader">
+                        <div class="skeleton-row" v-for="i in 5" :key="i"></div>
+                    </div>
                     <div v-if="viewMode === 'grid' && !isMobile" class="grid-container">
                         <div class="card" :class="{ 'online': s.online, 'has-image': s.image_url }" v-for="s in getServers(comm.id)" :key="s.display_ip">
                             <div class="status-line"></div>
@@ -1371,9 +1392,19 @@ createApp({
         const applyCommunities = (data) => {
             communities.value = Array.isArray(data) ? data : [];
             communities.value.forEach(c => {
-                if (!servers.value[c.id]) servers.value[c.id] = [];
+            // 如果后端传来了 servers 数据，直接初始化到 servers.value 中
+                if (c.servers && c.servers.length > 0) {
+                    servers.value[c.id] = c.servers;
+                } else if (!servers.value[c.id]) {
+                    servers.value[c.id] = [];
+                }
+            
                 if (!serverCache.value[c.id]) serverCache.value[c.id] = {};
-                refreshCommunity(c.id);
+            
+                // 只有当没有初始数据时，才立即请求刷新，避免重复请求
+                if (!c.servers || c.servers.length === 0) {
+                    refreshCommunity(c.id);
+                }
             });
         };
 

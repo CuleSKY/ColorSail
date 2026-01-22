@@ -325,8 +325,8 @@ def fetch_steam_profile(steam_id):
         print(f"[Steam] 获取资料失败: {resp.status_code}")
         return None
     text = resp.text
-    name_match = re.search(r"<steamID><!\\[CDATA\\[(.*?)\\]\\]></steamID>", text)
-    avatar_match = re.search(r"<avatarMedium><!\\[CDATA\\[(.*?)\\]\\]></avatarMedium>", text)
+    name_match = re.search(r"<steamID><!\[CDATA\[(.*?)\]\]></steamID>", text)
+    avatar_match = re.search(r"<avatarMedium><!\[CDATA\[(.*?)\]\]></avatarMedium>", text)
     return {
         "name": name_match.group(1) if name_match else None,
         "avatar": avatar_match.group(1) if avatar_match else None
@@ -922,6 +922,14 @@ def index():
     initial_view = view_map.get(request.path, 'servers')
     load_config()
     initial_config = build_community_meta()
+    with SERVER_CACHE_LOCK:
+        for comm in initial_config:
+            cid = comm['id']
+            # 如果缓存里有数据，直接塞进去
+            if cid in SERVER_CACHE and SERVER_CACHE[cid]:
+                comm['servers'] = SERVER_CACHE[cid]
+            else:
+                comm['servers'] = [] 
     return render_template('index.html', initial_view=initial_view, initial_config=initial_config)
 
 @app.route('/api/steam/login')
