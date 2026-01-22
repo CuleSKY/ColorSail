@@ -1118,80 +1118,95 @@ def get_language_pack():
 def get_stats():
     global STATS_CACHE, STATS_CACHE_UPDATED_AT
     now = int(time.time())
-    if STATS_CACHE and (now - STATS_CACHE_UPDATED_AT) < STATS_CACHE_TTL_SECONDS:
-        response = jsonify(STATS_CACHE)
-        response.headers['Cache-Control'] = f"public, max-age={STATS_CACHE_TTL_SECONDS}, s-maxage={STATS_CACHE_TTL_SECONDS}"
-        return response
-
+    
+    # 1. 实时计算当前在线数据 (Pie Chart / Total Count) - 从内存读取，无需缓存，保证秒级刷新
     colors = generate_distinct_colors(len(COMMUNITY_META))
     meta_map = {c['id']: {'name': c.get('short_name', c['name']), 'color': colors[i]} for i, c in enumerate(COMMUNITY_META)}
     
     current_stats = []
     total_players = 0
+    
+    # 直接读取当前的 SERVER_CACHE (这是由后台任务实时更新的)
+    with SERVER_CACHE_LOCK:
+        snapshot = dict(SERVER_CACHE)
+        
     for cid, info in meta_map.items():
         count = 0
-        if cid in SERVER_CACHE:
-            count = count_players_for_stats(cid, SERVER_CACHE[cid])
+        if cid in snapshot:
+            count = count_players_for_stats(cid, snapshot[cid])
         total_players += count
         current_stats.append({
             "id": cid, "name": info['name'], "count": count, "color": info['color']
         })
     current_stats.sort(key=lambda x: x['count'], reverse=True)
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT timestamp, community, count FROM player_stats WHERE timestamp > ? ORDER BY timestamp ASC", (int(time.time()) - 48*3600,))
-    rows = c.fetchall()
-    conn.close()
+    # 2. 历史数据 (Line Chart) - 查询数据库，开销较大，使用缓存
+    # 如果缓存存在且未过期，使用缓存中的历史数据
+    if STATS_CACHE and (now - STATS_CACHE_UPDATED_AT) < STATS_CACHE_TTL_SECONDS:
+        line_chart = STATS_CACHE.get('line_chart')
+        total_peak_48h = STATS_CACHE.get('total_peak_48h')
+    else:
+        # 缓存过期，查询数据库
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT timestamp, community, count FROM player_stats WHERE timestamp > ? ORDER BY timestamp ASC", (now - 48*3600,))
+        rows = c.fetchall()
+        conn.close()
 
-    line_chart = {'labels': [], 'datasets': []}
+        line_chart = {'labels': [], 'datasets': []}
+        total_peak_48h = 0
+        
+        if rows:
+            timestamps = sorted(list(set([r[0] for r in rows])))
+            line_chart['labels'] = timestamps
+            
+            data_map = {}
+            totals_by_ts = {}
+            for ts, cid, count in rows:
+                if cid not in data_map:
+                    data_map[cid] = {}
+                data_map[cid][ts] = count
+                totals_by_ts[ts] = totals_by_ts.get(ts, 0) + count
+            if totals_by_ts:
+                total_peak_48h = max(totals_by_ts.values())
+                
+            for cid, info in meta_map.items():
+                if cid in data_map:
+                    data = [data_map[cid].get(ts, 0) for ts in timestamps]
+                    line_chart['datasets'].append({
+                        "label": info['name'],
+                        "borderColor": info['color'],
+                        "backgroundColor": info['color'],
+                        "data": data,
+                        "fill": False,
+                        "pointRadius": 0,
+                        "tension": 0.4
+                    })
+        
+        # 更新缓存 (只存历史部分)
+        STATS_CACHE = {
+            'line_chart': line_chart,
+            'total_peak_48h': total_peak_48h
+        }
+        STATS_CACHE_UPDATED_AT = now
+
+    # 3. 组装 Pie Chart 数据结构 (前端需要的数据格式)
     pie_chart = {'labels': [], 'datasets': [{'data': [], 'backgroundColor': []}]}
-    total_peak_48h = 0
-    
     for item in current_stats:
         if item['count'] > 0:
             pie_chart['labels'].append(item['name'])
             pie_chart['datasets'][0]['data'].append(item['count'])
             pie_chart['datasets'][0]['backgroundColor'].append(item['color'])
 
-    if rows:
-        timestamps = sorted(list(set([r[0] for r in rows])))
-        line_chart['labels'] = timestamps
-        
-        data_map = {}
-        totals_by_ts = {}
-        for ts, cid, count in rows:
-            if cid not in data_map:
-                data_map[cid] = {}
-            data_map[cid][ts] = count
-            totals_by_ts[ts] = totals_by_ts.get(ts, 0) + count
-        if totals_by_ts:
-            total_peak_48h = max(totals_by_ts.values())
-            
-        for cid, info in meta_map.items():
-            if cid in data_map:
-                data = [data_map[cid].get(ts, 0) for ts in timestamps]
-                line_chart['datasets'].append({
-                    "label": info['name'],
-                    "borderColor": info['color'],
-                    "backgroundColor": info['color'],
-                    "data": data,
-                    "fill": False,
-                    "pointRadius": 0,
-                    "tension": 0.4
-                })
-
+    # 4. 返回混合结果
     payload = {
         "current_stats": current_stats,
         "line_chart": line_chart,
         "pie_chart": pie_chart,
         "total_peak_48h": total_peak_48h
     }
-    STATS_CACHE = payload
-    STATS_CACHE_UPDATED_AT = now
-    response = jsonify(payload)
-    response.headers['Cache-Control'] = f"public, max-age={STATS_CACHE_TTL_SECONDS}, s-maxage={STATS_CACHE_TTL_SECONDS}"
-    return response
+    
+    return jsonify(payload)
 
 
 @app.after_request
