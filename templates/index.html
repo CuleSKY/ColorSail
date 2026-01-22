@@ -3,14 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="preconnect" href="https://unpkg.com">
-    <link rel="dns-prefetch" href="https://unpkg.com">
-    <title>NERV CS2ZE Browser</title>
-    <link id="favicon" rel="icon" href="/static/NERV_Logo.png" type="image/png">
     
-    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <!-- 1. 资源预加载 (去除了重复项) -->
     <link rel="preconnect" href="https://unpkg.com">
     <link rel="dns-prefetch" href="https://unpkg.com">
+    
+    <!-- 2. 动态 SEO 标题与描述 (来自 Flask 后端) -->
+    <title>{{ seo_info.title }}</title>
+    <meta name="description" content="{{ seo_info.desc }}">
+    <meta name="keywords" content="{{ seo_info.keywords }}">
+    
+    <!-- 3. Hreflang 多语言标记 (告诉 Google 不同 URL 对应不同语言) -->
+    <!-- x-default 和 zh 指向默认(无参数) URL -->
+    <link rel="alternate" hreflang="x-default" href="{{ request.base_url }}" />
+    <link rel="alternate" hreflang="zh" href="{{ request.base_url }}" />
+    <!-- 其他语言指向带参数的 URL -->
+    <link rel="alternate" hreflang="zh-TW" href="{{ request.base_url }}?lang=zh-TW" />
+    <link rel="alternate" hreflang="en" href="{{ request.base_url }}?lang=en" />
+    
+    <!-- 4. Canonical 规范链接 (防止参数导致重复收录) -->
+    <link rel="canonical" href="{{ request.base_url }}{{ '?lang=' + current_lang if current_lang != 'zh-CN' else '' }}">
+    
+    <!-- 5. Open Graph 社交媒体分享卡片 -->
+    <meta property="og:title" content="{{ seo_info.title }}">
+    <meta property="og:description" content="{{ seo_info.desc }}">
+    <meta property="og:image" content="/static/NERV_Logo.png">
+    <meta property="og:url" content="{{ request.base_url }}{{ '?lang=' + current_lang if current_lang != 'zh-CN' else '' }}">
+    <meta property="og:type" content="website">
+
+    <!-- 6. 图标与脚本 -->
+    <link id="favicon" rel="icon" href="/static/NERV_Logo.png" type="image/png">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script>
         (function() {
             // 立即恢复侧边栏状态，阻止页面加载时的布局跳变
@@ -939,15 +962,32 @@ createApp({
         const draggedIndex = ref(null);
         const dragOverIndex = ref(null);
         
-        const sysLang = navigator.language;
-        let defaultLang = 'en';
-        if (sysLang && sysLang.toLowerCase().startsWith('zh')) {
+        // 1. 获取 URL 参数 & 浏览器语言
+        const urlParams = new URLSearchParams(window.location.search);
+        const paramLang = urlParams.get('lang');
+        const sysLang = navigator.language || navigator.userLanguage;
+
+        // 2. 决定默认语言 (变量名保持 defaultLang 以兼容后文)
+        let defaultLang = 'en'; // 兜底默认值
+
+        if (paramLang) {
+            // 场景 A: URL 带有参数 (爬虫或分享链接)，强制使用
+            defaultLang = paramLang;
+        } else {
+        // 场景 B: URL 无参数，进行浏览器自动适配
+         if (sysLang && sysLang.toLowerCase().startsWith('zh')) {
             if (sysLang.includes('HK')) defaultLang = 'zh-HK';
             else if (sysLang.includes('TW')) defaultLang = 'zh-TW';
             else defaultLang = 'zh-CN';
+        } else {
+        defaultLang = 'en';
         }
+    }
+
+        // 这一行原本会报错，现在 defaultLang 已经定义了，就不会报错了
         const defaultChineseLang = defaultLang.startsWith('zh') ? defaultLang : 'zh-CN';
         const curLang = ref(defaultLang);
+
 
         const ROLE_LABELS = {
             guest: { label: 'Guest' },
@@ -1173,7 +1213,21 @@ createApp({
             localStorage.setItem('sidebar_collapsed', isCollapsed.value);
         };
         const toggleTheme = () => { isDark.value = !isDark.value; document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light'); updateFavicon(); };
-        const setLang = (l) => { curLang.value = l; showLangMenu.value = false; };
+        // [更新 URL 状态，不刷新页面]
+        const setLang = (l) => { 
+            curLang.value = l; 
+            showLangMenu.value = false; 
+            
+            const url = new URL(window.location);
+            if (l === 'zh-CN') {
+                url.searchParams.delete('lang'); // 中文默认不带参数
+            } else {
+                url.searchParams.set('lang', l);
+            }
+            window.history.pushState({}, '', url);
+            
+            // 可选：在这里更新 document.title，提升体验
+        };
         
         const closeDropdowns = () => {
             showLangMenu.value = false;
