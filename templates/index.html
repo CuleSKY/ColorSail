@@ -3,11 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="dns-prefetch" href="https://unpkg.com">
     <title>NERV CS2ZE Browser</title>
     <link id="favicon" rel="icon" href="/static/NERV_Logo.png" type="image/png">
     
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="dns-prefetch" href="https://unpkg.com">
+    <script>
+        (function() {
+            // 立即恢复侧边栏状态，阻止页面加载时的布局跳变
+            const collapsed = localStorage.getItem('sidebar_collapsed') === 'true';
+            if (collapsed) {
+                document.documentElement.classList.add('sidebar-is-collapsed');
+            }
+            // 立即恢复暗色模式
+            const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (isDark) document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
     <style>
         /* --- 1. 基础变量 --- */
         :root {
@@ -37,6 +52,11 @@
             --scrollbar-thumb: rgba(0, 0, 0, 0.28);
             --scrollbar-thumb-hover: rgba(0, 0, 0, 0.45);
             --steam-logo-invert: 1;
+            --sidebar-width: 260px;
+        }
+
+        html.sidebar-is-collapsed {
+            --sidebar-width: 60px !important;
         }
 
         [data-theme="dark"] {
@@ -84,7 +104,7 @@
 
         /* --- 2. 侧边栏 --- */
         #sidebar {
-            width: var(--sidebar-width-expanded); height: 100%;
+            width: var(--sidebar-width) ; height: 100%;
             background: var(--acrylic-bg); backdrop-filter: blur(20px);
             border-right: 1px solid var(--card-border);
             display: flex; flex-direction: column; padding: 12px;
@@ -854,7 +874,7 @@ createApp({
         let toastTimer = null;
         let steamLoginWindow = null;
         let steamLoginTimer = null;
-        const isCollapsed = ref(false); 
+        const isCollapsed = ref(document.documentElement.classList.contains('sidebar-is-collapsed')); 
         const showLangMenu = ref(false);
         const showSubPopover = ref(false); 
         const showProfileMenu = ref(false);
@@ -1116,6 +1136,11 @@ createApp({
 
         const toggleSidebar = () => {
             isCollapsed.value = !isCollapsed.value;
+            if (isCollapsed.value) {
+                document.documentElement.classList.add('sidebar-is-collapsed');
+            } else {
+                document.documentElement.classList.remove('sidebar-is-collapsed');
+            }
             localStorage.setItem('sidebar_collapsed', isCollapsed.value);
         };
         const toggleTheme = () => { isDark.value = !isDark.value; document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light'); updateFavicon(); };
@@ -1571,38 +1596,31 @@ createApp({
         };
 
         const loadStats = async () => {
-            if (!isLoggedIn.value) {
-                return;
-            }
-            try {
-                await loadChartJs();
-            } catch (e) {
-                showToast('Chart.js load failed');
-                return;
-            }
+            if (!isLoggedIn.value) return;
+            
+            try { await loadChartJs(); } catch (e) { return; }
+
             let data = null;
             try {
+                // 注意：后端需要配合修改 app.py 才能实现真正的秒级刷新（见上一个回答）
                 const res = await fetch('/api/stats');
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}`);
-                }
+                if (!res.ok) throw new Error();
                 data = await res.json();
-            } catch (e) {
-                showToast('Stats load failed');
-                return;
-            }
+            } catch (e) { return; }
+
+            // 1. 更新数值
             currentStats.value = data.current_stats;
+            totalPlayers.value = data.current_stats.reduce((acc, c) => acc + c.count, 0);
+            totalPeak48h.value = data.total_peak_48h || 0;
             
-            let t = 0; let top = null;
+            let top = null;
             data.current_stats.forEach(c => {
-                t += c.count;
                 if (!top || c.count > top.count) top = c;
             });
-            totalPlayers.value = t;
             topCommunity.value = top;
-            totalPeak48h.value = data.total_peak_48h || 0;
 
             curView.value = 'stats';
+
             if (data.line_chart && Array.isArray(data.line_chart.labels)) {
                 data.line_chart.labels = data.line_chart.labels.map((ts) => {
                     if (typeof ts !== 'number') return ts;
@@ -1610,23 +1628,58 @@ createApp({
                     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 });
             }
-            
+
+            // 2. 平滑更新图表 (避免闪烁)
             setTimeout(() => {
                 const lineCtx = document.getElementById('statsLineChart');
                 const pieCtx = document.getElementById('statsPieChart');
                 
-                Chart.defaults.color = isDark.value ? '#d0d0d0' : '#1b1b1b';
-                Chart.defaults.borderColor = isDark.value ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+                const textColor = isDark.value ? '#d0d0d0' : '#1b1b1b';
+                const gridColor = isDark.value ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+                Chart.defaults.color = textColor;
+                Chart.defaults.borderColor = gridColor;
 
-                if(lineCtx) {
-                    if(lineChartInst) lineChartInst.destroy();
-                    lineChartInst = new Chart(lineCtx, { type: 'line', data: data.line_chart, options: { maintainAspectRatio: false, scales: { x: { grid: { display: false } } } } });
+                // 更新折线图
+                if (lineCtx) {
+                    if (lineChartInst) {
+                        lineChartInst.data.labels = data.line_chart.labels;
+                        lineChartInst.data.datasets = data.line_chart.datasets;
+                        lineChartInst.options.scales.x.ticks = { color: textColor };
+                        lineChartInst.options.scales.y = { grid: { color: gridColor }, ticks: { color: textColor } };
+                        lineChartInst.update('none'); // 无动画模式更新数据
+                    } else {
+                        lineChartInst = new Chart(lineCtx, { 
+                            type: 'line', 
+                            data: data.line_chart, 
+                            options: { maintainAspectRatio: false, scales: { x: { grid: { display: false } } } } 
+                        });
+                    }
                 }
-                if(pieCtx) {
-                    if(pieChartInst) pieChartInst.destroy();
-                    pieChartInst = new Chart(pieCtx, { type: 'doughnut', data: data.pie_chart, options: { maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false } } } });
+
+                // 更新圆环图 (解决圆环闪烁的关键)
+                if (pieCtx) {
+                    if (pieChartInst) {
+                        pieChartInst.data.labels = data.pie_chart.labels;
+                        if (pieChartInst.data.datasets.length > 0 && data.pie_chart.datasets.length > 0) {
+                            pieChartInst.data.datasets[0].data = data.pie_chart.datasets[0].data;
+                            pieChartInst.data.datasets[0].backgroundColor = data.pie_chart.datasets[0].backgroundColor;
+                        } else {
+                            pieChartInst.data.datasets = data.pie_chart.datasets;
+                        }
+                        pieChartInst.update(); // 平滑过渡动画
+                    } else {
+                        pieChartInst = new Chart(pieCtx, { 
+                            type: 'doughnut', 
+                            data: data.pie_chart, 
+                            options: { 
+                                maintainAspectRatio: false, 
+                                cutout: '70%', 
+                                plugins: { legend: { display: false } } 
+                            } 
+                        });
+                    }
                 }
-            }, 100);
+            }, 0);
         };
 
         // --- 修复功能区 (Connection & Clipboard) ---
