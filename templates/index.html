@@ -161,7 +161,32 @@
         h1 { margin: 0; font-weight: 600; font-size: 20px; }
 
         .edit-banner { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: repeating-linear-gradient(45deg, var(--warn-text), var(--warn-text) 10px, var(--warn-bg) 10px, var(--warn-bg) 20px); z-index: 101; }
+        /* --- 修复菜单定位的容器 --- */
+        .user-menu-wrapper {
+            position: relative;
+            display: inline-flex; /* 关键：让容器只包裹头像，不占满整行 */
+            align-items: center;
+            flex-shrink: 0;
+        }
 
+        /* 优化下拉菜单位置 */
+        .dropdown-menu.profile-menu {
+            min-width: 160px;
+            top: calc(100% + 8px);
+            right: 0; 
+            z-index: 1000;
+        }
+
+        /* 昵称链接样式 */
+        .profile-link {
+            text-decoration: none;
+        color: var(--text-primary);
+        display: block;
+        width: 100%;
+        font-weight: 600;
+        transition: color 0.2s;
+        }
+        .profile-link:hover { color: var(--accent); }
         .header-right { display: flex; align-items: center; gap: 16px; justify-self: end; }
         .header-toolbar { display: flex; align-items: center; gap: 12px; }
         .toolbar-btn { display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 20px; background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-primary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02); line-height: 1; }
@@ -329,12 +354,35 @@
         }
 
         @media (max-width: 1024px) {
-            header { grid-template-columns: 1fr; height: auto; row-gap: 12px; padding: 12px 16px; }
-            .header-right { justify-self: start; flex-wrap: wrap; width: 100%; }
-            .auth-panel { width: 100%; justify-content: space-between; }
-            .header-toolbar { flex-wrap: wrap; }
-            .top-controls { width: 100%; justify-content: flex-end; }
-        }
+        /* --- 强制 Header 保持左右横向布局 --- */
+            header { 
+                display: flex; 
+                justify-content: space-between; /* 左边标题，右边头像 */
+                align-items: center; 
+                height: var(--header-height); 
+                padding: 0 16px; 
+                grid-template-columns: none; 
+                row-gap: 0;
+            }
+
+            .header-right { 
+                justify-self: end; 
+                flex-wrap: nowrap; 
+                width: auto; 
+                justify-content: flex-end;
+            }
+
+            .auth-panel { 
+                width: auto; 
+                justify-content: flex-end; 
+                gap: 8px;
+            }
+
+            /* 隐藏手机上不必要的元素以防拥挤 */
+            .header-toolbar, .auth-role-badge, .auth-status { display: none; }
+    
+            /* ... 保持原本的其他移动端样式 (content-wrapper, community-nav 等) ... */
+            }
 
         /* --- Stats Dashboard --- */
         .stats-dashboard { display: flex; flex-direction: column; gap: 20px; max-width: 1200px; margin: 0 auto; }
@@ -604,12 +652,18 @@
                             <img class="steam-logo" :src="steamLogoPath" alt="Steam">
                             [[ t('steam_login') ]]
                         </button>
-                        <div v-if="isLoggedIn" style="position: relative;">
+                        <div v-if="isLoggedIn" class="user-menu-wrapper">
                             <button class="profile-btn" @click.stop="toggleProfileMenu">
                                 <img class="profile-avatar" :src="steamProfileAvatar" alt="Steam Avatar">
                             </button>
                             <div class="dropdown-menu profile-menu" :class="{show: showProfileMenu}" @click.stop>
-                                <div class="dropdown-item profile-name">[[ steamProfileName ]]</div>
+                                <div class="dropdown-item">
+                                    <!-- 有 SteamID 则显示链接，否则显示纯文本 -->
+                                    <a v-if="steamId" :href="'https://steamcommunity.com/profiles/' + steamId" target="_blank" class="profile-link">
+                                        [[ steamProfileName ]] <span style="font-size:10px; opacity:0.5">↗</span>
+                                    </a>
+                                    <span v-else class="profile-name">[[ steamProfileName ]]</span>
+                                </div>
                                 <div class="dropdown-item logout-item" @click.stop="logout">[[ t('logout') ]]</div>
                             </div>
                         </div>
@@ -940,6 +994,7 @@ createApp({
         const authState = ref({ loggedIn: false, role: 'guest' });
         const steamAuthPending = ref(false);
         const steamProfile = ref({ name: null, avatar: null });
+        const steamId = ref(null); // SteamID获取
         const showLoginPrompt = ref(false);
         const feedbackSubject = ref('');
         const feedbackMessage = ref('');
@@ -1083,14 +1138,19 @@ createApp({
                 const res = await fetch('/api/steam/status', { credentials: 'same-origin' });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
+                const isLoggedInBool = Boolean(data && data.logged_in);
                 authState.value = {
-                    loggedIn: Boolean(data && data.logged_in),
-                    role: data && data.logged_in ? (data.role || 'member') : 'guest'
+                    loggedIn: isLoggedInBool,
+                    role: isLoggedInBool ? (data.role || 'member') : 'guest'
                 };
-                steamProfile.value = data && data.profile ? {
-                    name: data.profile.name || null,
-                    avatar: data.profile.avatar || null
-                } : { name: null, avatar: null };
+                
+                if (isLoggedInBool) {
+                    steamProfile.value = data.profile || { name: null, avatar: null };
+                    steamId.value = data.steam_id; // [关键] 保存 ID
+                } else {
+                    steamProfile.value = { name: null, avatar: null };
+                    steamId.value = null;
+                }
                 return data;
             } catch (e) {
                 if (!silent) {
@@ -1854,7 +1914,7 @@ createApp({
             showSubPopover, toggleSubPopover, toggleLangMenu, toggleProfileMenu, goToSubPage, closeDropdowns, showProfileMenu,
             currentStats, totalPlayers, totalPeak48h, topCommunity,
             filteredCommunities, serverSearchNotice,
-            isLoggedIn, authRoleLabel, authRoleClass, steamAuthPending,
+            isLoggedIn, authRoleLabel, authRoleClass, steamAuthPending, steamId,
             startSteamLogin, logout, showLoginPrompt, dismissLoginPrompt,
             feedbackSubject, feedbackMessage, submitFeedback,
             defaultChineseLang
