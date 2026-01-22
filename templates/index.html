@@ -8,7 +8,7 @@
     <title>NERV CS2ZE Browser</title>
     <link id="favicon" rel="icon" href="/static/NERV_Logo.png" type="image/png">
     
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <link rel="preconnect" href="https://unpkg.com">
     <link rel="dns-prefetch" href="https://unpkg.com">
     <script>
@@ -184,7 +184,16 @@
         .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; width: 100%; }
         .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); box-shadow: var(--shadow); position: relative; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.3s, box-shadow 0.3s; min-height: 200px; }
         .card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
-        .card-bg-layer { position: absolute; inset: 0; background-size: cover; background-position: center; z-index: 0; transition: filter 0.4s ease, transform 0.4s ease; }
+        .card-bg-layer { 
+            position: absolute; 
+            inset: 0; 
+            width: 100%;       /* 强制撑满宽度 */
+            height: 100%;      /* 强制撑满高度 */
+            object-fit: cover; /* 关键：保持比例裁剪，效果等同于 background-size: cover */
+            object-position: center; 
+            z-index: 0; 
+            transition: filter 0.4s ease, transform 0.4s ease; 
+        }
         .card:hover .card-bg-layer { filter: blur(4px); transform: scale(1.05); }
         .card-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.65); z-index: 1; }
         .card-content { padding: 16px; position: relative; z-index: 2; display: flex; flex-direction: column; flex: 1; justify-content: space-between; }
@@ -486,7 +495,7 @@
         <button class="hamburger-btn" @click="toggleSidebar">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
-        <div class="sidebar-logo"><img :src="currentLogoPath" alt="Logo"></div>
+        <div class="sidebar-logo"><img :src="currentLogoPath" alt="Logo" decoding="async"></div>
         
         <div class="nav-item" :class="{active: curView === 'servers'}" @click="goToView('servers')">
             <div class="icon-svg" v-html="icons.server"></div>
@@ -632,7 +641,7 @@
 
         <div class="community-nav" v-if="curView === 'servers'">
             <div class="jump-pill" v-for="comm in filteredCommunities" :key="comm.id" @click="scrollToComm(comm.id)">
-                <img v-if="getCommunityLogoMeta(comm).url" :src="getCommunityLogoMeta(comm).url" :class="{ 'logo-svg': getCommunityLogoMeta(comm).isSvg, 'logo-invert': getCommunityLogoMeta(comm).isSvg && isDark }">
+                <img v-if="getCommunityLogoMeta(comm).url" :src="getCommunityLogoMeta(comm).url"  :class="{ 'logo-svg': getCommunityLogoMeta(comm).isSvg, 'logo-invert': getCommunityLogoMeta(comm).isSvg && isDark }"loading="lazy" decoding="async">>
                 <span>[[ comm.name ]]</span>
             </div>
         </div>
@@ -671,7 +680,12 @@
                     <div v-if="viewMode === 'grid' && !isMobile" class="grid-container">
                         <div class="card" :class="{ 'online': s.online, 'has-image': s.image_url }" v-for="s in getServers(comm.id)" :key="s.display_ip">
                             <div class="status-line"></div>
-                            <div class="card-bg-layer" v-if="s.image_url" :style="{backgroundImage: 'url(' + s.image_url + ')'}"></div>
+                            <img class="card-bg-layer" 
+                                v-if="s.image_url" 
+                                :src="s.image_url" 
+                                loading="lazy" 
+                                decoding="async" 
+                                alt="Map">
                             <div class="card-overlay" v-if="s.image_url"></div>
                             <div class="card-content">
                                 <div>
@@ -835,6 +849,8 @@
 
 <script>
 window.__INITIAL_CONFIG__ = {{ initial_config|tojson }};
+//注入服务器列表数据，避免前端再次请求
+window.__INITIAL_SERVERS__ = {{ server_cache|tojson }};
 </script>
 <script>
 const { createApp, ref, computed, onMounted, onUnmounted, watch } = Vue;
@@ -866,8 +882,21 @@ createApp({
     delimiters: ['[[', ']]'],
     setup() {
         const communities = ref(Array.isArray(INITIAL_CONFIG) ? INITIAL_CONFIG : []);
-        const servers = ref({});
+        const servers = ref(window.__INITIAL_SERVERS__ || {});
         const serverCache = ref({});
+        if (window.__INITIAL_SERVERS__) {
+            Object.keys(window.__INITIAL_SERVERS__).forEach(cid => {
+                const sList = window.__INITIAL_SERVERS__[cid];
+                const cacheMap = {};
+                const now = Date.now();
+                sList.forEach(s => {
+                    // 构建 key，保持和 refreshCommunity 逻辑一致
+                    const key = `${s.ip}:${s.port}`; 
+                    cacheMap[key] = { ...s, _lastSeen: now };
+                });
+                serverCache.value[cid] = cacheMap;
+            });
+        }
         const initialView = document.body.dataset.initialView || 'servers';
         const curView = ref(initialView);
         const toastMsg = ref('');
