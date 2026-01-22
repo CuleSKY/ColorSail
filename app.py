@@ -300,10 +300,10 @@ def render_steam_callback(status, reason, steam_id=None):
                 console.error("PostMessage failed:", e);
             }}
             
-            // 关键修复：延迟 200ms 关闭窗口，确保消息已发出
+            // 关键修复：延迟 100ms 关闭窗口，确保消息已发出
             setTimeout(function() {{
                 window.close();
-            }}, 200);
+            }}, 100);
         }})();
     </script>
 </body>
