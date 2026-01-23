@@ -1061,8 +1061,9 @@ createApp({
         const autojoinTarget = ref(null);
         const autojoinAttempts = ref(0);
         const autojoinPosition = ref(null);
-        const autojoinLastTicketId = ref(null);
+        const autojoinLastTicketByServer = ref({});
         const autojoinPendingJoinUrl = ref(null);
+        const autojoinInactivePolls = ref(0);
         const autojoinRunning = ref(false);
         const autojoinStatusVisible = ref(false);
         const autojoinQueueType = ref('normal');
@@ -2002,8 +2003,9 @@ createApp({
             autojoinQueueType.value = 'normal';
             autojoinStartedAt.value = 0;
             autojoinTarget.value = null;
-            autojoinLastTicketId.value = null;
             autojoinPendingJoinUrl.value = null;
+            autojoinInactivePolls.value = 0;
+            autojoinLastTicketByServer.value = {};
             clearAutojoinState();
             if (!silent) {
                 showToast('已停止自动挤服');
@@ -2014,27 +2016,32 @@ createApp({
             stopAutojoinPolling();
             autojoinPollTimer = setInterval(async () => {
                 if (!autojoinRunning.value || !autojoinTarget.value || !steamId.value) return;
+                const serverKey = autojoinTarget.value.server_key;
                 try {
                     const params = new URLSearchParams({
                         steam_id: steamId.value,
-                        server_key: autojoinTarget.value.server_key
+                        server_key: serverKey
                     });
                     const res = await fetch(`/api/autojoin/poll?${params.toString()}`, { credentials: 'same-origin' });
                     const data = await res.json();
                     if (!data || data.ok === false) {
-                        showToast('????????');
-                        await stopAutojoin(true);
+                        autojoinInactivePolls.value += 1;
+                        if (autojoinInactivePolls.value >= 3) {
+                            showToast('自动挤服已停止或不在队列');
+                            await stopAutojoin(true);
+                        }
                         return;
                     }
                     if (data.granted) {
+                        autojoinInactivePolls.value = 0;
                         const ticketId = data.ticket_id || 'no_ticket';
-                        if (autojoinLastTicketId.value === ticketId) {
+                        const lastTicket = autojoinLastTicketByServer.value[serverKey];
+                        if (lastTicket === ticketId) {
                             return;
                         }
-                        autojoinLastTicketId.value = ticketId;
+                        autojoinLastTicketByServer.value[serverKey] = ticketId;
                         autojoinAttempts.value += 1;
                         if (data.fast_join_url) {
-                            const serverKey = autojoinTarget.value.server_key;
                             const ok = window.AutojoinUI && window.AutojoinUI.navigateJoinWindow
                                 ? window.AutojoinUI.navigateJoinWindow(serverKey, data.fast_join_url)
                                 : false;
@@ -2047,13 +2054,21 @@ createApp({
                     } else {
                         autojoinPosition.value = typeof data.position === 'number' ? data.position : null;
                         if (data.position === 0) {
-                            showToast('?????????');
-                            await stopAutojoin(true);
+                            autojoinInactivePolls.value += 1;
+                            if (autojoinInactivePolls.value >= 3) {
+                                showToast('自动挤服已停止或不在队列');
+                                await stopAutojoin(true);
+                            }
+                        } else {
+                            autojoinInactivePolls.value = 0;
                         }
                     }
                 } catch (e) {
-                    showToast('????????');
-                    await stopAutojoin(true);
+                    autojoinInactivePolls.value += 1;
+                    if (autojoinInactivePolls.value >= 3) {
+                        showToast('自动挤服已停止或不在队列');
+                        await stopAutojoin(true);
+                    }
                 }
             }, 1000);
         };
@@ -2069,8 +2084,9 @@ createApp({
             autojoinQueueType.value = queueType || 'normal';
             autojoinAttempts.value = 0;
             autojoinPosition.value = null;
-            autojoinLastTicketId.value = null;
             autojoinPendingJoinUrl.value = null;
+            autojoinInactivePolls.value = 0;
+            autojoinLastTicketByServer.value[target.server_key] = null;
             if (window.AutojoinUI && window.AutojoinUI.preopenJoinWindow) {
                 window.AutojoinUI.preopenJoinWindow(target.server_key);
             } else {
@@ -2090,13 +2106,13 @@ createApp({
                 const data = await res.json();
                 if (!data || data.ok === false) {
                     const reason = data && data.error ? data.error : 'unknown';
-                    showToast(`AutoJoin???${reason}`);
+                    showToast(`AutoJoin失败：${reason}`);
                     autojoinModalMode.value = 'idle';
                     autojoinModalOpen.value = false;
                     return;
                 }
             } catch (e) {
-                showToast('AutoJoin??');
+                showToast('AutoJoin失败');
                 autojoinModalMode.value = 'idle';
                 autojoinModalOpen.value = false;
                 return;
@@ -2105,7 +2121,7 @@ createApp({
             autojoinStartedAt.value = Date.now();
             persistAutojoinState();
             startAutojoinPolling();
-            showToast('AutoJoin?????');
+            showToast('AutoJoin已加入队列');
         };
 
         const handleAutojoinClick = (srv, comm) => {
@@ -2198,6 +2214,8 @@ createApp({
             autojoinModalMode.value = 'running';
             autojoinModalOpen.value = false;
             autojoinStartedAt.value = payload.started_at || Date.now();
+            autojoinInactivePolls.value = 0;
+            autojoinLastTicketByServer.value[payload.server_key] = null;
             startAutojoinPolling();
         };
 
