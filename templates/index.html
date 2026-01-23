@@ -946,6 +946,10 @@
                             <div v-if="autojoinPosition !== null">队列位置：[[ autojoinPosition ]]</div>
                         </div>
                     </div>
+                    <div v-else-if="autojoinModalMode === 'granted'">
+                        <div class="autojoin-message">✅ 已获得进服机会</div>
+                        <div class="autojoin-meta">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
+                    </div>
                 </div>
                 <div class="autojoin-modal-actions">
                     <button class="btn btn-primary" v-if="autojoinModalMode === 'not_eligible'" @click="fastJoinFromModal">立即进入</button>
@@ -955,6 +959,9 @@
                     </div>
                     <div v-if="autojoinModalMode === 'running'" class="autojoin-run-actions">
                         <button class="btn btn-danger" @click="stopAutojoin">停止自动挤服</button>
+                    </div>
+                    <div v-if="autojoinModalMode === 'granted'" class="autojoin-run-actions">
+                        <button class="btn btn-primary" @click="joinFromGrant">立即进入服务器</button>
                     </div>
                 </div>
             </div>
@@ -1054,6 +1061,8 @@ createApp({
         const autojoinTarget = ref(null);
         const autojoinAttempts = ref(0);
         const autojoinPosition = ref(null);
+        const autojoinLastTicketId = ref(null);
+        const autojoinPendingJoinUrl = ref(null);
         const autojoinRunning = ref(false);
         const autojoinStatusVisible = ref(false);
         const autojoinQueueType = ref('normal');
@@ -1993,6 +2002,8 @@ createApp({
             autojoinQueueType.value = 'normal';
             autojoinStartedAt.value = 0;
             autojoinTarget.value = null;
+            autojoinLastTicketId.value = null;
+            autojoinPendingJoinUrl.value = null;
             clearAutojoinState();
             if (!silent) {
                 showToast('已停止自动挤服');
@@ -2016,9 +2027,22 @@ createApp({
                         return;
                     }
                     if (data.granted) {
+                        const ticketId = data.ticket_id || 'no_ticket';
+                        if (autojoinLastTicketId.value === ticketId) {
+                            return;
+                        }
+                        autojoinLastTicketId.value = ticketId;
                         autojoinAttempts.value += 1;
                         if (data.fast_join_url) {
-                            window.location.href = data.fast_join_url;
+                            const serverKey = autojoinTarget.value.server_key;
+                            const ok = window.AutojoinUI && window.AutojoinUI.navigateJoinWindow
+                                ? window.AutojoinUI.navigateJoinWindow(serverKey, data.fast_join_url)
+                                : false;
+                            if (!ok) {
+                                autojoinPendingJoinUrl.value = data.fast_join_url;
+                                autojoinModalMode.value = 'granted';
+                                autojoinModalOpen.value = true;
+                            }
                         }
                     } else {
                         autojoinPosition.value = typeof data.position === 'number' ? data.position : null;
@@ -2045,6 +2069,13 @@ createApp({
             autojoinQueueType.value = queueType || 'normal';
             autojoinAttempts.value = 0;
             autojoinPosition.value = null;
+            autojoinLastTicketId.value = null;
+            autojoinPendingJoinUrl.value = null;
+            if (window.AutojoinUI && window.AutojoinUI.preopenJoinWindow) {
+                window.AutojoinUI.preopenJoinWindow(target.server_key);
+            } else {
+                try { window.open('about:blank', '_blank'); } catch (e) {}
+            }
             try {
                 const res = await fetch('/api/autojoin/join', {
                     method: 'POST',
@@ -2115,6 +2146,12 @@ createApp({
         const fastJoinFromModal = () => {
             if (!autojoinTarget.value) return;
             window.location.href = getFastJoinUrl(autojoinTarget.value);
+        };
+
+        const joinFromGrant = () => {
+            const url = autojoinPendingJoinUrl.value || (autojoinTarget.value ? getFastJoinUrl(autojoinTarget.value) : null);
+            if (!url) return;
+            window.location.href = url;
         };
 
         const joinServer = async (srv, comm) => {
@@ -2267,7 +2304,7 @@ createApp({
             isLoggedIn, authRoleLabel, authRoleClass, steamAuthPending, steamId, isPrime,
             startSteamLogin, logout, showLoginPrompt, dismissLoginPrompt,
             autojoinModalOpen, autojoinModalMode, autojoinTarget, autojoinAttempts, autojoinPosition, autojoinRunning, autojoinStatusVisible,
-            handleAutojoinClick, confirmAutojoin, closeAutojoinModal, openAutojoinModal, fastJoinFromModal, stopAutojoin, joinServer,
+            handleAutojoinClick, confirmAutojoin, closeAutojoinModal, openAutojoinModal, fastJoinFromModal, joinFromGrant, stopAutojoin, joinServer,
             isAutojoinEligible,
             feedbackSubject, feedbackMessage, submitFeedback,
             defaultChineseLang

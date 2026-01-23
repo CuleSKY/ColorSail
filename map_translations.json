@@ -1,887 +1,3558 @@
 {
-    "Fireboy & Watergirl Zombie (ze_fireboy_watergirl)": "森铃冰火人",
-    "ZE_BEAUTIFUL_P": "",
-    "ZE_OBJECTIVE_OUROBOROS_APOLLYON": "[衔尾蛇计划]代号：辰宿归墟",
-    "ZE_OBJ_OUROBOROS_AURORA": "[衔尾蛇计划]代号：落日余晖",
-    "ZE_OBJ_OUROBOROS_RAGNAROK": "[衔尾蛇计划]代号：破晓终幕",
-    "ZE_chenbai_chap12_alpha": "",
-    "Ze_Nibui_Cs2": "",
-    "Ze_Re_SenS": "",
-    "Ze_SenS": "",
-    "ar_shoots_night": "",
-    "rp_downtown": "",
-    "ze_1_ScHiZo": "",
-    "ze_1way_tunnel": "单向隧道",
-    "ze_2012_p": "2012",
-    "ze_2049": "2049",
-    "ze_20_seconds_v1": "",
-    "ze_240s_survival_v1": "",
-    "ze_30_seconds_p": "",
-    "ze_666_crazy_escape": "",
-    "ze_666_crazy_escape_v2_css2f": "",
-    "ze_8bit": "",
-    "ze_AAA_diman_world": "",
-    "ze_ALIEN_mountain_escape_p": "",
-    "ze_ATIX_apocalypse_p": "",
-    "ze_ATIX_panic_2017_p": "",
-    "ze_ATIX_panic_p": "",
-    "ze_Ancient_wrath_r": "",
-    "ze_Aooka3": "",
-    "ze_Aoraitsu_Reloaded": "",
-    "ze_ApertureScience_p": "",
-    "ze_Arcana_Heart": "",
-    "ze_At_dusk": "",
-    "ze_Awaker": "",
-    "ze_Aware": "",
-    "ze_BLACK_DOOR": "",
-    "ze_Baboonpox_escape": "",
-    "ze_Backrooms": "",
-    "ze_Backrooms_Insomnia": "",
-    "ze_Bathroom": "",
-    "ze_BigBoo_n64": "",
-    "ze_Boatescape777": "",
-    "ze_Boatescape888": "",
-    "ze_Boatescape999": "",
-    "ze_Boatescape_Ultimate": "",
-    "ze_Box_Defend盒子防守": "",
-    "ze_COVID_1984": "",
-    "ze_Cyberspace": "赛博空间",
-    "ze_DYSTOPIA_p": "反乌托邦",
-    "ze_DaBaDeeDaBaDie": "",
-    "ze_Dark_Souls": "",
-    "ze_Deadcore": "死亡核心",
-    "ze_Desperate_Soul": "母神悲歌",
-    "ze_Djinn": "",
-    "ze_Don'tGuaji": "",
-    "ze_Doors": "",
-    "ze_Dreamin": "梦想",
-    "ze_ELEVATOR_escape_p": "",
-    "ze_Emerald": "",
-    "ze_EmpireCity_p": "",
-    "ze_Evernight": "永夜",
-    "ze_FFVII_Fako_Reactor": "Fako炉",
-    "ze_FFVII_Mako_Reactor_v5_3": "最终幻想VII：魔晄炉V53",
-    "ze_FFVII_Mako_Reactor_v5_p": "[P组]最终幻想VII：魔晄炉V5",
-    "ze_FFVII_Mako_Reactor_v6_p": "最终幻想VII：魔晄炉V6",
-    "ze_FFVII_Malgo_Reactor": "麻辣狗炉",
-    "ze_FFVII_Snow_Cosmo": "最终幻想VII：宇宙峡谷(雪地版)",
-    "ze_FFVII_temple_ancient": "最终幻想VII：古代种神殿v5",
-    "ze_FFXII_Bestersand_Beta": "最终幻想XII：美沙",
-    "ze_FFXII_Feywood_b1": "最终幻想XII：幻妖之森",
-    "ze_FFXII_Mt_Bur_Omisace_v6": "最终幻想XII：神都布尔奥米赛斯V6",
-    "ze_FFXII_Paramina_Rift": "最终幻想XII：帕拉米纳大峡谷",
-    "ze_FFXII_Westersand_v8": "最终幻想XII：西沙V81",
-    "ze_FFXIV_Coil_of_Bahamut": "最终幻想XIV:巴哈姆特大迷宫",
-    "ze_FFXIV_Reisen_Temple": "最终幻想XIV:醴泉神社",
-    "ze_FFXIV_Wanderers_Palace": "最终幻想XIV:放浪古神殿v4",
-    "ze_FFXIV_Wanderers_Palace_v6_2": "最终幻想XIV:放浪古神殿v6_2",
-    "ze_FORiUS_just_RUN_p": "",
-    "ze_Fabulous": "",
-    "ze_FirstOne_SSAOF": "",
-    "ze_Forsaken_Temple": "",
-    "ze_Frozen_Abyss": "",
-    "ze_Genso_Of_Last_v3": "",
-    "ze_Hydroponic_Garden": "水培花园",
-    "ze_IMPERIUM": "",
-    "ze_Industrial_Dejavu": "",
-    "ze_LOTR_Helms_Deep_p": "",
-    "ze_LOTR_Isengard": "",
-    "ze_LOTR_Minas_Tiret_p": "",
-    "ze_LOTR_Minas_Tirith_p": "",
-    "ze_LOTR_Mines_of_Moria_p": "",
-    "ze_LOTR_Mirkwood_p": "",
-    "ze_LOTR_Mount_Doom_p": "",
-    "ze_Last_Man_Standing_p": "龙门山",
-    "ze_MAGA": "",
-    "ze_MORELL_April_Vacation_p": "",
-    "ze_MiSide": "米塔",
-    "ze_Minecraft_Dreamland": "",
-    "ze_Minecraft_Universe": "",
-    "ze_Minimal": "极病",
-    "ze_Mochi_Island": "",
-    "ze_Mountain_Escape_Snow": "",
-    "ze_Mountain_Ultimate": "",
-    "ze_NY_Marathon_p": "",
-    "ze_NewYork_escape_p": "",
-    "ze_Nomada": "",
-    "ze_Obf_Cats_run_v1_9": "",
-    "ze_Obf_Filth": "代号：怒火中烧",
-    "ze_Obf_Insane": "代号：烈火雄心",
-    "ze_Obf_NPST_v2": "代号：NPST_v2",
-    "ze_Obf_Rampage 2.0": "代号：野火燎原",
-    "ze_Obf_Rampage_v2_Legacy": "代号：横空出世-火之心",
-    "ze_Obf_Rescape": "代号：浴火重生",
-    "ze_Obj_NPST_v1_4": "代号：NPST_v1_4",
-    "ze_Obj_insane_v1_2": "代号：烈火雄心_v1_2",
-    "ze_Otakuroom": "",
-    "ze_PUTA_p": "",
-    "ze_Permafrost": "",
-    "ze_Pirates_Port_Royal": "加勒比海盗：罗亚尔港",
-    "ze_PoR_island_p": "",
-    "ze_PotC_p": "",
-    "ze_R_W_B_ulti": "",
-    "ze_Requiem": "镇魂曲",
-    "ze_SAMOSBOR": "笼子",
-    "ze_SCP_Containment_Breach": "",
-    "ze_STRANGE_escape_p": "",
-    "ze_S_A_M": "刀剑神域",
-    "ze_Sekiro": "",
-    "ze_Serpentis_Temple": "美杜莎神殿",
-    "ze_ShroomForest2_p": "蘑菇2",
-    "ze_ShroomForest3_p": "蘑菇3",
-    "ze_ShroomForest_p": "蘑菇1",
-    "ze_Sit_Caelum_Paradisus": "",
-    "ze_Squid_Game": "鱿鱼游戏",
-    "ze_Stardust": "",
-    "ze_Steyliff_Grove": "",
-    "ze_TESV_Skyrim_p": "",
-    "ze_Tensor_of_Ice": "",
-    "ze_Totemo_Roka_p": "",
-    "ze_Tower_of_Babel": "",
-    "ze_Tyranny": "暴君1",
-    "ze_Tyranny2": "暴君2",
-    "ze_ULTRAKILL": "",
-    "ze_UT2004_Convoy_p": "",
-    "ze_Uchiha_Legacy": "宇智波：遗迹",
-    "ze_Visualizer": "监视者",
-    "ze_YuanMengStar": "",
-    "ze_Zertinan": "最终幻想XII：泽尔提南",
-    "ze__hell_p": "",
-    "ze_abandoned_industry_p": "",
-    "ze_abandoned_project_p": "",
-    "ze_act_character_relic": "",
-    "ze_aepp_nano_grid2_p": "",
-    "ze_akala_p": "",
-    "ze_alien_shooter": "",
-    "ze_ancient_wrath_p": "古代种金字塔",
-    "ze_angelbeats_guild": "",
-    "ze_angels_of_death": "",
-    "ze_antartika_p": "",
-    "ze_aot_trost": "",
-    "ze_apollo_p": "",
-    "ze_apprehended": "",
-    "ze_aragami_p": "",
-    "ze_arctic_escape_p": "",
-    "ze_ardenweald": "",
-    "ze_ardenweald_cs2": "",
-    "ze_arknights_caerula_arbor": "",
-    "ze_arknights_caerula_arbor(English_version)": "",
-    "ze_arknights_initium": "",
-    "ze_arknights_sows": "",
-    "ze_artika_base_p": "",
-    "ze_ascend_escape": "",
-    "ze_ashen_keep_p": "",
-    "ze_atl_lgnition_a1": "",
-    "ze_avalanche_reboot": "",
-    "ze_azathoth_p": "",
-    "ze_aztecnoob_p": "",
-    "ze_backrooms_deathbed": "后室：死眠",
-    "ze_bang_dream_mygo": "爱音の梦",
-    "ze_barrage_p": "",
-    "ze_barrel_of_death": "",
-    "ze_barrelrooms": "",
-    "ze_basic_geometric": "",
-    "ze_be_very_careful": "",
-    "ze_best_korea": "最美曹县",
-    "ze_beyond_horizon": "",
-    "ze_beyond_the_boundary": "",
-    "ze_bh3rd_babel_z": "",
-    "ze_bh3rd_cyberpunk_z": "",
-    "ze_bh3rd_nagazoracity_z": "",
-    "ze_biohazard2_rpd_004_p": "",
-    "ze_biohazard2_sewer_004": "",
-    "ze_biohazard_manor_004_p": "",
-    "ze_bioluminescent": "",
-    "ze_bioshock_v6_cs2": "生化奇兵v6",
-    "ze_bisounours_party": "",
-    "ze_black_lion_p": "",
-    "ze_blackmesa_escape_p": "",
-    "ze_blackmesa_remix_cs2": "",
-    "ze_blood_castle": "",
-    "ze_blood_castle_z": "",
-    "ze_boacceho_p": "",
-    "ze_boatescape101_p": "",
-    "ze_boatescape888": "坐船跑888",
-    "ze_boatescape_arte": "",
-    "ze_boralus": "",
-    "ze_bp-infested-prison_p": "",
-    "ze_breakable_p": "",
-    "ze_breakdream_v1": "",
-    "ze_bunny_story": "",
-    "ze_castle_bridge_p": "",
-    "ze_celestial_ops": "",
-    "ze_cemetery_escape": "",
-    "ze_challenge_run": "",
-    "ze_changing_room": "",
-    "ze_chicago_bean_gassy_fart_life": "",
-    "ze_chicken_lords_tower_p": "",
-    "ze_chicken_nugget_v1_9": "",
-    "ze_chip_n_dale": "FC松鼠大作战",
-    "ze_christmas_escape": "",
-    "ze_christmas_infection_p": "",
-    "ze_christmas_p": "",
-    "ze_chroma": "",
-    "ze_chronicle": "",
-    "ze_chrono_trigger": "",
-    "ze_chronoplague": "",
-    "ze_chronus_p": "",
-    "ze_church_of_white_ha1jk5fg2": "",
-    "ze_city": "",
-    "ze_clawfactory": "",
-    "ze_clockwork": "",
-    "ze_color_levels": "",
-    "ze_colorful": "",
-    "ze_colorlicouspilar_p": "",
-    "ze_colors_p": "",
-    "ze_compound_escape": "",
-    "ze_concrete_defense": "",
-    "ze_conflict": "",
-    "ze_contradiction_spiral": "",
-    "ze_cookie": "",
-    "ze_coolcoolsnowman_n64": "",
-    "ze_crashbandicoot_p": "",
-    "ze_crazy_christmas_p": "",
-    "ze_crazy_escape_p": "",
-    "ze_croc2_sailor_village (WIP 30%)": "",
-    "ze_cry_thunder": "",
-    "ze_cube_defense": "",
-    "ze_dangerous_waters_p": "",
-    "ze_dark_cave_remake_m": "",
-    "ze_darkest_hour": "",
-    "ze_deadcore_r": "死亡核心(R核)",
-    "ze_dear": "",
-    "ze_death_forest": "",
-    "ze_death_star_escape_p": "",
-    "ze_deathinvain_palace": "",
-    "ze_decayed_dreams": "",
-    "ze_deepice_p": "",
-    "ze_defense3002_p": "",
-    "ze_depths": "",
-    "ze_descent_into_cerberon_p": "破碎行动",
-    "ze_desert_tour": "",
-    "ze_diablo": "",
-    "ze_diamond_cube_v1_cs2": "",
-    "ze_diverted_destiny": "",
-    "ze_dnb_realms": "",
-    "ze_dnd_hydra_z": "",
-    "ze_doomglaven": "",
-    "ze_dorororo": "",
-    "ze_downstairs": "",
-    "ze_dragonball_snakeway_p": "",
-    "ze_dushiguigong_01": "",
-    "ze_easy_escape_v4": "",
-    "ze_eizures_b1_1": "核子危机b1",
-    "ze_eizures_b2": "核子危机b2",
-    "ze_emerald": "",
-    "ze_endless_dream": "无尽之梦",
-    "ze_endor": "",
-    "ze_error": "",
-    "ze_escape2024": "",
-    "ze_escape_the_eye_p": "",
-    "ze_eternal_journey": "",
-    "ze_evil_mansion_p": "",
-    "ze_exchange_innovation_p": "",
-    "ze_eye_factory_escape": "",
-    "ze_eye_for_an_eye": "",
-    "ze_fall_guys": "糖豆人",
-    "ze_fapescape_p": "老乐高",
-    "ze_fapescape_rote_p": "新乐高",
-    "ze_farmhouse_p": "",
-    "ze_fast_escape_p": "",
-    "ze_fatestay_night_ubw": "",
-    "ze_ffvii_cosmo_canyon_t": "最终幻想VII：宇宙峡谷(天CO)",
-    "ze_ffvii_cosmo_canyon_v2": "最终幻想VII：宇宙峡谷V2",
-    "ze_ffxii_feywood_t": "最终幻想XII：幻妖之森",
-    "ze_ffxii_westersand_v7_t": "最终幻想XII：西沙V72",
-    "ze_ffxiv_great_gubal_library": "最终幻想XIV:迦巴勒幻想图书馆",
-    "ze_ffxiv_the_orbonne_monastery_demo": "",
-    "ze_ffxiv_wanderers_palace_v5_2": "最终幻想XIV:放浪古神殿v5_2",
-    "ze_firewall_laboratory_part1_p": "",
-    "ze_firewall_laboratory_part2_p": "",
-    "ze_floating_rocks_survival": "",
-    "ze_flower": "花之声",
-    "ze_flowering": "",
-    "ze_flying_world": "",
-    "ze_fond_dream": "南柯一梦",
-    "ze_forest_remake_m": "",
-    "ze_forestbunkers_p": "",
-    "ze_forhidden_slicoo": "",
-    "ze_forhidden_void": "",
-    "ze_fragment_ops_rewind": "",
-    "ze_frostdrake_tower_p": "",
-    "ze_frozentemple_cs2": "",
-    "ze_frozentemple_p": "",
-    "ze_funny_runner": "",
-    "ze_games_p": "",
-    "ze_gameshow": "",
-    "ze_gear_palace": "",
-    "ze_geometric": "",
-    "ze_gods_wrath_p": "",
-    "ze_goldeneye_64": "",
-    "ze_goobers_basement": "",
-    "ze_grace": "优雅",
-    "ze_grau_p": "格劳",
-    "ze_greece_escape_p": "",
-    "ze_greencity_p": "",
-    "ze_gris": "格里斯",
-    "ze_gris_p": "格里斯(P组)",
-    "ze_gris_re": "",
-    "ze_gta_police_station_garage_m": "",
-    "ze_gunma": "",
-    "ze_guye_room": "电竞房",
-    "ze_halloween_house_p": "",
-    "ze_hammer_bunker_part1_CS2": "",
-    "ze_happiness_factory_v1": "",
-    "ze_happiness_factory_v2": "",
-    "ze_haunted_lab_escape_p": "",
-    "ze_hazard_escape_p": "",
-    "ze_hell_escape_p": "",
-    "ze_hidden_fortress_p": "",
-    "ze_hidden_temple": "",
-    "ze_highest_to_lowest": "",
-    "ze_hlc_citadel_v1": "",
-    "ze_hold2_boring_z": "",
-    "ze_hold_em_p": "",
-    "ze_honkai_impact_changkongshi": "",
-    "ze_honkai_impact_tqs【天穹市】": "",
-    "ze_hsc": "HSC",
-    "ze_humans model pack": "",
-    "ze_hypernova_p": "",
-    "ze_hypnotize_me_baby_p": "",
-    "ze_iamlegend_p": "",
-    "ze_ice_cavern_z": "",
-    "ze_ice_hold_p": "",
-    "ze_icebreaker": "",
-    "ze_icecap_escape_ia_super": "",
-    "ze_icecap_escape_p": "",
-    "ze_icecap_solo": "",
-    "ze_iceworld_athletic_cs2": "",
-    "ze_idk_what_to_call_this": "",
-    "ze_illusory_world": "虚空幻界",
-    "ze_immortal_flame": "永恒烈焰",
-    "ze_inboxed_p": "",
-    "ze_incident_seasons": "四季异变",
-    "ze_indiana_jones_004_p": "夺宝奇兵",
-    "ze_infected_sewers_v4": "",
-    "ze_infested-industry_p": "",
-    "ze_infiltration_final_p": "",
-    "ze_insanitycity_t": "",
-    "ze_interception_p": "",
-    "ze_isla_nublar_p": "",
-    "ze_istanbul_escape_pro": "",
-    "ze_italy_town_z": "",
-    "ze_japans_3rd_bombing": "",
-    "ze_jiangnan_town_cs2": "",
-    "ze_journey_p": "",
-    "ze_jp_trip_k1ne2": "",
-    "ze_jurassic_life": "",
-    "ze_jurassic_park_story_p": "",
-    "ze_jurassicpark_escape_p": "",
-    "ze_jurassicpark_p": "",
-    "ze_k19_escape_p": "",
-    "ze_kaffe_escape_p": "",
-    "ze_kage_cs2": "",
-    "ze_kebab_immigrant": "",
-    "ze_kenshin_v1": "",
-    "ze_knife_stray_p": "",
-    "ze_kongzhongyiji": "",
-    "ze_kororinpa": "",
-    "ze_kraznov_poopata_p": "",
-    "ze_kuwei_cs2": "",
-    "ze_l0v0l_p": "颜文字1",
-    "ze_lab": "",
-    "ze_laser_island_z": "",
-    "ze_lazers_p": "",
-    "ze_legend_of_astrum_z": "",
-    "ze_legends_of_dawn": "",
-    "ze_lego": "马乐高",
-    "ze_legoland_crackheads": "",
-    "ze_lemonade": "[冰鲜柠檬水]csgo不喜欢天天带的地图",
-    "ze_lemonysnickets_p": "",
-    "ze_lethal_company": "",
-    "ze_licciana_escape_p": "",
-    "ze_light_911": "",
-    "ze_lila_panic_escape_p": "",
-    "ze_little_trip": "",
-    "ze_loom": "",
-    "ze_lootus": "",
-    "ze_lorem_ipsum_p": "",
-    "ze_lost_ruins": "",
-    "ze_lotr_dol_guldur": "",
-    "ze_lotr_minas_tirith_recompile": "",
-    "ze_luciddreams_cs2": "",
-    "ze_luigismansion_p": "",
-    "ze_luminous_escape": "",
-    "ze_luna_escape": "",
-    "ze_m0w0m_p": "",
-    "ze_mabinogi_cs2": "",
-    "ze_madara_temple": "马达拉神殿",
-    "ze_madness": "",
-    "ze_magala_castle_p": "",
-    "ze_magic_carpet_p": "",
-    "ze_magus_v2_4": "",
-    "ze_maontain_escape": "",
-    "ze_mario_tower_p": "",
-    "ze_mars_escape_p": "",
-    "ze_mars_escape_xmas": "圣诞mako",
-    "ze_maze": "",
-    "ze_maze_runner": "",
-    "ze_melong_dow_learjet_p": "",
-    "ze_mgden_z": "永恒花园",
-    "ze_military_escape_p": "",
-    "ze_minecraft_adventure": "",
-    "ze_minecraft_dragon_castle": "",
-    "ze_minecraft_drifts": "",
-    "ze_minecraft_journey_v1": "",
-    "ze_minecraft_p": "",
-    "ze_minecraft_run": "",
-    "ze_minecraft_sakura": "",
-    "ze_minecraft_sakura_test": "",
-    "ze_minecratix": "",
-    "ze_mirrors_edge_reborn_p": "",
-    "ze_misaka": "",
-    "ze_misaka2_reborn": "",
-    "ze_mist_p": "雾城龙影",
-    "ze_mix": "",
-    "ze_mkzk_scarab_cs2": "",
-    "ze_mkzk_scarab_rmk": "",
-    "ze_mlgsurf": "",
-    "ze_mojos_minigames_p": "",
-    "ze_mota": "",
-    "ze_mountain_escape_p": "",
-    "ze_my_first_escape": "",
-    "ze_namviet_p": "",
-    "ze_naruto_z": "",
-    "ze_negative_legacy": "",
-    "ze_neko_canyon_p": "",
-    "ze_neochrome": "霓铬",
-    "ze_neovia": "",
-    "ze_neron": "盈能之境",
-    "ze_new_italy_cs2": "",
-    "ze_nibui": "",
-    "ze_night_run": "",
-    "ze_nightmare_dimension": "",
-    "ze_no_title_cs2_l": "无题",
-    "ze_noir_p": "",
-    "ze_nomada_z": "",
-    "ze_notredame_p": "",
-    "ze_nuclear_site_survie_by_gm": "",
-    "ze_nuke_p": "",
-    "ze_obj_Blue_Depth": "代号：蓝渊计划",
-    "ze_obj_abyss": "代号：暗流涌动",
-    "ze_obj_annihilate_dd_v1": "代号：孤注一掷",
-    "ze_obj_avulsion_a1": "代号：分崩离析",
-    "ze_obj_eclipsis_v1": "代号：日蚀计划",
-    "ze_obj_ember": "代号：绝境星火",
-    "ze_obj_encounter": "代号：争锋相对",
-    "ze_obj_escalation_v1": "代号：飞升计划",
-    "ze_obj_federation": "代号：守望莱茵",
-    "ze_obj_goosestep_v1": "代号：缓兵之计",
-    "ze_obj_redemption": "代号：一线生机",
-    "ze_obj_rove": "代号：永夜行疆",
-    "ze_obj_void": "代号：至死不渝",
-    "ze_obscura_tower": "",
-    "ze_ocarina_of_time": "",
-    "ze_ocean_base_escape_p": "",
-    "ze_ocean_heart_cs2": "",
-    "ze_offliner": "单机者",
-    "ze_omen": "启示：命运预兆",
-    "ze_onahole_p": "",
-    "ze_one_dream_machine": "",
-    "ze_oneiros_p": "",
-    "ze_only_up": "",
-    "ze_oot_shadowtemple": "",
-    "ze_opti_variety_missions_cs2_l": "",
-    "ze_opti_variety_missions_p": "",
-    "ze_out_into_the_open": "",
-    "ze_outerwilds": "",
-    "ze_outlast": "",
-    "ze_outpost_escape_p": "",
-    "ze_overlord": "骨王",
-    "ze_p_v_z_vo": "",
-    "ze_palace_adventure": "",
-    "ze_palace_of_minolila_cs2": "",
-    "ze_panic_escape_p": "",
-    "ze_paradise_t": "",
-    "ze_paranoia_cs2": "",
-    "ze_parkers_pit_p": "",
-    "ze_parking_p": "",
-    "ze_pausechamp_escape": "",
-    "ze_paycheck_p": "",
-    "ze_payload_swarm": "",
-    "ze_pd2_crime_art": "",
-    "ze_peach_castle_n64": "",
-    "ze_peach_insanity_n64": "",
-    "ze_penguin_of_doom": "",
-    "ze_percocet_p": "",
-    "ze_pilgrimage": "",
-    "ze_plants_vs_zombies": "",
-    "ze_platformer_p": "",
-    "ze_pogworld": "",
-    "ze_pokemon_johto": "",
-    "ze_pokemon_kanto_v1": "",
-    "ze_pools_p": "",
-    "ze_pools_part2": "",
-    "ze_popkart": "",
-    "ze_portal_story_p": "",
-    "ze_postal": "",
-    "ze_predator_ultimate_p": "铁血战士",
-    "ze_predator_ultimate_v3": "",
-    "ze_prisonbreak_escape": "",
-    "ze_prisonbreak_rescue": "",
-    "ze_project_alcaria": "",
-    "ze_project_codex": "",
-    "ze_project_codex_z": "",
-    "ze_prototype": "",
-    "ze_psycho_pass": "",
-    "ze_purification_a1": "净化",
-    "ze_puritytest": "",
-    "ze_quiver_p": "",
-    "ze_r00ms": "",
-    "ze_r_w_b_ulti_cs2": "",
-    "ze_rabanastre_royal": "",
-    "ze_raccoon_facility_p": "",
-    "ze_radio_building": "",
-    "ze_raid_ffxiv_eorzea": "",
-    "ze_rainbow_factory": "",
-    "ze_rainbow_world_p": "",
-    "ze_raintime2_stormwindkeep_v2": "",
-    "ze_random_escape_p": "",
-    "ze_random_p": "",
-    "ze_ratatouille": "",
-    "ze_re_abydos": "",
-    "ze_re_creation": "",
-    "ze_realm": "领域",
-    "ze_red_planet": "",
-    "ze_residence_of_cloud": "",
-    "ze_rien_z": "",
-    "ze_rizomata_p": "",
-    "ze_rocket_escape_p": "",
-    "ze_rooftop_madness_p": "",
-    "ze_rooftop_rogue_ws": "",
-    "ze_rooftop_runaway1_p": "",
-    "ze_rooftop_runaway2_p": "",
-    "ze_rt0_genesis": "",
-    "ze_rt1_torontoisland_cs2": "",
-    "ze_rt4_hessel_valley": "",
-    "ze_rtcw_ominous_rumors_p": "",
-    "ze_rtcw_ominous_rumors_p Localized Edition (CN)": "",
-    "ze_rtv_one_more_p": "",
-    "ze_rtx_code0_cs2": "",
-    "ze_rush_a": "RUSH A",
-    "ze_rush_b": "RUSH B",
-    "ze_s_s_a_df": "",
-    "ze_sa2_pumpkin_hill": "",
-    "ze_sagreen_cs2": "",
-    "ze_sakuzyo": "",
-    "ze_sandstorm": "沙尘暴",
-    "ze_santassination_p": "狮子王",
-    "ze_save_nato_bunker_rn": "",
-    "ze_saw_p": "",
-    "ze_sc_turtles": "",
-    "ze_scourge_p": "",
-    "ze_secret_garden": "",
-    "ze_sele": "",
-    "ze_sewer_escape_p": "",
-    "ze_sex_mod_hentai_beachescape_camper_p": "",
-    "ze_shaurma_v3": "",
-    "ze_showdown_p": "",
-    "ze_shroomforest3_z": "",
-    "ze_shroomforest_p": "蘑菇1",
-    "ze_siberia_1990_p": "",
-    "ze_silent_hill_3_dawn": "",
-    "ze_silent_hill_3_dawn_full": "",
-    "ze_silent_hill_3_flee": "",
-    "ze_silent_hill_rengurn": "",
-    "ze_silenthill_pt": "",
-    "ze_simple_teamplay_p": "",
-    "ze_sisyphus": "",
-    "ze_skill_escape_cs2": "",
-    "ze_skill_escape_xmas": "",
-    "ze_sky_bridge": "",
-    "ze_sky_fantasy_v1": "",
-    "ze_sky_fantasy_v2": "",
-    "ze_skygarden": "",
-    "ze_skyline": "",
-    "ze_skyscraper_city_p": "",
-    "ze_slender_escape_p": "面条人",
-    "ze_solidarity_paper_cs2_l": "",
-    "ze_something_ordinary": "",
-    "ze_sorrento_arknights_cs2_l": "",
-    "ze_sorrento_escape_2016_p": "",
-    "ze_sorrento_escape_p": "",
-    "ze_space_flight_p": "",
-    "ze_sst2_p": "",
-    "ze_stab_town_p": "",
-    "ze_stalker_ultimate_v2_3": "",
-    "ze_stalker_ultimate_z": "",
-    "ze_stalkermonolith": "",
-    "ze_stark_escape": "",
-    "ze_starlight_revue_cs2": "",
-    "ze_stilshrine_of_miriam": "",
-    "ze_studying_the_factory": "",
-    "ze_summer_house": "",
-    "ze_sunkentemple": "",
-    "ze_surf_auv": "老北京地道滑翔",
-    "ze_surf_cherry_blossom": "",
-    "ze_surf_concrete": "",
-    "ze_surf_danger_p": "",
-    "ze_surf_daybreak": "",
-    "ze_surf_facility_p": "",
-    "ze_surf_facility_v2_3": "",
-    "ze_surf_fun": "",
-    "ze_surf_gypt_p": "",
-    "ze_surf_happy": "",
-    "ze_surf_happy_2_newbie_village": "",
-    "ze_surf_hp": "",
-    "ze_surf_okitsu_shonyudo": "",
-    "ze_surf_outside": "",
-    "ze_surf_sahok": "",
-    "ze_surf_sahok_p": "",
-    "ze_surf_saltfish_cs2": "",
-    "ze_surf_shonyudo_v1_cs2": "",
-    "ze_surf_sky_islands": "",
-    "ze_surf_soft_cs2": "",
-    "ze_surf_sparks": "",
-    "ze_surf_vortex_p": "",
-    "ze_survivors_mountain": "",
-    "ze_syrup": "",
-    "ze_system_cs2": "",
-    "ze_temple_escape_p": "",
-    "ze_temple_of_phantom_cs2": "",
-    "ze_temple_raider_p": "",
-    "ze_terraced_escape": "",
-    "ze_texturescape_cs2_l": "",
-    "ze_the_curse_of_blackwater": "",
-    "ze_the_last_chapter": "",
-    "ze_the_shifting_pool": "",
-    "ze_theback_bureau": "",
-    "ze_thelostworld_redux_p": "",
-    "ze_thorn_final_song": "",
-    "ze_thorny_torch": "",
-    "ze_thousand_steps_p": "",
-    "ze_three_eyes": "",
-    "ze_thriller_escape_p": "",
-    "ze_tilex_escape_p": "",
-    "ze_tilex_ultimate_p": "跳刀列车",
-    "ze_timesink": "",
-    "ze_timesplitters_p": "",
-    "ze_titanic_escape_p": "",
-    "ze_tkara_p": "",
-    "ze_toaster_p": "",
-    "ze_toggle_theory": "",
-    "ze_townscapes": "",
-    "ze_toy_world_final": "",
-    "ze_traak_p": "",
-    "ze_trainescape_p": "",
-    "ze_trainsanity": "",
-    "ze_trap_escape_p": "",
-    "ze_tree_story": "",
-    "ze_trepang": "",
-    "ze_ultra_ungent_a2_cs2": "",
-    "ze_umbrella_zombie": "",
-    "ze_umbrellazombie_v1_p3_final": "",
-    "ze_umbrellazombie_v1_part2_1": "",
-    "ze_umbrellazombiezmtr_v1": "",
-    "ze_undead_shrine_p": "",
-    "ze_undersea_temple": "",
-    "ze_undersea_temple_a4": "",
-    "ze_undertale_sans_final": "",
-    "ze_untitled_touhou": "",
-    "ze_upwards_p": "",
-    "ze_urban_laby_of_death_p": "",
-    "ze_urbanstone": "",
-    "ze_v0u0v_p": "",
-    "ze_van_helsing_s1": "",
-    "ze_vending_machine_factory_v1_1_fix_p": "",
-    "ze_venice_escape_p": "",
-    "ze_verdant": "",
-    "ze_vietnam_p": "",
-    "ze_virtual_insanity_v1": "",
-    "ze_void_tree(unfinisheddropped project)": "",
-    "ze_voodoo_islands_p": "",
-    "ze_voodoo_xtrem_islands": "",
-    "ze_watagi_sanatorium": "",
-    "ze_watagi_tunnel_rewind": "",
-    "ze_waterpark": "",
-    "ze_wicked_organization": "",
-    "ze_winter_warehouse_p": "",
-    "ze_world_escapes": "",
-    "ze_xenovation": "异界终章",
-    "ze_xiii_winslow_bank": "",
-    "ze_xuyanzhiting_jiushu": "",
-    "ze_xuyanzhiting_qy": "",
-    "ze_yueyingchuanshuo": "",
-    "ze_yurilnier": "",
-    "ze_zalupahui": "",
-    "ze_zandalar_forever": "",
-    "ze_zk_fapescape_p": "",
-    "ze_zk_mall_of_zombies_p": "",
-    "ze_zombiemod_corporation_p": "",
-    "ze_zombierig_p": "",
-    "龙鸣山之一夫当关（ze_last_man_standing_recompile）": "",
-    "zm_haddonfield": "",
-    "ze_desperate_soul": "",
-    "ze_imperial_sanctum": "",
-    "ze_box_defend_v1_4": "",
-    "zm_zone13_p": "",
-    "zm_minecraft_bkz_v2_p": "",
-    "ze_obf_rampage_v2_legacy": "",
-    "cs_italy": "",
-    "zm_minecraft_miao_v5_p": "",
-    "ze_m0w0m": "",
-    "exgrp": "",
-    "surf_simpsons_cs2": "",
-    "mg_blanc": "",
-    "zm_1taly_cos_v1_p": "",
-    "ze_miside": "",
-    "ze_shroomforest_v4_5": "",
-    "ze_poppy_playtime_origins_v1a": "",
-    "ze_squid_game_css1": "",
-    "surf_whiteout": "",
-    "zm_bakabahe": "",
-    "ze_lotr_minas_tirith_p": "",
-    "ze_s_a_m": "",
-    "ze_rawnscape_b2": "",
-    "ze_shroomforest2_p": "",
-    "ze_surf_vortex_v1_9s": "",
-    "zm_mirage_remix_lb_b3_p": "",
-    "ze_atix_apocalypse_p": "",
-    "ze_squid_game": "",
-    "ze_lotr_mount_doom_v4_2": "",
-    "ze_re4_castle_a3": "",
-    "ze_ffxii_westersand_v8": "",
-    "zm_river_city": "",
-    "surf_cyberwave": "",
-    "ze_serious_sam_tfe_v1_4s": "",
-    "ze_surf_outside_s3": "",
-    "de_dust2": "",
-    "ze_doom_v1_1": "",
-    "ze_bluearchive_abydos_b1": "",
-    "zm_minecraft_ocean_monument_v3b": "",
-    "ze_ffvii_temple_ancient_v3_3": "",
-    "ze_permafrost": "",
-    "ze_pirates_port_royal": "",
-    "ze_volcano_escape_v4": "",
-    "zm_rats_1337_classic": "",
-    "ze_dormitory_uestc": "",
-    "ze_boatescape777": "",
-    "ze_hypernova_v2fix": "",
-    "ze_jurassicpark_c1v4": "",
-    "ze_serpentis_temple_v2a": "",
-    "ze_sewer_escape_2012_b1": "",
-    "ze_aooka": "",
-    "ze_fapescape_v1_2": "",
-    "ze_tower_of_babel": "",
-    "zm_tranquility_c1_d_p": "",
-    "ze_dark_souls": "",
-    "ze_random_escape_b7_3": "",
-    "zm_summer_house_night": "",
-    "mg_ruin_course": "",
-    "mg_minecraft_jb": "",
-    "ze_aot_trost_v6r": "",
-    "zm_13haodiqu": "",
-    "ze_obj_ouroboros_aurora": "",
-    "ze_infiltration_final_css2": "",
-    "mg_saturn": "",
-    "lanif_epacseniart_ez": "",
-    "ze_chicken_nugget": "",
-    "zm_miao_v7_1_p": "",
-    "ze_imperium": "",
-    "surf_arcade": "",
-    "ze_surf_sahok_t5_9": "",
-    "ze_standart_map_final_fix3": "",
-    "ze_mochi_island": "",
-    "ze_obf_filth_v1": "",
-    "ze_arctic_escape_c1_fix3": "",
-    "zm_gepao": "",
-    "ze_santassination_css2": "",
-    "ze_omega_p": "",
-    "ze_surf_saltfish_css2": "",
-    "ze_kitchen_v2sv": "",
-    "ze_lotr_minas_tirith": "",
-    "ze_alien_shooter_v7": "",
-    "ze_obf_insane": "",
-    "ze_mabinogi_f4_1_cs2": "",
-    "zm_deathcoffin": "",
-    "ze_surf_dark_fantasy_v1": "",
-    "ze_fantasy_escape": "",
-    "ze_mountain_ultimate": "",
-    "ze_dystopia_p": "",
-    "ze_knife_fun_fix_v1": "",
-    "zm_fang_relic": "",
-    "ze_mirrors_edge_reborn_v4_3": "",
-    "ze_potc_v4s_4fix": "",
-    "cs_office": "",
-    "ze_mountain_escape_v5_zy": "",
-    "zm_minecraft_miao_giant_v7_p": "",
-    "ze_aperturescience_ob": "",
-    "ze_mountain_escape_bbo_v1": "",
-    "surf_olympics": "",
-    "ze_bathroom_v2_5s": "",
-    "de_inferno": "",
-    "zm_yemushanzhuang": "",
-    "ze_paranoid_rezurrection_v11_9": "",
-    "ze_obf_npst_v2": "",
-    "ze_evernight": "",
-    "ze_zulu_css": "",
-    "ze_ny_marathon_p": "",
-    "ze_atix_panic_p": "",
-    "ze_random_v9": "",
-    "zm_minecraft_miao_mlg_v3_p": "",
-    "ze_lotr_mines_of_moria_p": "",
-    "ze_silent_hill_2_illusion_kn1": "",
-    "zm_five_16togo_p": "",
-    "ze_boatescape999": "",
-    "ze_tesv_skyrim_p": "",
-    "zm_mansion": "",
-    "ze_backrooms_deathbed_v1": "",
-    "ze_ffvii_mako_reactor_v5_3": "",
-    "ze_elevator_escape_p": "",
-    "ze_rooftop_rogue_v1_5": "",
-    "ze_sit_caelum_paradisus_b7s": "",
-    "ze_eye_for_an_eye_v22": "",
-    "ze_skill_escape_v09s": "",
-    "ze_forsaken_temple": "",
-    "ze_lotr_minas_tirith_v3_3": "",
-    "ze_bigboo_n64": "",
-    "ze_sky_athletic_adv_v9_12s": "",
-    "ze_luck_matters_v1ds": "",
-    "graphics_settings": "",
-    "surf_classics": "",
-    "ze_surf_facility_v3_pre2": "",
-    "ze_otakuroom_pt": "",
-    "mg_beebeeee_naipi_cs2": "",
-    "ze_sky_athletic_v5_final": "",
-    "ze_silent_hill_v3_0": "",
-    "mg_saw_4_fixed_d": "",
-    "ze_azathoth_v1_css": "",
-    "mg_go_for_it_csgo_d": "",
-    "ze_bioshock_v7_1": "",
-    "de_train": "",
-    "mg_cartoon_course": "",
-    "ze_forius_just_run_p": "",
-    "ze_ez_run": "",
-    "mg_ruinztrap_course": "",
-    "ze_slender_b7": "",
-    "ze_empirecity_p": "",
-    "ze_vermintide_a2": "",
-    "cr_crazyhouse": "",
-    "ze_raintime2_stormwindkeep_v3": "",
-    "ze_potc_iv_v6_1": "",
-    "ze_lotr_mines_of_moria_v6_3test": "",
-    "ze_slender_escape_b4": "",
-    "ze_trainescape_final": "",
-    "mg_b2r_temple_v1": "",
-    "ze_atix_helicopter_i3d_c1": "",
-    "ze_visualizer": "",
-    "mg_escape_prison_cs2": "",
-    "ze_dabadeedabadie": "",
-    "ze_naruto_v2_6e": "",
-    "ze_snowcrash_escape_vfixed1": "",
-    "ze_amalgamation_css4": "",
-    "ze_naruto_shippuden_legends_v2": "",
-    "ze_snowflower_laboratory_v1_1": "",
-    "mg_mood_naipi_cs2": "",
-    "ze_box_cloaca_b1": ""
+    "Fireboy & Watergirl Zombie (ze_fireboy_watergirl)": {
+        "zh_cn": "森铃冰火人",
+        "zh_tw": "森铃冰火人"
+    },
+    "ZE_BEAUTIFUL_P": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ZE_OBJECTIVE_OUROBOROS_APOLLYON": {
+        "zh_cn": "[衔尾蛇计划]代号：辰宿归墟",
+        "zh_tw": "[衔尾蛇计划]代号：辰宿归墟"
+    },
+    "ZE_OBJ_OUROBOROS_AURORA": {
+        "zh_cn": "[衔尾蛇计划]代号：落日余晖",
+        "zh_tw": "[衔尾蛇计划]代号：落日余晖"
+    },
+    "ZE_OBJ_OUROBOROS_RAGNAROK": {
+        "zh_cn": "[衔尾蛇计划]代号：破晓终幕",
+        "zh_tw": "[衔尾蛇计划]代号：破晓终幕"
+    },
+    "ZE_chenbai_chap12_alpha": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "Ze_Nibui_Cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "Ze_Re_SenS": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "Ze_SenS": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ar_shoots_night": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "rp_downtown": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_1_ScHiZo": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_1way_tunnel": {
+        "zh_cn": "单向隧道",
+        "zh_tw": "单向隧道"
+    },
+    "ze_2012_p": {
+        "zh_cn": "2012",
+        "zh_tw": "2012"
+    },
+    "ze_2049": {
+        "zh_cn": "2049",
+        "zh_tw": "2049"
+    },
+    "ze_20_seconds_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_240s_survival_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_30_seconds_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_666_crazy_escape": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_666_crazy_escape_v2_css2f": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_8bit": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_AAA_diman_world": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ALIEN_mountain_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ATIX_apocalypse_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ATIX_panic_2017_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ATIX_panic_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Ancient_wrath_r": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Aooka3": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Aoraitsu_Reloaded": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ApertureScience_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Arcana_Heart": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_At_dusk": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Awaker": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Aware": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_BLACK_DOOR": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Baboonpox_escape": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Backrooms": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Backrooms_Insomnia": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Bathroom": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_BigBoo_n64": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Boatescape777": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Boatescape888": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Boatescape999": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Boatescape_Ultimate": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Box_Defend盒子防守": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_COVID_1984": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Cyberspace": {
+        "zh_cn": "赛博空间",
+        "zh_tw": "赛博空间"
+    },
+    "ze_DYSTOPIA_p": {
+        "zh_cn": "反乌托邦",
+        "zh_tw": "反乌托邦"
+    },
+    "ze_DaBaDeeDaBaDie": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Dark_Souls": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Deadcore": {
+        "zh_cn": "死亡核心",
+        "zh_tw": "死亡核心"
+    },
+    "ze_Desperate_Soul": {
+        "zh_cn": "母神悲歌",
+        "zh_tw": "母神悲歌"
+    },
+    "ze_Djinn": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Don'tGuaji": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Doors": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Dreamin": {
+        "zh_cn": "梦想",
+        "zh_tw": "梦想"
+    },
+    "ze_ELEVATOR_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Emerald": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_EmpireCity_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Evernight": {
+        "zh_cn": "永夜",
+        "zh_tw": "永夜"
+    },
+    "ze_FFVII_Fako_Reactor": {
+        "zh_cn": "Fako炉",
+        "zh_tw": "Fako炉"
+    },
+    "ze_FFVII_Mako_Reactor_v5_3": {
+        "zh_cn": "最终幻想VII：魔晄炉V53",
+        "zh_tw": "最终幻想VII：魔晄炉V53"
+    },
+    "ze_FFVII_Mako_Reactor_v5_p": {
+        "zh_cn": "[P组]最终幻想VII：魔晄炉V5",
+        "zh_tw": "[P组]最终幻想VII：魔晄炉V5"
+    },
+    "ze_FFVII_Mako_Reactor_v6_p": {
+        "zh_cn": "最终幻想VII：魔晄炉V6",
+        "zh_tw": "最终幻想VII：魔晄炉V6"
+    },
+    "ze_FFVII_Malgo_Reactor": {
+        "zh_cn": "麻辣狗炉",
+        "zh_tw": "麻辣狗炉"
+    },
+    "ze_FFVII_Snow_Cosmo": {
+        "zh_cn": "最终幻想VII：宇宙峡谷(雪地版)",
+        "zh_tw": "最终幻想VII：宇宙峡谷(雪地版)"
+    },
+    "ze_FFVII_temple_ancient": {
+        "zh_cn": "最终幻想VII：古代种神殿v5",
+        "zh_tw": "最终幻想VII：古代种神殿v5"
+    },
+    "ze_FFXII_Bestersand_Beta": {
+        "zh_cn": "最终幻想XII：美沙",
+        "zh_tw": "最终幻想XII：美沙"
+    },
+    "ze_FFXII_Feywood_b1": {
+        "zh_cn": "最终幻想XII：幻妖之森",
+        "zh_tw": "最终幻想XII：幻妖之森"
+    },
+    "ze_FFXII_Mt_Bur_Omisace_v6": {
+        "zh_cn": "最终幻想XII：神都布尔奥米赛斯V6",
+        "zh_tw": "最终幻想XII：神都布尔奥米赛斯V6"
+    },
+    "ze_FFXII_Paramina_Rift": {
+        "zh_cn": "最终幻想XII：帕拉米纳大峡谷",
+        "zh_tw": "最终幻想XII：帕拉米纳大峡谷"
+    },
+    "ze_FFXII_Westersand_v8": {
+        "zh_cn": "最终幻想XII：西沙V81",
+        "zh_tw": "最终幻想XII：西沙V81"
+    },
+    "ze_FFXIV_Coil_of_Bahamut": {
+        "zh_cn": "最终幻想XIV:巴哈姆特大迷宫",
+        "zh_tw": "最终幻想XIV:巴哈姆特大迷宫"
+    },
+    "ze_FFXIV_Reisen_Temple": {
+        "zh_cn": "最终幻想XIV:醴泉神社",
+        "zh_tw": "最终幻想XIV:醴泉神社"
+    },
+    "ze_FFXIV_Wanderers_Palace": {
+        "zh_cn": "最终幻想XIV:放浪古神殿v4",
+        "zh_tw": "最终幻想XIV:放浪古神殿v4"
+    },
+    "ze_FFXIV_Wanderers_Palace_v6_2": {
+        "zh_cn": "最终幻想XIV:放浪古神殿v6_2",
+        "zh_tw": "最终幻想XIV:放浪古神殿v6_2"
+    },
+    "ze_FORiUS_just_RUN_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Fabulous": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_FirstOne_SSAOF": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Forsaken_Temple": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Frozen_Abyss": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Genso_Of_Last_v3": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Hydroponic_Garden": {
+        "zh_cn": "水培花园",
+        "zh_tw": "水培花园"
+    },
+    "ze_IMPERIUM": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Industrial_Dejavu": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_LOTR_Helms_Deep_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_LOTR_Isengard": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_LOTR_Minas_Tiret_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_LOTR_Minas_Tirith_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_LOTR_Mines_of_Moria_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_LOTR_Mirkwood_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_LOTR_Mount_Doom_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Last_Man_Standing_p": {
+        "zh_cn": "龙门山",
+        "zh_tw": "龙门山"
+    },
+    "ze_MAGA": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_MORELL_April_Vacation_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_MiSide": {
+        "zh_cn": "米塔",
+        "zh_tw": "米塔"
+    },
+    "ze_Minecraft_Dreamland": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Minecraft_Universe": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Minimal": {
+        "zh_cn": "极病",
+        "zh_tw": "极病"
+    },
+    "ze_Mochi_Island": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Mountain_Escape_Snow": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Mountain_Ultimate": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_NY_Marathon_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_NewYork_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Nomada": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Obf_Cats_run_v1_9": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Obf_Filth": {
+        "zh_cn": "代号：怒火中烧",
+        "zh_tw": "代号：怒火中烧"
+    },
+    "ze_Obf_Insane": {
+        "zh_cn": "代号：烈火雄心",
+        "zh_tw": "代号：烈火雄心"
+    },
+    "ze_Obf_NPST_v2": {
+        "zh_cn": "代号：NPST_v2",
+        "zh_tw": "代号：NPST_v2"
+    },
+    "ze_Obf_Rampage 2.0": {
+        "zh_cn": "代号：野火燎原",
+        "zh_tw": "代号：野火燎原"
+    },
+    "ze_Obf_Rampage_v2_Legacy": {
+        "zh_cn": "代号：横空出世-火之心",
+        "zh_tw": "代号：横空出世-火之心"
+    },
+    "ze_Obf_Rescape": {
+        "zh_cn": "代号：浴火重生",
+        "zh_tw": "代号：浴火重生"
+    },
+    "ze_Obj_NPST_v1_4": {
+        "zh_cn": "代号：NPST_v1_4",
+        "zh_tw": "代号：NPST_v1_4"
+    },
+    "ze_Obj_insane_v1_2": {
+        "zh_cn": "代号：烈火雄心_v1_2",
+        "zh_tw": "代号：烈火雄心_v1_2"
+    },
+    "ze_Otakuroom": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_PUTA_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Permafrost": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Pirates_Port_Royal": {
+        "zh_cn": "加勒比海盗：罗亚尔港",
+        "zh_tw": "加勒比海盗：罗亚尔港"
+    },
+    "ze_PoR_island_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_PotC_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_R_W_B_ulti": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Requiem": {
+        "zh_cn": "镇魂曲",
+        "zh_tw": "镇魂曲"
+    },
+    "ze_SAMOSBOR": {
+        "zh_cn": "笼子",
+        "zh_tw": "笼子"
+    },
+    "ze_SCP_Containment_Breach": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_STRANGE_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_S_A_M": {
+        "zh_cn": "刀剑神域",
+        "zh_tw": "刀剑神域"
+    },
+    "ze_Sekiro": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Serpentis_Temple": {
+        "zh_cn": "美杜莎神殿",
+        "zh_tw": "美杜莎神殿"
+    },
+    "ze_ShroomForest2_p": {
+        "zh_cn": "蘑菇2",
+        "zh_tw": "蘑菇2"
+    },
+    "ze_ShroomForest3_p": {
+        "zh_cn": "蘑菇3",
+        "zh_tw": "蘑菇3"
+    },
+    "ze_ShroomForest_p": {
+        "zh_cn": "蘑菇1",
+        "zh_tw": "蘑菇1"
+    },
+    "ze_Sit_Caelum_Paradisus": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Squid_Game": {
+        "zh_cn": "鱿鱼游戏",
+        "zh_tw": "鱿鱼游戏"
+    },
+    "ze_Stardust": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Steyliff_Grove": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_TESV_Skyrim_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Tensor_of_Ice": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Totemo_Roka_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Tower_of_Babel": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Tyranny": {
+        "zh_cn": "暴君1",
+        "zh_tw": "暴君1"
+    },
+    "ze_Tyranny2": {
+        "zh_cn": "暴君2",
+        "zh_tw": "暴君2"
+    },
+    "ze_ULTRAKILL": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_UT2004_Convoy_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Uchiha_Legacy": {
+        "zh_cn": "宇智波：遗迹",
+        "zh_tw": "宇智波：遗迹"
+    },
+    "ze_Visualizer": {
+        "zh_cn": "监视者",
+        "zh_tw": "监视者"
+    },
+    "ze_YuanMengStar": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_Zertinan": {
+        "zh_cn": "最终幻想XII：泽尔提南",
+        "zh_tw": "最终幻想XII：泽尔提南"
+    },
+    "ze__hell_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_abandoned_industry_p": {
+        "zh_cn": "废弃工厂",
+        "zh_tw": "废弃工厂"
+    },
+    "ze_abandoned_project_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_act_character_relic": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_aepp_nano_grid2_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_akala_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_alien_shooter": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ancient_wrath_p": {
+        "zh_cn": "古代种金字塔",
+        "zh_tw": "古代种金字塔"
+    },
+    "ze_angelbeats_guild": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_angels_of_death": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_antartika_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_aot_trost": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_apollo_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_apprehended": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_aragami_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_arctic_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ardenweald": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ardenweald_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_arknights_caerula_arbor": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_arknights_caerula_arbor(English_version)": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_arknights_initium": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_arknights_sows": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_artika_base_p": {
+        "zh_cn": "阿提卡基地",
+        "zh_tw": "阿提卡基地"
+    },
+    "ze_ascend_escape": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ashen_keep_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_atl_lgnition_a1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_avalanche_reboot": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_azathoth_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_aztecnoob_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_backrooms_deathbed": {
+        "zh_cn": "后室：死眠",
+        "zh_tw": "后室：死眠"
+    },
+    "ze_bang_dream_mygo": {
+        "zh_cn": "爱音の梦",
+        "zh_tw": "爱音の梦"
+    },
+    "ze_barrage_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_barrel_of_death": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_barrelrooms": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_basic_geometric": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_be_very_careful": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_best_korea": {
+        "zh_cn": "最美曹县",
+        "zh_tw": "最美曹县"
+    },
+    "ze_beyond_horizon": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_beyond_the_boundary": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_bh3rd_babel_z": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_bh3rd_cyberpunk_z": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_bh3rd_nagazoracity_z": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_biohazard2_rpd_004_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_biohazard2_sewer_004": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_biohazard_manor_004_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_bioluminescent": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_bioshock_v6_cs2": {
+        "zh_cn": "生化奇兵v6",
+        "zh_tw": "生化奇兵v6"
+    },
+    "ze_bisounours_party": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_black_lion_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_blackmesa_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_blackmesa_remix_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_blood_castle": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_blood_castle_z": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_boacceho_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_boatescape101_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_boatescape888": {
+        "zh_cn": "坐船跑888",
+        "zh_tw": "坐船跑888"
+    },
+    "ze_boatescape_arte": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_boralus": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_bp-infested-prison_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_breakable_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_breakdream_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_bunny_story": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_castle_bridge_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_celestial_ops": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_cemetery_escape": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_challenge_run": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_changing_room": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_chicago_bean_gassy_fart_life": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_chicken_lords_tower_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_chicken_nugget_v1_9": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_chip_n_dale": {
+        "zh_cn": "FC松鼠大作战",
+        "zh_tw": "FC松鼠大作战"
+    },
+    "ze_christmas_escape": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_christmas_infection_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_christmas_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_chroma": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_chronicle": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_chrono_trigger": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_chronoplague": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_chronus_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_church_of_white_ha1jk5fg2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_city": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_clawfactory": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_clockwork": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_color_levels": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_colorful": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_colorlicouspilar_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_colors_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_compound_escape": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_concrete_defense": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_conflict": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_contradiction_spiral": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_cookie": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_coolcoolsnowman_n64": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_crashbandicoot_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_crazy_christmas_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_crazy_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_croc2_sailor_village (WIP 30%)": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_cry_thunder": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_cube_defense": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_dangerous_waters_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_dark_cave_remake_m": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_darkest_hour": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_deadcore_r": {
+        "zh_cn": "死亡核心(R核)",
+        "zh_tw": "死亡核心(R核)"
+    },
+    "ze_dear": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_death_forest": {
+        "zh_cn": "恐怖之森",
+        "zh_tw": "恐怖之森"
+    },
+    "ze_death_star_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_deathinvain_palace": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_decayed_dreams": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_deepice_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_defense3002_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_depths": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_descent_into_cerberon_p": {
+        "zh_cn": "破碎行动",
+        "zh_tw": "破碎行动"
+    },
+    "ze_desert_tour": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_diablo": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_diamond_cube_v1_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_diverted_destiny": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_dnb_realms": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_dnd_hydra_z": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_doomglaven": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_dorororo": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_downstairs": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_dragonball_snakeway_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_dushiguigong_01": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_easy_escape_v4": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_eizures_b1_1": {
+        "zh_cn": "核子危机b1",
+        "zh_tw": "核子危机b1"
+    },
+    "ze_eizures_b2": {
+        "zh_cn": "核子危机b2",
+        "zh_tw": "核子危机b2"
+    },
+    "ze_emerald": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_endless_dream": {
+        "zh_cn": "无尽之梦",
+        "zh_tw": "无尽之梦"
+    },
+    "ze_endor": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_error": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_escape2024": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_escape_the_eye_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_eternal_journey": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_evil_mansion_p": {
+        "zh_cn": "邪恶公馆",
+        "zh_tw": "邪恶公馆"
+    },
+    "ze_exchange_innovation_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_eye_factory_escape": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_eye_for_an_eye": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_fall_guys": {
+        "zh_cn": "糖豆人",
+        "zh_tw": "糖豆人"
+    },
+    "ze_fapescape_p": {
+        "zh_cn": "老乐高",
+        "zh_tw": "老乐高"
+    },
+    "ze_fapescape_rote_p": {
+        "zh_cn": "新乐高",
+        "zh_tw": "新乐高"
+    },
+    "ze_farmhouse_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_fast_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_fatestay_night_ubw": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ffvii_cosmo_canyon_t": {
+        "zh_cn": "最终幻想VII：宇宙峡谷(天CO)",
+        "zh_tw": "最终幻想VII：宇宙峡谷(天CO)"
+    },
+    "ze_ffvii_cosmo_canyon_v2": {
+        "zh_cn": "最终幻想VII：宇宙峡谷V2",
+        "zh_tw": "最终幻想VII：宇宙峡谷V2"
+    },
+    "ze_ffxii_feywood_t": {
+        "zh_cn": "最终幻想XII：幻妖之森",
+        "zh_tw": "最终幻想XII：幻妖之森"
+    },
+    "ze_ffxii_westersand_v7_t": {
+        "zh_cn": "最终幻想XII：西沙V72",
+        "zh_tw": "最终幻想XII：西沙V72"
+    },
+    "ze_ffxiv_great_gubal_library": {
+        "zh_cn": "最终幻想XIV:迦巴勒幻想图书馆",
+        "zh_tw": "最终幻想XIV:迦巴勒幻想图书馆"
+    },
+    "ze_ffxiv_the_orbonne_monastery_demo": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ffxiv_wanderers_palace_v5_2": {
+        "zh_cn": "最终幻想XIV:放浪古神殿v5_2",
+        "zh_tw": "最终幻想XIV:放浪古神殿v5_2"
+    },
+    "ze_firewall_laboratory_part1_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_firewall_laboratory_part2_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_floating_rocks_survival": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_flower": {
+        "zh_cn": "花之声",
+        "zh_tw": "花之声"
+    },
+    "ze_flowering": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_flying_world": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_fond_dream": {
+        "zh_cn": "南柯一梦",
+        "zh_tw": "南柯一梦"
+    },
+    "ze_forest_remake_m": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_forestbunkers_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_forhidden_slicoo": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_forhidden_void": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_fragment_ops_rewind": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_frostdrake_tower_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_frozentemple_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_frozentemple_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_funny_runner": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_games_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_gameshow": {
+        "zh_cn": "游戏真人秀",
+        "zh_tw": "游戏真人秀"
+    },
+    "ze_gear_palace": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_geometric": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_gods_wrath_p": {
+        "zh_cn": "神怒",
+        "zh_tw": "神怒"
+    },
+    "ze_goldeneye_64": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_goobers_basement": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_grace": {
+        "zh_cn": "优雅",
+        "zh_tw": "优雅"
+    },
+    "ze_grau_p": {
+        "zh_cn": "格劳",
+        "zh_tw": "格劳"
+    },
+    "ze_greece_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_greencity_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_gris": {
+        "zh_cn": "格里斯",
+        "zh_tw": "格里斯"
+    },
+    "ze_gris_p": {
+        "zh_cn": "格里斯(P组)",
+        "zh_tw": "格里斯(P组)"
+    },
+    "ze_gris_re": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_gta_police_station_garage_m": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_gunma": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_guye_room": {
+        "zh_cn": "电竞房",
+        "zh_tw": "电竞房"
+    },
+    "ze_halloween_house_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_hammer_bunker_part1_CS2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_happiness_factory_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_happiness_factory_v2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_haunted_lab_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_hazard_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_hell_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_hidden_fortress_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_hidden_temple": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_highest_to_lowest": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_hlc_citadel_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_hold2_boring_z": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_hold_em_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_honkai_impact_changkongshi": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_honkai_impact_tqs【天穹市】": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_hsc": {
+        "zh_cn": "HSC",
+        "zh_tw": "HSC"
+    },
+    "ze_humans model pack": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_hypernova_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_hypnotize_me_baby_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_iamlegend_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ice_cavern_z": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ice_hold_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_icebreaker": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_icecap_escape_ia_super": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_icecap_escape_p": {
+        "zh_cn": "西瓜橘子坐船跑",
+        "zh_tw": "西瓜橘子坐船跑"
+    },
+    "ze_icecap_solo": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_iceworld_athletic_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_idk_what_to_call_this": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_illusory_world": {
+        "zh_cn": "虚空幻界",
+        "zh_tw": "虚空幻界"
+    },
+    "ze_immortal_flame": {
+        "zh_cn": "永恒烈焰",
+        "zh_tw": "永恒烈焰"
+    },
+    "ze_inboxed_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_incident_seasons": {
+        "zh_cn": "四季异变",
+        "zh_tw": "四季异变"
+    },
+    "ze_indiana_jones_004_p": {
+        "zh_cn": "夺宝奇兵",
+        "zh_tw": "夺宝奇兵"
+    },
+    "ze_infected_sewers_v4": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_infested-industry_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_infiltration_final_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_insanitycity_t": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_interception_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_isla_nublar_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_istanbul_escape_pro": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_italy_town_z": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_japans_3rd_bombing": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_jiangnan_town_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_journey_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_jp_trip_k1ne2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_jurassic_life": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_jurassic_park_story_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_jurassicpark_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_jurassicpark_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_k19_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_kaffe_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_kage_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_kebab_immigrant": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_kenshin_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_knife_stray_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_kongzhongyiji": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_kororinpa": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_kraznov_poopata_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_kuwei_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_l0v0l_p": {
+        "zh_cn": "颜文字1",
+        "zh_tw": "颜文字1"
+    },
+    "ze_lab": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_laser_island_z": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_lazers_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_legend_of_astrum_z": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_legends_of_dawn": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_lego": {
+        "zh_cn": "马乐高",
+        "zh_tw": "马乐高"
+    },
+    "ze_legoland_crackheads": {
+        "zh_cn": "乐高游乐场",
+        "zh_tw": "乐高游乐场"
+    },
+    "ze_lemonade": {
+        "zh_cn": "[冰鲜柠檬水]csgo不喜欢天天带的地图",
+        "zh_tw": "[冰鲜柠檬水]csgo不喜欢天天带的地图"
+    },
+    "ze_lemonysnickets_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_lethal_company": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_licciana_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_light_911": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_lila_panic_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_little_trip": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_loom": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_lootus": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_lorem_ipsum_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_lost_ruins": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_lotr_dol_guldur": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_lotr_minas_tirith_recompile": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_luciddreams_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_luigismansion_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_luminous_escape": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_luna_escape": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_m0w0m_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mabinogi_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_madara_temple": {
+        "zh_cn": "马达拉神殿",
+        "zh_tw": "马达拉神殿"
+    },
+    "ze_madness": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_magala_castle_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_magic_carpet_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_magus_v2_4": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_maontain_escape": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mario_tower_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mars_escape_p": {
+        "zh_cn": "火星逃亡",
+        "zh_tw": "火星逃亡"
+    },
+    "ze_mars_escape_xmas": {
+        "zh_cn": "圣诞mako",
+        "zh_tw": "圣诞mako"
+    },
+    "ze_maze": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_maze_runner": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_melong_dow_learjet_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mgden_z": {
+        "zh_cn": "永恒花园",
+        "zh_tw": "永恒花园"
+    },
+    "ze_military_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_minecraft_adventure": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_minecraft_dragon_castle": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_minecraft_drifts": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_minecraft_journey_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_minecraft_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_minecraft_run": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_minecraft_sakura": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_minecraft_sakura_test": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_minecratix": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mirrors_edge_reborn_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_misaka": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_misaka2_reborn": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mist_p": {
+        "zh_cn": "雾城龙影",
+        "zh_tw": "雾城龙影"
+    },
+    "ze_mix": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mkzk_scarab_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mkzk_scarab_rmk": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mlgsurf": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mojos_minigames_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mota": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mountain_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_my_first_escape": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_namviet_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_naruto_z": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_negative_legacy": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_neko_canyon_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_neochrome": {
+        "zh_cn": "霓铬",
+        "zh_tw": "霓铬"
+    },
+    "ze_neovia": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_neron": {
+        "zh_cn": "盈能之境",
+        "zh_tw": "盈能之境"
+    },
+    "ze_new_italy_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_nibui": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_night_run": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_nightmare_dimension": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_no_title_cs2_l": {
+        "zh_cn": "无题",
+        "zh_tw": "无题"
+    },
+    "ze_noir_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_nomada_z": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_notredame_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_nuclear_site_survie_by_gm": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_nuke_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_obj_Blue_Depth": {
+        "zh_cn": "代号：蓝渊计划",
+        "zh_tw": "代号：蓝渊计划"
+    },
+    "ze_obj_abyss": {
+        "zh_cn": "代号：暗流涌动",
+        "zh_tw": "代号：暗流涌动"
+    },
+    "ze_obj_annihilate_dd_v1": {
+        "zh_cn": "代号：孤注一掷",
+        "zh_tw": "代号：孤注一掷"
+    },
+    "ze_obj_avulsion_a1": {
+        "zh_cn": "代号：分崩离析",
+        "zh_tw": "代号：分崩离析"
+    },
+    "ze_obj_eclipsis_v1": {
+        "zh_cn": "代号：日蚀计划",
+        "zh_tw": "代号：日蚀计划"
+    },
+    "ze_obj_ember": {
+        "zh_cn": "代号：绝境星火",
+        "zh_tw": "代号：绝境星火"
+    },
+    "ze_obj_encounter": {
+        "zh_cn": "代号：争锋相对",
+        "zh_tw": "代号：争锋相对"
+    },
+    "ze_obj_escalation_v1": {
+        "zh_cn": "代号：飞升计划",
+        "zh_tw": "代号：飞升计划"
+    },
+    "ze_obj_federation": {
+        "zh_cn": "代号：守望莱茵",
+        "zh_tw": "代号：守望莱茵"
+    },
+    "ze_obj_goosestep_v1": {
+        "zh_cn": "代号：缓兵之计",
+        "zh_tw": "代号：缓兵之计"
+    },
+    "ze_obj_redemption": {
+        "zh_cn": "代号：一线生机",
+        "zh_tw": "代号：一线生机"
+    },
+    "ze_obj_rove": {
+        "zh_cn": "代号：永夜行疆",
+        "zh_tw": "代号：永夜行疆"
+    },
+    "ze_obj_void": {
+        "zh_cn": "代号：至死不渝",
+        "zh_tw": "代号：至死不渝"
+    },
+    "ze_obscura_tower": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ocarina_of_time": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ocean_base_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ocean_heart_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_offliner": {
+        "zh_cn": "单机者",
+        "zh_tw": "单机者"
+    },
+    "ze_omen": {
+        "zh_cn": "启示：命运预兆",
+        "zh_tw": "启示：命运预兆"
+    },
+    "ze_onahole_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_one_dream_machine": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_oneiros_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_only_up": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_oot_shadowtemple": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_opti_variety_missions_cs2_l": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_opti_variety_missions_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_out_into_the_open": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_outerwilds": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_outlast": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_outpost_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_overlord": {
+        "zh_cn": "骨王",
+        "zh_tw": "骨王"
+    },
+    "ze_p_v_z_vo": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_palace_adventure": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_palace_of_minolila_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_panic_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_paradise_t": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_paranoia_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_parkers_pit_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_parking_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_pausechamp_escape": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_paycheck_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_payload_swarm": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_pd2_crime_art": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_peach_castle_n64": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_peach_insanity_n64": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_penguin_of_doom": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_percocet_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_pilgrimage": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_plants_vs_zombies": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_platformer_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_pogworld": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_pokemon_johto": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_pokemon_kanto_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_pools_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_pools_part2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_popkart": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_portal_story_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_postal": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_predator_ultimate_p": {
+        "zh_cn": "铁血战士",
+        "zh_tw": "铁血战士"
+    },
+    "ze_predator_ultimate_v3": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_prisonbreak_escape": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_prisonbreak_rescue": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_project_alcaria": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_project_codex": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_project_codex_z": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_prototype": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_psycho_pass": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_purification_a1": {
+        "zh_cn": "净化",
+        "zh_tw": "净化"
+    },
+    "ze_puritytest": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_quiver_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_r00ms": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_r_w_b_ulti_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rabanastre_royal": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_raccoon_facility_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_radio_building": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_raid_ffxiv_eorzea": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rainbow_factory": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rainbow_world_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_raintime2_stormwindkeep_v2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_random_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_random_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ratatouille": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_re_abydos": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_re_creation": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_realm": {
+        "zh_cn": "领域",
+        "zh_tw": "领域"
+    },
+    "ze_red_planet": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_residence_of_cloud": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rien_z": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rizomata_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rocket_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rooftop_madness_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rooftop_rogue_ws": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rooftop_runaway1_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rooftop_runaway2_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rt0_genesis": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rt1_torontoisland_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rt4_hessel_valley": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rtcw_ominous_rumors_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rtcw_ominous_rumors_p Localized Edition (CN)": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rtv_one_more_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rtx_code0_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rush_a": {
+        "zh_cn": "RUSH A",
+        "zh_tw": "RUSH A"
+    },
+    "ze_rush_b": {
+        "zh_cn": "RUSH B",
+        "zh_tw": "RUSH B"
+    },
+    "ze_s_s_a_df": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sa2_pumpkin_hill": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sagreen_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sakuzyo": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sandstorm": {
+        "zh_cn": "沙尘暴",
+        "zh_tw": "沙尘暴"
+    },
+    "ze_santassination_p": {
+        "zh_cn": "狮子王",
+        "zh_tw": "狮子王"
+    },
+    "ze_save_nato_bunker_rn": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_saw_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sc_turtles": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_scourge_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_secret_garden": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sele": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sewer_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sex_mod_hentai_beachescape_camper_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_shaurma_v3": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_showdown_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_shroomforest3_z": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_shroomforest_p": {
+        "zh_cn": "蘑菇1",
+        "zh_tw": "蘑菇1"
+    },
+    "ze_siberia_1990_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_silent_hill_3_dawn": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_silent_hill_3_dawn_full": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_silent_hill_3_flee": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_silent_hill_rengurn": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_silenthill_pt": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_simple_teamplay_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sisyphus": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_skill_escape_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_skill_escape_xmas": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sky_bridge": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sky_fantasy_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sky_fantasy_v2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_skygarden": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_skyline": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_skyscraper_city_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_slender_escape_p": {
+        "zh_cn": "面条人",
+        "zh_tw": "面条人"
+    },
+    "ze_solidarity_paper_cs2_l": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_something_ordinary": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sorrento_arknights_cs2_l": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sorrento_escape_2016_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sorrento_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_space_flight_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sst2_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_stab_town_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_stalker_ultimate_v2_3": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_stalker_ultimate_z": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_stalkermonolith": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_stark_escape": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_starlight_revue_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_stilshrine_of_miriam": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_studying_the_factory": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_summer_house": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sunkentemple": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_auv": {
+        "zh_cn": "老北京地道滑翔",
+        "zh_tw": "老北京地道滑翔"
+    },
+    "ze_surf_cherry_blossom": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_concrete": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_danger_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_daybreak": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_facility_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_facility_v2_3": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_fun": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_gypt_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_happy": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_happy_2_newbie_village": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_hp": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_okitsu_shonyudo": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_outside": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_sahok": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_sahok_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_saltfish_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_shonyudo_v1_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_sky_islands": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_soft_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_sparks": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_vortex_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_survivors_mountain": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_syrup": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_system_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_temple_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_temple_of_phantom_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_temple_raider_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_terraced_escape": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_texturescape_cs2_l": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_the_curse_of_blackwater": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_the_last_chapter": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_the_shifting_pool": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_theback_bureau": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_thelostworld_redux_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_thorn_final_song": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_thorny_torch": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_thousand_steps_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_three_eyes": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_thriller_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_tilex_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_tilex_ultimate_p": {
+        "zh_cn": "跳刀列车",
+        "zh_tw": "跳刀列车"
+    },
+    "ze_timesink": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_timesplitters_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_titanic_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_tkara_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_toaster_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_toggle_theory": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_townscapes": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_toy_world_final": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_traak_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_trainescape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_trainsanity": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_trap_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_tree_story": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_trepang": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ultra_ungent_a2_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_umbrella_zombie": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_umbrellazombie_v1_p3_final": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_umbrellazombie_v1_part2_1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_umbrellazombiezmtr_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_undead_shrine_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_undersea_temple": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_undersea_temple_a4": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_undertale_sans_final": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_untitled_touhou": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_upwards_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_urban_laby_of_death_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_urbanstone": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_v0u0v_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_van_helsing_s1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_vending_machine_factory_v1_1_fix_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_venice_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_verdant": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_vietnam_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_virtual_insanity_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_void_tree(unfinisheddropped project)": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_voodoo_islands_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_voodoo_xtrem_islands": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_watagi_sanatorium": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_watagi_tunnel_rewind": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_waterpark": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_wicked_organization": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_winter_warehouse_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_world_escapes": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_xenovation": {
+        "zh_cn": "异界终章",
+        "zh_tw": "异界终章"
+    },
+    "ze_xiii_winslow_bank": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_xuyanzhiting_jiushu": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_xuyanzhiting_qy": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_yueyingchuanshuo": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_yurilnier": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_zalupahui": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_zandalar_forever": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_zk_fapescape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_zk_mall_of_zombies_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_zombiemod_corporation_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_zombierig_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "龙鸣山之一夫当关（ze_last_man_standing_recompile）": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_haddonfield": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_desperate_soul": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_imperial_sanctum": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_box_defend_v1_4": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_zone13_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_minecraft_bkz_v2_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_obf_rampage_v2_legacy": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "cs_italy": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_minecraft_miao_v5_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_m0w0m": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "exgrp": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "surf_simpsons_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "mg_blanc": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_1taly_cos_v1_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_miside": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_shroomforest_v4_5": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_poppy_playtime_origins_v1a": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_squid_game_css1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "surf_whiteout": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_bakabahe": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_lotr_minas_tirith_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_s_a_m": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rawnscape_b2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_shroomforest2_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_vortex_v1_9s": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_mirage_remix_lb_b3_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_atix_apocalypse_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_squid_game": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_lotr_mount_doom_v4_2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_re4_castle_a3": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ffxii_westersand_v8": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_river_city": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "surf_cyberwave": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_serious_sam_tfe_v1_4s": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_outside_s3": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "de_dust2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_doom_v1_1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_bluearchive_abydos_b1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_minecraft_ocean_monument_v3b": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ffvii_temple_ancient_v3_3": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_permafrost": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_pirates_port_royal": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_volcano_escape_v4": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_rats_1337_classic": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_dormitory_uestc": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_boatescape777": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_hypernova_v2fix": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_jurassicpark_c1v4": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_serpentis_temple_v2a": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sewer_escape_2012_b1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_aooka": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_fapescape_v1_2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_tower_of_babel": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_tranquility_c1_d_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_dark_souls": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_random_escape_b7_3": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_summer_house_night": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "mg_ruin_course": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "mg_minecraft_jb": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_aot_trost_v6r": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_13haodiqu": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_obj_ouroboros_aurora": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_infiltration_final_css2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "mg_saturn": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "lanif_epacseniart_ez": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_chicken_nugget": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_miao_v7_1_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_imperium": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "surf_arcade": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_sahok_t5_9": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_standart_map_final_fix3": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mochi_island": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_obf_filth_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_arctic_escape_c1_fix3": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_gepao": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_santassination_css2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_omega_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_saltfish_css2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_kitchen_v2sv": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_lotr_minas_tirith": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_alien_shooter_v7": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_obf_insane": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mabinogi_f4_1_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_deathcoffin": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_dark_fantasy_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_fantasy_escape": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mountain_ultimate": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_dystopia_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_knife_fun_fix_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_fang_relic": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mirrors_edge_reborn_v4_3": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_potc_v4s_4fix": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "cs_office": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mountain_escape_v5_zy": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_minecraft_miao_giant_v7_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_aperturescience_ob": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_mountain_escape_bbo_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "surf_olympics": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_bathroom_v2_5s": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "de_inferno": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_yemushanzhuang": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_paranoid_rezurrection_v11_9": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_obf_npst_v2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_evernight": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_zulu_css": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ny_marathon_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_atix_panic_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_random_v9": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_minecraft_miao_mlg_v3_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_lotr_mines_of_moria_p": {
+        "zh_cn": "魔戒：摩瑞亚矿坑",
+        "zh_tw": "魔戒：摩瑞亚矿坑"
+    },
+    "ze_silent_hill_2_illusion_kn1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_five_16togo_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_boatescape999": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_tesv_skyrim_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "zm_mansion": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_backrooms_deathbed_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ffvii_mako_reactor_v5_3": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_elevator_escape_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_rooftop_rogue_v1_5": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sit_caelum_paradisus_b7s": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_eye_for_an_eye_v22": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_skill_escape_v09s": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_forsaken_temple": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_lotr_minas_tirith_v3_3": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_bigboo_n64": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sky_athletic_adv_v9_12s": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_luck_matters_v1ds": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "graphics_settings": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "surf_classics": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_surf_facility_v3_pre2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_otakuroom_pt": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "mg_beebeeee_naipi_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_sky_athletic_v5_final": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_silent_hill_v3_0": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "mg_saw_4_fixed_d": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_azathoth_v1_css": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "mg_go_for_it_csgo_d": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_bioshock_v7_1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "de_train": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "mg_cartoon_course": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_forius_just_run_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_ez_run": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "mg_ruinztrap_course": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_slender_b7": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_empirecity_p": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_vermintide_a2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "cr_crazyhouse": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_raintime2_stormwindkeep_v3": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_potc_iv_v6_1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_lotr_mines_of_moria_v6_3test": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_slender_escape_b4": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_trainescape_final": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "mg_b2r_temple_v1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_atix_helicopter_i3d_c1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_visualizer": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "mg_escape_prison_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_dabadeedabadie": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_naruto_v2_6e": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_snowcrash_escape_vfixed1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_amalgamation_css4": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_naruto_shippuden_legends_v2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_snowflower_laboratory_v1_1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "mg_mood_naipi_cs2": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_box_cloaca_b1": {
+        "zh_cn": "",
+        "zh_tw": ""
+    },
+    "ze_forhidden_slicoo_cs2": {
+        "zh_cn": "禁地斯狄科",
+        "zh_tw": "禁地斯狄科"
+    },
+    "surf_greek": {
+        "zh_cn": "[t2关卡]surf_greek",
+        "zh_tw": "[t2关卡]surf_greek"
+    },
+    "ze_atix_panic_2017_p": {
+        "zh_cn": "牢大逃亡2017",
+        "zh_tw": "牢大逃亡2017"
+    },
+    "mg_alone_naipi_cs2": {
+        "zh_cn": "[简单]奶皮!孤独!",
+        "zh_tw": "[简单]奶皮!孤独!"
+    }
 }
