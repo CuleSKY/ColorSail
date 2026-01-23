@@ -28,6 +28,10 @@
     transition: transform 180ms var(--ease-fluent), opacity 180ms var(--ease-fluent);
 }
 
+.autojoin-modal.granted {
+    box-shadow: 0 8px 22px rgba(0, 120, 212, 0.18);
+}
+
 .autojoin-modal.show {
     transform: translateY(0);
     opacity: 1;
@@ -79,6 +83,17 @@
     gap: 6px;
 }
 
+.autojoin-countdown {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.autojoin-expired-hint {
+    color: var(--warn-text);
+    font-size: 12px;
+}
+
 .autojoin-modal-actions {
     padding: 0 18px 18px 18px;
 }
@@ -115,6 +130,12 @@
     border-radius: 10px;
 }
 
+.autojoin-granted-btn {
+    min-width: 180px;
+    font-size: 14px;
+    animation: autojoinPulse 700ms var(--ease-fluent) 1;
+}
+
 .autojoin-status-bar {
     position: fixed;
     right: 20px;
@@ -140,9 +161,19 @@
     pointer-events: auto;
 }
 
+.autojoin-status-bar.flash {
+    box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2), var(--shadow);
+}
+
 .autojoin-status-title {
     font-weight: 600;
     font-size: 13px;
+}
+
+@keyframes autojoinPulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 120, 212, 0.35); }
+    60% { transform: scale(1.02); box-shadow: 0 0 0 8px rgba(0, 120, 212, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 120, 212, 0); }
 }
 
 .autojoin-status-sub {

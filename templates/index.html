@@ -777,9 +777,9 @@
                                     </div>
                                 </div>
                                 <div class="actions">
-                                    <button class="btn btn-primary" @click="joinServer(s, comm)">加入服务器</button>
-                                    <button v-if="isPrime" class="btn" :class="isAutojoinEligible(s) ? 'btn-primary autojoin-primary' : 'btn-sec autojoin-secondary'" @click="handleAutojoinClick(s, comm)">自动挤服</button>
-                                    <button class="btn btn-sec" v-if="isLoggedIn" @click="copyCmd(s)">复制控制台命令</button>
+                                    <button class="btn btn-primary" @click="joinServer(s, comm)">[[ t('join_server') ]]</button>
+                                    <button v-if="isPrime" class="btn" :class="isAutojoinEligible(s) ? 'btn-primary autojoin-primary' : 'btn-sec autojoin-secondary'" @click="handleAutojoinClick(s, comm)">[[ t('autojoin_button') ]]</button>
+                                    <button class="btn btn-sec" v-if="isLoggedIn" @click="copyCmd(s)">[[ t('copy_console_cmd') ]]</button>
                                     <button class="btn btn-sec" v-if="isLoggedIn" @click="copyIp(s)">[[ t('copy_ip') ]]</button>
                                 </div>
                             </div>
@@ -793,9 +793,9 @@
                             <div class="col-map"><span class="map-name">[[ s.map || '-' ]]</span><span class="col-map-cn" v-if="isChineseLang">[[ getServerMapTranslation(s) || (s.map!='-' ? t('no_trans') : '') ]]</span></div>
                             <div class="col-players">[[ s.players ]]/[[ s.max_players ]]</div>
                             <div class="col-actions">
-                                <button class="btn btn-primary" @click="joinServer(s, comm)">加入服务器</button>
-                                <button v-if="isPrime" class="btn" :class="isAutojoinEligible(s) ? 'btn-primary autojoin-primary' : 'btn-sec autojoin-secondary'" @click="handleAutojoinClick(s, comm)">自动挤服</button>
-                                <button class="btn btn-sec" v-if="isLoggedIn" @click="copyCmd(s)">复制控制台命令</button>
+                                <button class="btn btn-primary" @click="joinServer(s, comm)">[[ t('join_server') ]]</button>
+                                <button v-if="isPrime" class="btn" :class="isAutojoinEligible(s) ? 'btn-primary autojoin-primary' : 'btn-sec autojoin-secondary'" @click="handleAutojoinClick(s, comm)">[[ t('autojoin_button') ]]</button>
+                                <button class="btn btn-sec" v-if="isLoggedIn" @click="copyCmd(s)">[[ t('copy_console_cmd') ]]</button>
                                 <button class="btn btn-sec" v-if="isLoggedIn" @click="copyIp(s)">[[ t('copy_ip') ]]</button>
                             </div>
                         </div>
@@ -924,56 +924,58 @@
             </div>
         </div>
         <div class="autojoin-overlay" v-show="autojoinModalOpen" :class="{show: autojoinModalOpen}" @click.self="closeAutojoinModal">
-            <div class="autojoin-modal" :class="{show: autojoinModalOpen}">
+            <div class="autojoin-modal" :class="{show: autojoinModalOpen, granted: autojoinModalMode === 'granted'}">
                 <div class="autojoin-modal-header">
-                    <div class="autojoin-title">自动挤服</div>
-                    <button class="autojoin-close" @click="closeAutojoinModal">×</button>
+                    <div class="autojoin-title">[[ t('autojoin_title') ]]</div>
+                    <button class="autojoin-close" @click="closeAutojoinModal">?</button>
                 </div>
                 <div class="autojoin-modal-body">
                     <div v-if="autojoinModalMode === 'not_eligible'">
-                        <div class="autojoin-message">✅ 当前人数未满，无需挤服。建议直接进入。</div>
+                        <div class="autojoin-message">[[ t('autojoin_not_eligible') ]]</div>
                         <div class="autojoin-meta">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
                     </div>
                     <div v-else-if="autojoinModalMode === 'prompt'">
-                        <div class="autojoin-message">你是否拥有 [[ autojoinTarget ? autojoinTarget.community_name : '' ]] 的优先通道？</div>
+                        <div class="autojoin-message">[[ formatTemplate(t('autojoin_priority_prompt'), { community: autojoinTarget ? autojoinTarget.community_name : '' }) ]]</div>
                         <div class="autojoin-meta">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
                     </div>
                     <div v-else-if="autojoinModalMode === 'running'">
-                        <div class="autojoin-message">正在尝试挤服中...</div>
+                        <div class="autojoin-message">[[ t('autojoin_running') ]]</div>
                         <div class="autojoin-meta">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
                         <div class="autojoin-stats">
-                            <div>当前尝试挤服次数：[[ autojoinAttempts ]]</div>
-                            <div v-if="autojoinPosition !== null">队列位置：[[ autojoinPosition ]]</div>
+                            <div>[[ formatTemplate(t('autojoin_attempts'), { n: autojoinAttempts }) ]]</div>
+                            <div v-if="autojoinPosition !== null">[[ formatTemplate(t('autojoin_queue_position'), { n: autojoinPosition }) ]]</div>
+                            <div class="autojoin-expired-hint" v-if="autojoinExpiredNotice">[[ t('autojoin_grant_expired') ]]</div>
                         </div>
                     </div>
                     <div v-else-if="autojoinModalMode === 'granted'">
-                        <div class="autojoin-message">✅ 已获得进服机会</div>
+                        <div class="autojoin-message">[[ t('autojoin_granted') ]]</div>
                         <div class="autojoin-meta">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
+                        <div class="autojoin-countdown" v-if="autojoinCountdown > 0">[[ formatTemplate(t('autojoin_countdown'), { n: autojoinCountdown }) ]]</div>
                     </div>
                 </div>
                 <div class="autojoin-modal-actions">
-                    <button class="btn btn-primary" v-if="autojoinModalMode === 'not_eligible'" @click="fastJoinFromModal">立即进入</button>
+                    <button class="btn btn-primary" v-if="autojoinModalMode === 'not_eligible'" @click="fastJoinFromModal">[[ t('autojoin_enter_now') ]]</button>
                     <div v-if="autojoinModalMode === 'prompt'" class="autojoin-prompt-actions">
-                        <button class="btn btn-primary" @click="confirmAutojoin('priority')">我有优先通道</button>
-                        <button class="btn btn-sec" @click="confirmAutojoin('normal')">我没有优先通道</button>
+                        <button class="btn btn-primary" @click="confirmAutojoin('priority')">[[ t('autojoin_has_priority') ]]</button>
+                        <button class="btn btn-sec" @click="confirmAutojoin('normal')">[[ t('autojoin_no_priority') ]]</button>
                     </div>
                     <div v-if="autojoinModalMode === 'running'" class="autojoin-run-actions">
-                        <button class="btn btn-danger" @click="stopAutojoin">停止自动挤服</button>
+                        <button class="btn btn-danger" @click="stopAutojoin">[[ t('autojoin_stop') ]]</button>
                     </div>
                     <div v-if="autojoinModalMode === 'granted'" class="autojoin-run-actions">
-                        <button class="btn btn-primary" @click="joinFromGrant">立即进入服务器</button>
+                        <button class="btn btn-primary autojoin-granted-btn" @click="joinFromGrant">[[ t('autojoin_enter_server') ]]</button>
                     </div>
                 </div>
             </div>
         </div>
-        <div v-if="autojoinRunning" class="autojoin-status-bar" :class="{show: autojoinStatusVisible}">
+        <div v-if="autojoinRunning" class="autojoin-status-bar" :class="{show: autojoinStatusVisible, flash: autojoinStatusFlash}">
             <div class="autojoin-status-main">
-                <div class="autojoin-status-title">AutoJoin 运行中</div>
+                <div class="autojoin-status-title">[[ t('autojoin_status_running') ]]</div>
                 <div class="autojoin-status-sub">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
             </div>
             <div class="autojoin-status-actions">
-                <button class="btn btn-sec" @click="openAutojoinModal">打开</button>
-                <button class="btn btn-danger" @click="stopAutojoin">退出</button>
+                <button class="btn btn-sec" @click="openAutojoinModal">[[ t('autojoin_open') ]]</button>
+                <button class="btn btn-danger" @click="stopAutojoin">[[ t('autojoin_exit') ]]</button>
             </div>
         </div>
         <div class="fixed-logo"><img :src="currentLogoPath" alt="NERV_Logo"></div>
@@ -1068,7 +1070,11 @@ createApp({
         const autojoinStatusVisible = ref(false);
         const autojoinQueueType = ref('normal');
         const autojoinStartedAt = ref(0);
+        const autojoinCountdown = ref(0);
+        const autojoinExpiredNotice = ref(false);
+        const autojoinStatusFlash = ref(false);
         let autojoinPollTimer = null;
+        let autojoinCountdownTimer = null;
         
         const currentStats = ref([]);
         const totalPlayers = ref(0);
@@ -1499,7 +1505,7 @@ createApp({
                 }
             } catch (e) {
                 if (!silent) {
-                    showToast('Language load failed');
+                    showToast(t('language_load_failed'));
                 }
             }
         };
@@ -1995,6 +2001,10 @@ createApp({
             }
             await sendAutojoinLeave();
             stopAutojoinPolling();
+            if (autojoinCountdownTimer) {
+                clearInterval(autojoinCountdownTimer);
+                autojoinCountdownTimer = null;
+            }
             autojoinRunning.value = false;
             autojoinModalOpen.value = false;
             autojoinModalMode.value = 'idle';
@@ -2005,11 +2015,40 @@ createApp({
             autojoinTarget.value = null;
             autojoinPendingJoinUrl.value = null;
             autojoinInactivePolls.value = 0;
+            autojoinCountdown.value = 0;
+            autojoinExpiredNotice.value = false;
+            autojoinStatusFlash.value = false;
             autojoinLastTicketByServer.value = {};
             clearAutojoinState();
             if (!silent) {
-                showToast('已停止自动挤服');
+                showToast(t('autojoin_stopped'));
             }
+        };
+
+        const startGrantCountdown = (seconds) => {
+            if (autojoinCountdownTimer) {
+                clearInterval(autojoinCountdownTimer);
+                autojoinCountdownTimer = null;
+            }
+            autojoinCountdown.value = Math.max(0, Number(seconds) || 0);
+            autojoinExpiredNotice.value = false;
+            if (autojoinCountdown.value <= 0) return;
+            autojoinCountdownTimer = setInterval(() => {
+                autojoinCountdown.value -= 1;
+                if (autojoinCountdown.value <= 0) {
+                    clearInterval(autojoinCountdownTimer);
+                    autojoinCountdownTimer = null;
+                    autojoinCountdown.value = 0;
+                    autojoinExpiredNotice.value = true;
+                    autojoinModalMode.value = 'running';
+                    showToast(t('autojoin_grant_expired'));
+                }
+            }, 1000);
+        };
+
+        const flashAutojoinStatus = () => {
+            autojoinStatusFlash.value = true;
+            setTimeout(() => { autojoinStatusFlash.value = false; }, 900);
         };
 
         const startAutojoinPolling = () => {
@@ -2027,7 +2066,7 @@ createApp({
                     if (!data || data.ok === false) {
                         autojoinInactivePolls.value += 1;
                         if (autojoinInactivePolls.value >= 3) {
-                            showToast('自动挤服已停止或不在队列');
+                            showToast(t('autojoin_inactive'));
                             await stopAutojoin(true);
                         }
                         return;
@@ -2041,22 +2080,17 @@ createApp({
                         }
                         autojoinLastTicketByServer.value[serverKey] = ticketId;
                         autojoinAttempts.value += 1;
-                        if (data.fast_join_url) {
-                            const ok = window.AutojoinUI && window.AutojoinUI.navigateJoinWindow
-                                ? window.AutojoinUI.navigateJoinWindow(serverKey, data.fast_join_url)
-                                : false;
-                            if (!ok) {
-                                autojoinPendingJoinUrl.value = data.fast_join_url;
-                                autojoinModalMode.value = 'granted';
-                                autojoinModalOpen.value = true;
-                            }
-                        }
+                        autojoinPendingJoinUrl.value = data.fast_join_url || null;
+                        autojoinModalMode.value = 'granted';
+                        autojoinModalOpen.value = true;
+                        startGrantCountdown(Number(data.expires_in || 12));
+                        flashAutojoinStatus();
                     } else {
                         autojoinPosition.value = typeof data.position === 'number' ? data.position : null;
                         if (data.position === 0) {
                             autojoinInactivePolls.value += 1;
                             if (autojoinInactivePolls.value >= 3) {
-                                showToast('自动挤服已停止或不在队列');
+                                showToast(t('autojoin_inactive'));
                                 await stopAutojoin(true);
                             }
                         } else {
@@ -2066,7 +2100,7 @@ createApp({
                 } catch (e) {
                     autojoinInactivePolls.value += 1;
                     if (autojoinInactivePolls.value >= 3) {
-                        showToast('自动挤服已停止或不在队列');
+                        showToast(t('autojoin_inactive'));
                         await stopAutojoin(true);
                     }
                 }
@@ -2086,11 +2120,12 @@ createApp({
             autojoinPosition.value = null;
             autojoinPendingJoinUrl.value = null;
             autojoinInactivePolls.value = 0;
+            autojoinCountdown.value = 0;
+            autojoinExpiredNotice.value = false;
             autojoinLastTicketByServer.value[target.server_key] = null;
-            if (window.AutojoinUI && window.AutojoinUI.preopenJoinWindow) {
-                window.AutojoinUI.preopenJoinWindow(target.server_key);
-            } else {
-                try { window.open('about:blank', '_blank'); } catch (e) {}
+            if (autojoinCountdownTimer) {
+                clearInterval(autojoinCountdownTimer);
+                autojoinCountdownTimer = null;
             }
             try {
                 const res = await fetch('/api/autojoin/join', {
@@ -2106,13 +2141,13 @@ createApp({
                 const data = await res.json();
                 if (!data || data.ok === false) {
                     const reason = data && data.error ? data.error : 'unknown';
-                    showToast(`AutoJoin失败：${reason}`);
+                    showToast(formatTemplate(t('autojoin_join_failed_reason'), { reason }));
                     autojoinModalMode.value = 'idle';
                     autojoinModalOpen.value = false;
                     return;
                 }
             } catch (e) {
-                showToast('AutoJoin失败');
+                showToast(t('autojoin_join_failed'));
                 autojoinModalMode.value = 'idle';
                 autojoinModalOpen.value = false;
                 return;
@@ -2121,7 +2156,7 @@ createApp({
             autojoinStartedAt.value = Date.now();
             persistAutojoinState();
             startAutojoinPolling();
-            showToast('AutoJoin已加入队列');
+            showToast(t('autojoin_joined_queue'));
         };
 
         const handleAutojoinClick = (srv, comm) => {
@@ -2149,7 +2184,7 @@ createApp({
         const closeAutojoinModal = () => {
             autojoinModalOpen.value = false;
             if (autojoinRunning.value) {
-                showToast('自动挤服正在后台运行');
+                showToast(t('autojoin_background'));
             }
         };
 
@@ -2167,6 +2202,11 @@ createApp({
         const joinFromGrant = () => {
             const url = autojoinPendingJoinUrl.value || (autojoinTarget.value ? getFastJoinUrl(autojoinTarget.value) : null);
             if (!url) return;
+            if (autojoinCountdownTimer) {
+                clearInterval(autojoinCountdownTimer);
+                autojoinCountdownTimer = null;
+            }
+            autojoinCountdown.value = 0;
             window.location.href = url;
         };
 
@@ -2216,6 +2256,8 @@ createApp({
             autojoinStartedAt.value = payload.started_at || Date.now();
             autojoinInactivePolls.value = 0;
             autojoinLastTicketByServer.value[payload.server_key] = null;
+            autojoinCountdown.value = 0;
+            autojoinExpiredNotice.value = false;
             startAutojoinPolling();
         };
 
@@ -2254,10 +2296,10 @@ createApp({
                 if(successful) {
                     showToast(toastMessage || (t('copied') + text));
                 } else {
-                    showToast("Copy failed");
+                    showToast(t('copy_failed'));
                 }
             } catch (err) {
-                showToast("Copy failed");
+                showToast(t('copy_failed'));
             }
             document.body.removeChild(textArea);
         };
@@ -2280,10 +2322,10 @@ createApp({
             const address = getConnectAddress(srv);
             if (autojoinRunning.value) {
                 await stopAutojoin(true);
-                copyText(`connect ${address}`, '已复制控制台命令，并已停止自动挤服');
+                copyText(`connect ${address}`, t('autojoin_copy_stop'));
                 return;
             }
-            copyText(`connect ${address}`, '已复制控制台命令');
+            copyText(`connect ${address}`, t('copy_console_done'));
         };
         const copyIp = (srv) => {
             if (!isLoggedIn.value) {
@@ -2315,13 +2357,15 @@ createApp({
             draggedIndex, dragOverIndex, onDragStart, onDragEnter, onDragLeave, onDrop,
             subSearchQuery, searchResults, searchMaps, selectedMap, selectMapToSub, newSubComms, toggleSubComm, addSubscription, subscriptions, removeSubscription, removeSubscriptionByMap, formatSubComms,
             mapTranslations, getMapTranslation, getServerMapTranslation, isSubscribed, toggleSubscription, testNotification, getCommunityLogoMeta,
+            formatTemplate,
             notificationPermission, requestPerm,
             showSubPopover, toggleSubPopover, toggleLangMenu, toggleProfileMenu, goToSubPage, closeDropdowns, showProfileMenu,
             currentStats, totalPlayers, totalPeak48h, topCommunity,
             filteredCommunities, serverSearchNotice,
             isLoggedIn, authRoleLabel, authRoleClass, steamAuthPending, steamId, isPrime,
             startSteamLogin, logout, showLoginPrompt, dismissLoginPrompt,
-            autojoinModalOpen, autojoinModalMode, autojoinTarget, autojoinAttempts, autojoinPosition, autojoinRunning, autojoinStatusVisible,
+            autojoinModalOpen, autojoinModalMode, autojoinTarget, autojoinAttempts, autojoinPosition, autojoinRunning, autojoinStatusVisible, autojoinStatusFlash,
+            autojoinCountdown, autojoinExpiredNotice,
             handleAutojoinClick, confirmAutojoin, closeAutojoinModal, openAutojoinModal, fastJoinFromModal, joinFromGrant, stopAutojoin, joinServer,
             isAutojoinEligible,
             feedbackSubject, feedbackMessage, submitFeedback,
