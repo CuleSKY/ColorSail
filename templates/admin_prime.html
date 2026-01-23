@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Prime Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; color: #111; }
+        h1 { margin-top: 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f3f3f3; }
+        .row-actions form { display: inline-block; margin: 0; }
+        .btn { padding: 6px 10px; border: 1px solid #444; background: #222; color: #fff; cursor: pointer; }
+        .btn.secondary { background: #f3f3f3; color: #111; border-color: #999; }
+        .form-row { display: flex; gap: 8px; align-items: center; }
+        input[type="text"] { padding: 6px 8px; width: 320px; max-width: 100%; }
+        .note { margin-top: 8px; color: #555; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Prime Users</h1>
+    <form method="post" action="/admin/prime/add">
+        <div class="form-row">
+            <input type="text" name="steam_id" placeholder="Steam64 ID" required>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn">Add Prime</button>
+        </div>
+    </form>
+    <div class="note">Changes are logged and rate-limited per admin.</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Persona Name</th>
+                <th>Steam ID</th>
+                <th>Added By</th>
+                <th>Added At</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.persona_name }}</td>
+                <td>{{ user.steam_id }}</td>
+                <td>{{ user.added_by }}</td>
+                <td>{{ user.added_at_human }}</td>
+                <td class="row-actions">
+                    <form method="post" action="/admin/prime/remove">
+                        <input type="hidden" name="steam_id" value="{{ user.steam_id }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn secondary">Remove</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if users|length == 0 %}
+            <tr>
+                <td colspan="5">No prime users.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</body>
+</html>

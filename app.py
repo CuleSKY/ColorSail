@@ -12,6 +12,7 @@ import hmac
 import ipaddress
 import secrets
 import re
+from collections import deque
 from urllib.parse import urlencode
 from datetime import datetime
 from datetime import timedelta
@@ -61,6 +62,8 @@ TRANS_FILE = 'map_translations.json'
 LANGUAGE_FILE = 'language.json'
 DB_FILE = "stats.db"
 STATIC_MAP_DIR = os.path.join(STATIC_DIR, 'maps')
+PRIME_USERS_FILE = 'prime_users.json'
+PRIME_AUDIT_FILE = 'prime_audit.log'
 
 # EXG API 地址
 EXG_API_URL = "https://list.darkrp.cn:9000/ServerList/CurrentStatus"
@@ -76,6 +79,11 @@ AGENT_CACHE = {}
 AGENT_CACHE_UPDATED_AT = {}
 COMMUNITY_META = []
 ADMIN_STEAM_IDS = set()
+PRIME_USERS_SET = set()
+PRIME_USERS_META = {}
+PRIME_USERS_LOCK = threading.Lock()
+PRIME_RATE_LIMITS = {}
+PRIME_RATE_LOCK = threading.Lock()
 FYS_COMMUNITY_IDS = set()
 MAP_IMAGE_INDEX = {}
 MAP_IMAGE_MTIME = 0
@@ -118,6 +126,7 @@ app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', ''
 AGENT_ALLOWED_CIDRS = [cidr.strip() for cidr in os.environ.get('AGENT_ALLOWED_CIDRS', '').split(',') if cidr.strip()]
 AGENT_TRUSTED_PROXIES = [cidr.strip() for cidr in os.environ.get('AGENT_TRUSTED_PROXIES', '').split(',') if cidr.strip()]
 AGENT_SIGNATURE_TTL_SECONDS = int(os.environ.get('AGENT_SIGNATURE_TTL_SECONDS', '300'))
+WATCHER_SERVICE_URL = os.environ.get('WATCHER_SERVICE_URL', 'http://127.0.0.1:5010').rstrip('/')
 
 # --- 1. 辅助函数 ---
 def generate_distinct_colors(n):
@@ -236,6 +245,135 @@ def client_ip_allowed(client_ip):
     if not client_ip:
         return False
     return ip_in_cidrs(client_ip, AGENT_ALLOWED_CIDRS)
+
+def ensure_csrf_token():
+    if session.get('steam_logged_in') and session.get('steam_id'):
+        if not session.get('csrf_token'):
+            session['csrf_token'] = secrets.token_urlsafe(32)
+
+def validate_csrf_token():
+    token = request.form.get('csrf_token', '')
+    session_token = session.get('csrf_token', '')
+    if not token or not session_token or token != session_token:
+        return False
+    return True
+
+def is_admin_user():
+    steam_id = session.get('steam_id')
+    return bool(session.get('steam_logged_in')) and steam_id in ADMIN_STEAM_IDS
+
+def require_admin():
+    load_config()
+    if not is_admin_user():
+        return make_response("Forbidden", 403)
+    return None
+
+def is_prime_user():
+    steam_id = session.get('steam_id')
+    if not (session.get('steam_logged_in') and steam_id):
+        return False
+    return steam_id in PRIME_USERS_SET
+
+def validate_steam64(value):
+    if value is None:
+        return None
+    normalized = str(value).strip().replace(' ', '')
+    if not normalized.isdigit():
+        return None
+    if len(normalized) < 15 or len(normalized) > 20:
+        return None
+    return normalized
+
+def make_fast_join_url(game, ip, port):
+    appid = 730 if str(game).lower() == 'cs2' else 240
+    return f"steam://rungameid/{appid}//+connect%20{ip}:{port}"
+
+def log_prime_audit(action, admin_id, target_id, result, reason):
+    ts = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+    line = f"{ts} {action} admin={admin_id} target={target_id} result={result} reason={reason}\n"
+    try:
+        with open(PRIME_AUDIT_FILE, 'a', encoding='utf-8') as f:
+            f.write(line)
+    except Exception as e:
+        print(f"[PrimeAudit] write failed: {e}")
+
+def load_prime_users():
+    global PRIME_USERS_SET, PRIME_USERS_META
+    with PRIME_USERS_LOCK:
+        if not os.path.exists(PRIME_USERS_FILE):
+            data = {"updated_at": int(time.time()), "users": []}
+            try:
+                with open(PRIME_USERS_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                print(f"[Prime] create file failed: {e}")
+        try:
+            with open(PRIME_USERS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception as e:
+            print(f"[Prime] load failed: {e}")
+            data = {"updated_at": 0, "users": []}
+        users = data.get('users', [])
+        prime_set = set()
+        prime_meta = {}
+        for entry in users:
+            if not isinstance(entry, dict):
+                continue
+            sid = str(entry.get('steam_id', '')).strip()
+            if not sid:
+                continue
+            prime_set.add(sid)
+            prime_meta[sid] = {
+                "steam_id": sid,
+                "persona_name": entry.get('persona_name') or "Unknown",
+                "added_by": entry.get('added_by') or "",
+                "added_at": int(entry.get('added_at') or 0)
+            }
+        PRIME_USERS_SET = prime_set
+        PRIME_USERS_META = prime_meta
+
+def _write_prime_users_locked():
+    data = {
+        "updated_at": int(time.time()),
+        "users": list(PRIME_USERS_META.values())
+    }
+    temp_path = f"{PRIME_USERS_FILE}.tmp"
+    with open(temp_path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(temp_path, PRIME_USERS_FILE)
+
+def write_prime_users():
+    with PRIME_USERS_LOCK:
+        _write_prime_users_locked()
+
+def fetch_persona_name(steam_id):
+    if not steam_id:
+        return "Unknown"
+    url = f"https://steamcommunity.com/profiles/{steam_id}/?xml=1"
+    try:
+        resp = requests.get(url, timeout=10)
+    except Exception as e:
+        print(f"[Prime] persona fetch failed: {e}")
+        return "Unknown"
+    if resp.status_code != 200:
+        print(f"[Prime] persona fetch HTTP {resp.status_code}")
+        return "Unknown"
+    match = re.search(r"<steamID><!\[CDATA\[(.*?)\]\]></steamID>", resp.text)
+    return match.group(1) if match else "Unknown"
+
+def check_prime_rate_limit(admin_id):
+    now = time.time()
+    with PRIME_RATE_LOCK:
+        dq = PRIME_RATE_LIMITS.get(admin_id)
+        if dq is None:
+            dq = deque()
+            PRIME_RATE_LIMITS[admin_id] = dq
+        while dq and now - dq[0] > 60:
+            dq.popleft()
+        if len(dq) >= 20:
+            return False
+        dq.append(now)
+        return True
 
 def build_steam_openid_url():
     state = secrets.token_urlsafe(24)
@@ -919,6 +1057,7 @@ def initialize_app():
 
         init_db()
         load_config()
+        load_prime_users()
         refresh_local_caches()
 
         print("\n[Startup] 执行初始数据更新...")
@@ -1022,6 +1161,7 @@ def steam_callback():
         
     session['steam_id'] = steam_id
     session['steam_logged_in'] = True
+    ensure_csrf_token()
     
     # 清理 session
     session.pop('steam_login_state', None)
@@ -1039,10 +1179,12 @@ def steam_status():
     logged_in = bool(session.get('steam_logged_in')) and bool(steam_id)
     profile = get_cached_steam_profile(steam_id) if logged_in else None
     role = "admin" if logged_in and steam_id in ADMIN_STEAM_IDS else "member"
+    prime = bool(logged_in and steam_id in PRIME_USERS_SET)
     return jsonify({
         "logged_in": logged_in,
         "steam_id": steam_id if logged_in else None,
         "role": role if logged_in else "guest",
+        "prime": prime if logged_in else False,
         "profile": profile
     })
 
@@ -1054,7 +1196,109 @@ def steam_logout():
     session.pop('steam_login_created_at', None)
     session.pop('steam_profile', None)
     session.pop('steam_profile_updated_at', None)
+    session.pop('csrf_token', None)
     return jsonify({"logged_in": False})
+
+@app.route('/admin/prime')
+def admin_prime():
+    denied = require_admin()
+    if denied:
+        return denied
+    users = []
+    with PRIME_USERS_LOCK:
+        for entry in PRIME_USERS_META.values():
+            added_at = int(entry.get('added_at') or 0)
+            users.append({
+                "steam_id": entry.get('steam_id', ''),
+                "persona_name": entry.get('persona_name') or "Unknown",
+                "added_by": entry.get('added_by') or "",
+                "added_at": added_at,
+                "added_at_human": datetime.utcfromtimestamp(added_at).strftime('%Y-%m-%d %H:%M:%S UTC') if added_at else "Unknown"
+            })
+    users.sort(key=lambda x: x.get('added_at', 0), reverse=True)
+    return render_template('admin_prime.html', users=users, csrf_token=session.get('csrf_token', ''))
+
+@app.route('/admin/prime/add', methods=['POST'])
+def admin_prime_add():
+    denied = require_admin()
+    if denied:
+        return denied
+    admin_id = session.get('steam_id', '')
+    if not check_prime_rate_limit(admin_id):
+        log_prime_audit("ADD", admin_id, request.form.get('steam_id', ''), "FAIL", "rate_limited")
+        return make_response("Too Many Requests", 429)
+    if not validate_csrf_token():
+        log_prime_audit("ADD", admin_id, request.form.get('steam_id', ''), "FAIL", "csrf_invalid")
+        return make_response("Forbidden", 403)
+    target_raw = request.form.get('steam_id', '')
+    target_id = validate_steam64(target_raw)
+    if not target_id:
+        print(f"[Prime] invalid steam64: {target_raw}")
+        log_prime_audit("ADD", admin_id, target_raw, "FAIL", "invalid_steam64")
+        return make_response("Invalid steam64", 400)
+
+    persona_name = None
+    if target_id == session.get('steam_id'):
+        profile = get_cached_steam_profile(target_id)
+        if profile:
+            persona_name = profile.get('name')
+    if not persona_name:
+        persona_name = fetch_persona_name(target_id)
+    if not persona_name:
+        persona_name = "Unknown"
+
+    now = int(time.time())
+    with PRIME_USERS_LOCK:
+        PRIME_USERS_SET.add(target_id)
+        PRIME_USERS_META[target_id] = {
+            "steam_id": target_id,
+            "persona_name": persona_name,
+            "added_by": admin_id,
+            "added_at": now
+        }
+        try:
+            _write_prime_users_locked()
+        except Exception as e:
+            print(f"[Prime] write failed: {e}")
+            log_prime_audit("ADD", admin_id, target_id, "FAIL", "write_failed")
+            return make_response("Write failed", 500)
+
+    log_prime_audit("ADD", admin_id, target_id, "OK", "added_or_exists")
+    return redirect(url_for('admin_prime'))
+
+@app.route('/admin/prime/remove', methods=['POST'])
+def admin_prime_remove():
+    denied = require_admin()
+    if denied:
+        return denied
+    admin_id = session.get('steam_id', '')
+    if not check_prime_rate_limit(admin_id):
+        log_prime_audit("REMOVE", admin_id, request.form.get('steam_id', ''), "FAIL", "rate_limited")
+        return make_response("Too Many Requests", 429)
+    if not validate_csrf_token():
+        log_prime_audit("REMOVE", admin_id, request.form.get('steam_id', ''), "FAIL", "csrf_invalid")
+        return make_response("Forbidden", 403)
+    target_raw = request.form.get('steam_id', '')
+    target_id = validate_steam64(target_raw)
+    if not target_id:
+        print(f"[Prime] invalid steam64: {target_raw}")
+        log_prime_audit("REMOVE", admin_id, target_raw, "FAIL", "invalid_steam64")
+        return make_response("Invalid steam64", 400)
+    removed = False
+    with PRIME_USERS_LOCK:
+        if target_id in PRIME_USERS_SET:
+            PRIME_USERS_SET.discard(target_id)
+            PRIME_USERS_META.pop(target_id, None)
+            removed = True
+        try:
+            _write_prime_users_locked()
+        except Exception as e:
+            print(f"[Prime] write failed: {e}")
+            log_prime_audit("REMOVE", admin_id, target_id, "FAIL", "write_failed")
+            return make_response("Write failed", 500)
+    reason = "removed" if removed else "not_found"
+    log_prime_audit("REMOVE", admin_id, target_id, "OK", reason)
+    return redirect(url_for('admin_prime'))
 
 @app.route('/api/config')
 def get_config_meta():
@@ -1130,6 +1374,100 @@ def update_agent_data():
             SERVER_CACHE[cid] = normalized
 
     return jsonify({"status": "ok", "updated": list(communities.keys())})
+
+@app.route('/api/agent/status')
+def agent_status():
+    token = os.environ.get('WATCHER_SHARED_TOKEN')
+    if not token:
+        return jsonify({"ok": False, "error": "shared token not configured"}), 403
+    if request.headers.get('X-Shared-Token') != token:
+        return jsonify({"ok": False, "error": "unauthorized"}), 403
+    now = int(time.time())
+    servers = []
+    with AGENT_CACHE_LOCK:
+        cache_snapshot = dict(AGENT_CACHE)
+        updated_snapshot = dict(AGENT_CACHE_UPDATED_AT)
+    for cid, srv_list in cache_snapshot.items():
+        if not isinstance(srv_list, list):
+            continue
+        for srv in srv_list:
+            if not isinstance(srv, dict):
+                continue
+            ip = srv.get('ip')
+            port = srv.get('port')
+            if not ip or not port:
+                continue
+            updated_at = int(srv.get('updated_at') or updated_snapshot.get(cid, 0) or 0)
+            servers.append({
+                "server_key": f"{ip}:{port}",
+                "name": srv.get('name') or "Unknown",
+                "players": int(srv.get('players') or 0),
+                "max_players": int(srv.get('max_players') or 64),
+                "game": srv.get('game') or "cs2",
+                "community_id": srv.get('community_id') or str(cid),
+                "source_type": "agent_push",
+                "updated_at": updated_at
+            })
+    return jsonify({"ok": True, "updated_at": now, "servers": servers})
+
+def proxy_to_watcher(path, method):
+    token = os.environ.get('WATCHER_SHARED_TOKEN')
+    if not token:
+        return jsonify({"ok": False, "error": "watcher token not configured"}), 500
+    url = f"{WATCHER_SERVICE_URL}{path}"
+    headers = {"X-Shared-Token": token}
+    try:
+        if method == 'GET':
+            resp = requests.get(url, headers=headers, params=request.args, timeout=4)
+        else:
+            resp = requests.post(url, headers=headers, json=request.get_json(silent=True) or {}, timeout=4)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"watcher_unreachable: {e}"}), 502
+    try:
+        data = resp.json()
+    except Exception:
+        return jsonify({"ok": False, "error": "invalid watcher response"}), 502
+    return jsonify(data), resp.status_code
+
+def require_prime():
+    if not is_prime_user():
+        return make_response("Forbidden", 403)
+    return None
+
+@app.route('/api/autojoin/join', methods=['POST'])
+def autojoin_join():
+    denied = require_prime()
+    if denied:
+        return denied
+    return proxy_to_watcher('/v1/autojoin/join', 'POST')
+
+@app.route('/api/autojoin/poll')
+def autojoin_poll():
+    denied = require_prime()
+    if denied:
+        return denied
+    return proxy_to_watcher('/v1/autojoin/poll', 'GET')
+
+@app.route('/api/autojoin/report', methods=['POST'])
+def autojoin_report():
+    denied = require_prime()
+    if denied:
+        return denied
+    return proxy_to_watcher('/v1/autojoin/report', 'POST')
+
+@app.route('/api/autojoin/leave', methods=['POST'])
+def autojoin_leave():
+    denied = require_prime()
+    if denied:
+        return denied
+    return proxy_to_watcher('/v1/autojoin/leave', 'POST')
+
+@app.route('/api/autojoin/targets')
+def autojoin_targets():
+    denied = require_prime()
+    if denied:
+        return denied
+    return proxy_to_watcher('/v1/targets', 'GET')
 
 @app.route('/api/map_translations')
 def get_translations():
@@ -1254,6 +1592,11 @@ def get_stats():
     
     return jsonify(payload)
 
+
+@app.before_request
+def ensure_csrf_on_login():
+    if session.get('steam_logged_in') and session.get('steam_id'):
+        ensure_csrf_token()
 
 @app.after_request
 def set_cache_headers(response):

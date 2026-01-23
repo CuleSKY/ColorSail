@@ -1,0 +1,59 @@
+{
+  "http": {
+    "host": "127.0.0.1",
+    "port": 5010,
+    "shared_token": "CHANGE_ME"
+  },
+  "main_site": {
+    "base_url": "http://127.0.0.1:5000",
+    "shared_token": "CHANGE_ME"
+  },
+  "games": {
+    "cs2": { "appid": 730 },
+    "css": { "appid": 240 }
+  },
+  "limits": {
+    "poll_hz": 1,
+    "ticket_ttl_seconds": 12,
+    "user_fail_cooldown_seconds": 20,
+    "max_active_watchers": 100,
+    "max_queue_per_server": 100,
+    "max_tasks_per_user": 1
+  },
+  "thresholds": {
+    "default_normal_threshold": 62,
+    "default_priority_threshold": 64,
+    "default_max_players": 64
+  },
+  "communities": [
+    {
+      "id": "exg_cs2",
+      "enabled": true,
+      "location": "global",
+      "game": "cs2",
+      "source_type": "exg_api",
+      "api_url": "https://list.darkrp.cn:9000/ServerList/CurrentStatus",
+      "refresh_seconds": 30,
+      "include_keywords": ["ze"],
+      "exclude_keywords": [],
+      "ttl_seconds": 120
+    },
+    {
+      "id": "static_us",
+      "enabled": true,
+      "location": "us",
+      "game": "cs2",
+      "source_type": "static_a2s",
+      "servers": [
+        { "name": "Example Server", "ip": "127.0.0.1", "port": 27015 }
+      ]
+    },
+    {
+      "id": "cn_agent",
+      "enabled": true,
+      "location": "cn",
+      "game": "cs2",
+      "source_type": "agent_only"
+    }
+  ]
+}

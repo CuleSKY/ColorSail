@@ -1834,9 +1834,9 @@ createApp({
             return srv.display_ip || (srv.ip + ':' + srv.port);
         };
         const getConnectUrl = (srv, game) => {
-            // steam://connect/IP:PORT 是通用的，支持 CS2 和 CSS
             const address = getConnectAddress(srv);
-            return `steam://connect/${address}`;
+            const appid = String(game || 'cs2').toLowerCase() === 'css' ? 240 : 730;
+            return `steam://rungameid/${appid}//+connect%20${address}`;
         };
 
         // 兼容 HTTP 的复制函数
