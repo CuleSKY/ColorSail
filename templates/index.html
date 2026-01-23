@@ -34,6 +34,8 @@
     <!-- 6. 图标与脚本 -->
     <link id="favicon" rel="icon" href="/static/NERV_Logo.png" type="image/png">
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <link rel="stylesheet" href="/static/css/fluent_autojoin.css">
+    <script src="/static/js/autojoin_ui.js" defer></script>
     <script>
         (function() {
             // 立即恢复侧边栏状态，阻止页面加载时的布局跳变
@@ -775,8 +777,9 @@
                                     </div>
                                 </div>
                                 <div class="actions">
-                                    <a :href="getConnectUrl(s, comm.game)" class="btn btn-primary">[[ t('join') ]]</a>
-                                    <button class="btn btn-sec" v-if="isLoggedIn" @click="copyCmd(s)">[[ t('copy_console') ]] </button>
+                                    <button class="btn btn-primary" @click="joinServer(s, comm)">加入服务器</button>
+                                    <button v-if="isPrime" class="btn" :class="isAutojoinEligible(s) ? 'btn-primary autojoin-primary' : 'btn-sec autojoin-secondary'" @click="handleAutojoinClick(s, comm)">自动挤服</button>
+                                    <button class="btn btn-sec" v-if="isLoggedIn" @click="copyCmd(s)">复制控制台命令</button>
                                     <button class="btn btn-sec" v-if="isLoggedIn" @click="copyIp(s)">[[ t('copy_ip') ]]</button>
                                 </div>
                             </div>
@@ -790,8 +793,9 @@
                             <div class="col-map"><span class="map-name">[[ s.map || '-' ]]</span><span class="col-map-cn" v-if="isChineseLang">[[ getServerMapTranslation(s) || (s.map!='-' ? t('no_trans') : '') ]]</span></div>
                             <div class="col-players">[[ s.players ]]/[[ s.max_players ]]</div>
                             <div class="col-actions">
-                                <a :href="getConnectUrl(s, comm.game)" class="btn btn-primary">[[ t('join') ]]</a>
-                                <button class="btn btn-sec" v-if="isLoggedIn" @click="copyCmd(s)">[[ t('copy_console') ]] </button>
+                                <button class="btn btn-primary" @click="joinServer(s, comm)">加入服务器</button>
+                                <button v-if="isPrime" class="btn" :class="isAutojoinEligible(s) ? 'btn-primary autojoin-primary' : 'btn-sec autojoin-secondary'" @click="handleAutojoinClick(s, comm)">自动挤服</button>
+                                <button class="btn btn-sec" v-if="isLoggedIn" @click="copyCmd(s)">复制控制台命令</button>
                                 <button class="btn btn-sec" v-if="isLoggedIn" @click="copyIp(s)">[[ t('copy_ip') ]]</button>
                             </div>
                         </div>
@@ -919,6 +923,52 @@
                 </div>
             </div>
         </div>
+        <div class="autojoin-overlay" v-show="autojoinModalOpen" :class="{show: autojoinModalOpen}" @click.self="closeAutojoinModal">
+            <div class="autojoin-modal" :class="{show: autojoinModalOpen}">
+                <div class="autojoin-modal-header">
+                    <div class="autojoin-title">自动挤服</div>
+                    <button class="autojoin-close" @click="closeAutojoinModal">×</button>
+                </div>
+                <div class="autojoin-modal-body">
+                    <div v-if="autojoinModalMode === 'not_eligible'">
+                        <div class="autojoin-message">✅ 当前人数未满，无需挤服。建议直接进入。</div>
+                        <div class="autojoin-meta">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
+                    </div>
+                    <div v-else-if="autojoinModalMode === 'prompt'">
+                        <div class="autojoin-message">你是否拥有 [[ autojoinTarget ? autojoinTarget.community_name : '' ]] 的优先通道？</div>
+                        <div class="autojoin-meta">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
+                    </div>
+                    <div v-else-if="autojoinModalMode === 'running'">
+                        <div class="autojoin-message">正在尝试挤服中...</div>
+                        <div class="autojoin-meta">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
+                        <div class="autojoin-stats">
+                            <div>当前尝试挤服次数：[[ autojoinAttempts ]]</div>
+                            <div v-if="autojoinPosition !== null">队列位置：[[ autojoinPosition ]]</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="autojoin-modal-actions">
+                    <button class="btn btn-primary" v-if="autojoinModalMode === 'not_eligible'" @click="fastJoinFromModal">立即进入</button>
+                    <div v-if="autojoinModalMode === 'prompt'" class="autojoin-prompt-actions">
+                        <button class="btn btn-primary" @click="confirmAutojoin('priority')">我有优先通道</button>
+                        <button class="btn btn-sec" @click="confirmAutojoin('normal')">我没有优先通道</button>
+                    </div>
+                    <div v-if="autojoinModalMode === 'running'" class="autojoin-run-actions">
+                        <button class="btn btn-danger" @click="stopAutojoin">停止自动挤服</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-if="autojoinRunning" class="autojoin-status-bar" :class="{show: autojoinStatusVisible}">
+            <div class="autojoin-status-main">
+                <div class="autojoin-status-title">AutoJoin 运行中</div>
+                <div class="autojoin-status-sub">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
+            </div>
+            <div class="autojoin-status-actions">
+                <button class="btn btn-sec" @click="openAutojoinModal">打开</button>
+                <button class="btn btn-danger" @click="stopAutojoin">退出</button>
+            </div>
+        </div>
         <div class="fixed-logo"><img :src="currentLogoPath" alt="NERV_Logo"></div>
     </div>
     <div class="toast" v-if="toastMsg" :class="{show: toastMsg}">[[ toastMsg ]]</div>
@@ -992,12 +1042,23 @@ createApp({
         const serverMapQuery = ref('');
         const serverMapQueryInput = ref('');
         const authState = ref({ loggedIn: false, role: 'guest' });
+        const isPrime = ref(false);
         const steamAuthPending = ref(false);
         const steamProfile = ref({ name: null, avatar: null });
         const steamId = ref(null); // SteamID获取
         const showLoginPrompt = ref(false);
         const feedbackSubject = ref('');
         const feedbackMessage = ref('');
+        const autojoinModalOpen = ref(false);
+        const autojoinModalMode = ref('idle');
+        const autojoinTarget = ref(null);
+        const autojoinAttempts = ref(0);
+        const autojoinPosition = ref(null);
+        const autojoinRunning = ref(false);
+        const autojoinStatusVisible = ref(false);
+        const autojoinQueueType = ref('normal');
+        const autojoinStartedAt = ref(0);
+        let autojoinPollTimer = null;
         
         const currentStats = ref([]);
         const totalPlayers = ref(0);
@@ -1013,6 +1074,7 @@ createApp({
         const lastNotifiedMaps = ref({});
         const hasNotification = typeof Notification !== 'undefined';
         const notificationPermission = ref(hasNotification ? Notification.permission : 'denied');
+        const AUTOJOIN_STORAGE_KEY = (window.AutojoinUI && window.AutojoinUI.storageKey) || 'autojoin_active';
 
         const draggedIndex = ref(null);
         const dragOverIndex = ref(null);
@@ -1094,8 +1156,17 @@ createApp({
         };
 
         watch(curLang, () => document.title = t('app_title'), { immediate: true });
+        watch(autojoinRunning, (next) => {
+            if (next) {
+                autojoinStatusVisible.value = false;
+                setTimeout(() => { autojoinStatusVisible.value = true; }, 20);
+            } else {
+                autojoinStatusVisible.value = false;
+            }
+        });
 
         const handleResize = () => isMobile.value = window.innerWidth <= 768;
+        const handlePageHide = () => sendAutojoinLeaveBeacon();
         
         const handleGlobalClick = (e) => {
             const target = e.target;
@@ -1143,6 +1214,7 @@ createApp({
                     loggedIn: isLoggedInBool,
                     role: isLoggedInBool ? (data.role || 'member') : 'guest'
                 };
+                isPrime.value = Boolean(isLoggedInBool && data.prime);
                 
                 if (isLoggedInBool) {
                     steamProfile.value = data.profile || { name: null, avatar: null };
@@ -1150,6 +1222,7 @@ createApp({
                 } else {
                     steamProfile.value = { name: null, avatar: null };
                     steamId.value = null;
+                    isPrime.value = false;
                 }
                 return data;
             } catch (e) {
@@ -1158,6 +1231,7 @@ createApp({
                 }
                 authState.value = { loggedIn: false, role: 'guest' };
                 steamProfile.value = { name: null, avatar: null };
+                isPrime.value = false;
                 return null;
             }
         };
@@ -1190,6 +1264,7 @@ createApp({
             window.addEventListener('resize', handleResize);
             window.addEventListener('click', handleGlobalClick);
             window.addEventListener('message', handleSteamMessage);
+            window.addEventListener('pagehide', handlePageHide);
             
             if(isDark.value) document.documentElement.setAttribute('data-theme', 'dark');
             updateFavicon();
@@ -1206,6 +1281,7 @@ createApp({
             } catch(e) {}
 
             await fetchSteamStatus(true);
+            restoreAutojoinFromStorage();
 
             if (communities.value.length) {
                 applyCommunities(communities.value);
@@ -1245,8 +1321,10 @@ createApp({
             window.removeEventListener('resize', handleResize);
             window.removeEventListener('click', handleGlobalClick);
             window.removeEventListener('message', handleSteamMessage);
+            window.removeEventListener('pagehide', handlePageHide);
             stopSteamLoginWatcher();
             clearToastTimer();
+            stopAutojoinPolling();
         });
 
         const toggleLangMenu = () => {
@@ -1333,6 +1411,7 @@ createApp({
         const logout = async () => {
             steamAuthPending.value = false;
             showProfileMenu.value = false;
+            await stopAutojoin(true);
             try {
                 await fetch('/api/steam/logout', { method: 'POST', credentials: 'same-origin' });
             } catch (e) {}
@@ -1568,6 +1647,20 @@ createApp({
         };
 
         const getServerKey = (srv) => `${srv.ip}:${srv.port}`;
+        const decorateServer = (srv, comm) => {
+            const base = { ...srv };
+            if (!base.server_key) base.server_key = getServerKey(base);
+            if (!base.community_name) base.community_name = comm ? (comm.name || '') : '';
+            if (base.has_priority_lane === undefined) base.has_priority_lane = Boolean(comm && comm.has_priority_lane);
+            if (!base.game) base.game = (comm && comm.game) ? comm.game : 'cs2';
+            base.normal_threshold = Number(base.normal_threshold || (comm && comm.normal_threshold) || 62);
+            return base;
+        };
+        const getAutojoinThreshold = (srv) => Number(srv.normal_threshold || 62);
+        const isAutojoinEligible = (srv) => {
+            const players = Number(srv.players || 0);
+            return players >= getAutojoinThreshold(srv);
+        };
 
         const checkSubscriptions = (srvData, commId) => {
             if (!srvData.map || srvData.map === '-') return;
@@ -1612,7 +1705,7 @@ createApp({
             communities.value.forEach(c => {
             // 如果后端传来了 servers 数据，直接初始化到 servers.value 中
                 if (c.servers && c.servers.length > 0) {
-                    servers.value[c.id] = c.servers;
+                    servers.value[c.id] = c.servers.map(srv => decorateServer(srv, c));
                 } else if (!servers.value[c.id]) {
                     servers.value[c.id] = [];
                 }
@@ -1648,13 +1741,15 @@ createApp({
 
         const refreshCommunity = async (cid) => {
             const now = Date.now();
+            const comm = communities.value.find(c => c.id === cid);
             try {
                 const res = await fetch(`/api/servers/${cid}`);
                 const data = await res.json();
                 const cache = serverCache.value[cid] || {};
                 data.forEach(s => {
-                    cache[getServerKey(s)] = { ...s, _lastSeen: now };
-                    checkSubscriptions(s, cid);
+                    const decorated = decorateServer(s, comm);
+                    cache[getServerKey(decorated)] = { ...decorated, _lastSeen: now };
+                    checkSubscriptions(decorated, cid);
                 });
                 serverCache.value[cid] = cache;
             } catch(e) {}
@@ -1679,7 +1774,8 @@ createApp({
         }, languageRefreshIntervalMs);
 
         const getServers = (cid) => {
-            let list = servers.value[cid] ? [...servers.value[cid]] : [];
+            const comm = communities.value.find(c => c.id === cid);
+            let list = servers.value[cid] ? [...servers.value[cid]].map(s => decorateServer(s, comm)) : [];
             const query = normalizeSearchText(serverMapQuery.value);
             if (query) {
                 list = list.filter((serverEntry) => {
@@ -1838,9 +1934,258 @@ createApp({
             const appid = String(game || 'cs2').toLowerCase() === 'css' ? 240 : 730;
             return `steam://rungameid/${appid}//+connect%20${address}`;
         };
+        const getFastJoinUrl = (srv) => {
+            const address = getConnectAddress(srv);
+            const appid = String(srv.game || 'cs2').toLowerCase() === 'css' ? 240 : 730;
+            return `steam://rungameid/${appid}//+connect%20${address}`;
+        };
+
+        const persistAutojoinState = () => {
+            if (!autojoinRunning.value || !autojoinTarget.value) return;
+            const payload = {
+                server_key: autojoinTarget.value.server_key,
+                queue_type: autojoinQueueType.value,
+                started_at: autojoinStartedAt.value,
+                server_name: autojoinTarget.value.name || '',
+                community_name: autojoinTarget.value.community_name || '',
+                game: autojoinTarget.value.game || 'cs2',
+                ip: autojoinTarget.value.ip,
+                port: autojoinTarget.value.port
+            };
+            localStorage.setItem(AUTOJOIN_STORAGE_KEY, JSON.stringify(payload));
+        };
+
+        const clearAutojoinState = () => {
+            localStorage.removeItem(AUTOJOIN_STORAGE_KEY);
+        };
+
+        const stopAutojoinPolling = () => {
+            if (autojoinPollTimer) {
+                clearInterval(autojoinPollTimer);
+                autojoinPollTimer = null;
+            }
+        };
+
+        const sendAutojoinLeave = async () => {
+            if (!autojoinTarget.value || !steamId.value) return;
+            try {
+                await fetch('/api/autojoin/leave', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ steam_id: steamId.value, server_key: autojoinTarget.value.server_key }),
+                    credentials: 'same-origin'
+                });
+            } catch (e) {}
+        };
+
+        const stopAutojoin = async (silent = false) => {
+            if (!autojoinRunning.value) {
+                autojoinModalOpen.value = false;
+                return;
+            }
+            await sendAutojoinLeave();
+            stopAutojoinPolling();
+            autojoinRunning.value = false;
+            autojoinModalOpen.value = false;
+            autojoinModalMode.value = 'idle';
+            autojoinAttempts.value = 0;
+            autojoinPosition.value = null;
+            autojoinQueueType.value = 'normal';
+            autojoinStartedAt.value = 0;
+            autojoinTarget.value = null;
+            clearAutojoinState();
+            if (!silent) {
+                showToast('已停止自动挤服');
+            }
+        };
+
+        const startAutojoinPolling = () => {
+            stopAutojoinPolling();
+            autojoinPollTimer = setInterval(async () => {
+                if (!autojoinRunning.value || !autojoinTarget.value || !steamId.value) return;
+                try {
+                    const params = new URLSearchParams({
+                        steam_id: steamId.value,
+                        server_key: autojoinTarget.value.server_key
+                    });
+                    const res = await fetch(`/api/autojoin/poll?${params.toString()}`, { credentials: 'same-origin' });
+                    const data = await res.json();
+                    if (!data || data.ok === false) {
+                        showToast('????????');
+                        await stopAutojoin(true);
+                        return;
+                    }
+                    if (data.granted) {
+                        autojoinAttempts.value += 1;
+                        if (data.fast_join_url) {
+                            window.location.href = data.fast_join_url;
+                        }
+                    } else {
+                        autojoinPosition.value = typeof data.position === 'number' ? data.position : null;
+                        if (data.position === 0) {
+                            showToast('?????????');
+                            await stopAutojoin(true);
+                        }
+                    }
+                } catch (e) {
+                    showToast('????????');
+                    await stopAutojoin(true);
+                }
+            }, 1000);
+        };
+
+        const startAutojoin = async (target, queueType) => {
+            if (!steamId.value) {
+                showToast(t('login_required_title'));
+                return;
+            }
+            autojoinModalOpen.value = true;
+            autojoinModalMode.value = 'running';
+            autojoinTarget.value = target;
+            autojoinQueueType.value = queueType || 'normal';
+            autojoinAttempts.value = 0;
+            autojoinPosition.value = null;
+            try {
+                const res = await fetch('/api/autojoin/join', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        steam_id: steamId.value,
+                        server_key: target.server_key,
+                        queue_type: autojoinQueueType.value
+                    }),
+                    credentials: 'same-origin'
+                });
+                const data = await res.json();
+                if (!data || data.ok === false) {
+                    const reason = data && data.error ? data.error : 'unknown';
+                    showToast(`AutoJoin???${reason}`);
+                    autojoinModalMode.value = 'idle';
+                    autojoinModalOpen.value = false;
+                    return;
+                }
+            } catch (e) {
+                showToast('AutoJoin??');
+                autojoinModalMode.value = 'idle';
+                autojoinModalOpen.value = false;
+                return;
+            }
+            autojoinRunning.value = true;
+            autojoinStartedAt.value = Date.now();
+            persistAutojoinState();
+            startAutojoinPolling();
+            showToast('AutoJoin?????');
+        };
+
+        const handleAutojoinClick = (srv, comm) => {
+            if (!isPrime.value) return;
+            const target = decorateServer(srv, comm);
+            autojoinTarget.value = target;
+            if (!isAutojoinEligible(target)) {
+                autojoinModalMode.value = 'not_eligible';
+                autojoinModalOpen.value = true;
+                return;
+            }
+            if (target.has_priority_lane) {
+                autojoinModalMode.value = 'prompt';
+                autojoinModalOpen.value = true;
+                return;
+            }
+            startAutojoin(target, 'normal');
+        };
+
+        const confirmAutojoin = (queueType) => {
+            if (!autojoinTarget.value) return;
+            startAutojoin(autojoinTarget.value, queueType);
+        };
+
+        const closeAutojoinModal = () => {
+            autojoinModalOpen.value = false;
+            if (autojoinRunning.value) {
+                showToast('自动挤服正在后台运行');
+            }
+        };
+
+        const openAutojoinModal = () => {
+            if (!autojoinRunning.value) return;
+            autojoinModalMode.value = 'running';
+            autojoinModalOpen.value = true;
+        };
+
+        const fastJoinFromModal = () => {
+            if (!autojoinTarget.value) return;
+            window.location.href = getFastJoinUrl(autojoinTarget.value);
+        };
+
+        const joinServer = async (srv, comm) => {
+            const target = decorateServer(srv, comm);
+            if (autojoinRunning.value) {
+                await stopAutojoin(true);
+            }
+            window.location.href = getFastJoinUrl(target);
+        };
+
+        const restoreAutojoinFromStorage = () => {
+            const raw = localStorage.getItem(AUTOJOIN_STORAGE_KEY);
+            if (!raw) return;
+            if (!steamId.value || !isPrime.value) {
+                clearAutojoinState();
+                return;
+            }
+            let payload = null;
+            try {
+                payload = JSON.parse(raw);
+            } catch (e) {
+                clearAutojoinState();
+                return;
+            }
+            if (!payload || !payload.server_key) {
+                clearAutojoinState();
+                return;
+            }
+            const parts = String(payload.server_key).split(':');
+            const ip = payload.ip || parts[0];
+            const port = payload.port || Number(parts[1]);
+            autojoinTarget.value = {
+                server_key: payload.server_key,
+                ip: ip,
+                port: port,
+                name: payload.server_name || 'Unknown',
+                community_name: payload.community_name || '',
+                game: payload.game || 'cs2',
+                has_priority_lane: false,
+                normal_threshold: 62
+            };
+            autojoinQueueType.value = payload.queue_type || 'normal';
+            autojoinRunning.value = true;
+            autojoinModalMode.value = 'running';
+            autojoinModalOpen.value = false;
+            autojoinStartedAt.value = payload.started_at || Date.now();
+            startAutojoinPolling();
+        };
+
+        const sendAutojoinLeaveBeacon = () => {
+            if (!autojoinRunning.value || !autojoinTarget.value || !steamId.value) return;
+            const payload = { steam_id: steamId.value, server_key: autojoinTarget.value.server_key };
+            if (window.AutojoinUI && typeof window.AutojoinUI.sendBeacon === 'function') {
+                window.AutojoinUI.sendBeacon('/api/autojoin/leave', payload);
+                return;
+            }
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon('/api/autojoin/leave', JSON.stringify(payload));
+            } else {
+                fetch('/api/autojoin/leave', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    keepalive: true,
+                    credentials: 'same-origin'
+                }).catch(() => {});
+            }
+        };
 
         // 兼容 HTTP 的复制函数
-        const fallbackCopy = (text) => {
+        const fallbackCopy = (text, toastMessage) => {
             const textArea = document.createElement("textarea");
             textArea.value = text;
             textArea.style.top = "0";
@@ -1852,7 +2197,7 @@ createApp({
             try {
                 const successful = document.execCommand('copy');
                 if(successful) {
-                    showToast(t('copied') + text);
+                    showToast(toastMessage || (t('copied') + text));
                 } else {
                     showToast("Copy failed");
                 }
@@ -1862,23 +2207,28 @@ createApp({
             document.body.removeChild(textArea);
         };
 
-        const copyText = (text) => {
+        const copyText = (text, toastMessage) => {
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(text).then(() => {
-                    showToast(t('copied') + text);
-                }).catch(() => fallbackCopy(text));
+                    showToast(toastMessage || (t('copied') + text));
+                }).catch(() => fallbackCopy(text, toastMessage));
             } else {
-                fallbackCopy(text);
+                fallbackCopy(text, toastMessage);
             }
         };
 
-        const copyCmd = (srv) => {
+        const copyCmd = async (srv) => {
             if (!isLoggedIn.value) {
                 showToast(t('login_required_copy'));
                 return;
             }
             const address = getConnectAddress(srv);
-            copyText(`connect ${address}`);
+            if (autojoinRunning.value) {
+                await stopAutojoin(true);
+                copyText(`connect ${address}`, '已复制控制台命令，并已停止自动挤服');
+                return;
+            }
+            copyText(`connect ${address}`, '已复制控制台命令');
         };
         const copyIp = (srv) => {
             if (!isLoggedIn.value) {
@@ -1914,8 +2264,11 @@ createApp({
             showSubPopover, toggleSubPopover, toggleLangMenu, toggleProfileMenu, goToSubPage, closeDropdowns, showProfileMenu,
             currentStats, totalPlayers, totalPeak48h, topCommunity,
             filteredCommunities, serverSearchNotice,
-            isLoggedIn, authRoleLabel, authRoleClass, steamAuthPending, steamId,
+            isLoggedIn, authRoleLabel, authRoleClass, steamAuthPending, steamId, isPrime,
             startSteamLogin, logout, showLoginPrompt, dismissLoginPrompt,
+            autojoinModalOpen, autojoinModalMode, autojoinTarget, autojoinAttempts, autojoinPosition, autojoinRunning, autojoinStatusVisible,
+            handleAutojoinClick, confirmAutojoin, closeAutojoinModal, openAutojoinModal, fastJoinFromModal, stopAutojoin, joinServer,
+            isAutojoinEligible,
             feedbackSubject, feedbackMessage, submitFeedback,
             defaultChineseLang
         };
