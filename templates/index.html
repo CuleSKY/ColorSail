@@ -1083,6 +1083,7 @@ createApp({
         const autojoinPollTransientToastShown = ref(false);
         const autojoinJoinOkAt = ref(0);
         const autojoinRecoveryAttempted = ref(false);
+        const autojoinActiveServerKey = ref('');
         const autojoinRunning = ref(false);
         const autojoinStatusVisible = ref(false);
         const autojoinQueueType = ref('normal');
@@ -2076,7 +2077,7 @@ createApp({
         const persistAutojoinState = () => {
             if (!autojoinRunning.value || !autojoinTarget.value) return;
             const payload = {
-                server_key: autojoinTarget.value.server_key,
+                server_key: autojoinActiveServerKey.value || autojoinTarget.value.server_key,
                 queue_type: autojoinQueueType.value,
                 started_at: autojoinStartedAt.value,
                 server_name: autojoinTarget.value.name || '',
@@ -2101,11 +2102,13 @@ createApp({
 
         const sendAutojoinLeave = async () => {
             if (!autojoinTarget.value || !steamId.value) return;
+            const serverKey = autojoinActiveServerKey.value || normalizeIpPort(autojoinTarget.value.ip, autojoinTarget.value.port);
+            if (!serverKey) return;
             try {
                 await fetch('/api/autojoin/leave', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ steam_id: steamId.value, server_key: autojoinTarget.value.server_key }),
+                    body: JSON.stringify({ steam_id: steamId.value, server_key: serverKey }),
                     credentials: 'same-origin'
                 });
             } catch (e) {}
@@ -2130,6 +2133,7 @@ createApp({
             autojoinQueueType.value = 'normal';
             autojoinStartedAt.value = 0;
             autojoinTarget.value = null;
+            autojoinActiveServerKey.value = '';
             autojoinPendingJoinUrl.value = null;
             autojoinInactivePolls.value = 0;
             autojoinErrorPolls.value = 0;
@@ -2177,14 +2181,12 @@ createApp({
             stopAutojoinPolling();
             autojoinPollTimer = setInterval(async () => {
                 if (!autojoinRunning.value || !autojoinTarget.value || !steamId.value) return;
-                const serverKey = autojoinTarget.value.server_key;
+                const serverKey = autojoinActiveServerKey.value || normalizeIpPort(autojoinTarget.value.ip, autojoinTarget.value.port);
+                if (!serverKey) return;
                 const joinOkAt = autojoinJoinOkAt.value || autojoinStartedAt.value || Date.now();
 
                 try {
-                    const params = new URLSearchParams({
-                        steam_id: steamId.value,
-                        server_key: serverKey
-                    });
+                    const params = new URLSearchParams({ server_key: serverKey });
                     const res = await fetch(`/api/autojoin/poll?${params.toString()}`, { credentials: 'same-origin' });
                     const data = await res.json();
 
@@ -2304,7 +2306,7 @@ createApp({
             autojoinRecoveryAttempted.value = false;
             autojoinCountdown.value = 0;
             autojoinExpiredNotice.value = false;
-            autojoinLastTicketByServer.value[target.server_key] = null;
+            autojoinActiveServerKey.value = '';
             if (autojoinCountdownTimer) {
                 clearInterval(autojoinCountdownTimer);
                 autojoinCountdownTimer = null;
@@ -2333,6 +2335,9 @@ createApp({
                 autojoinModalOpen.value = false;
                 return;
             }
+            const activeServerKey = normalizeIpPort(target.ip, target.port) || String(target.server_key || '').trim();
+            autojoinActiveServerKey.value = activeServerKey;
+            autojoinLastTicketByServer.value[activeServerKey] = null;
             autojoinRunning.value = true;
             autojoinStartedAt.value = Date.now();
             autojoinJoinOkAt.value = autojoinStartedAt.value;
@@ -2477,10 +2482,11 @@ createApp({
                 return;
             }
             const parts = String(payload.server_key).split(':');
-            const ip = payload.ip || parts[0];
-            const port = payload.port || Number(parts[1]);
+            const ip = String(payload.ip || parts[0] || '').trim();
+            const port = String(payload.port || parts[1] || '').trim();
+            const activeServerKey = normalizeIpPort(ip, port) || String(payload.server_key).trim();
             autojoinTarget.value = {
-                server_key: payload.server_key,
+                server_key: activeServerKey,
                 ip: ip,
                 port: port,
                 name: payload.server_name || 'Unknown',
@@ -2500,7 +2506,8 @@ createApp({
             autojoinPositionZeroToastShown.value = false;
             autojoinPollTransientToastShown.value = false;
             autojoinRecoveryAttempted.value = false;
-            autojoinLastTicketByServer.value[payload.server_key] = null;
+            autojoinActiveServerKey.value = activeServerKey;
+            autojoinLastTicketByServer.value[activeServerKey] = null;
             autojoinCountdown.value = 0;
             autojoinExpiredNotice.value = false;
             startAutojoinPolling();
@@ -2508,7 +2515,9 @@ createApp({
 
         const sendAutojoinLeaveBeacon = () => {
             if (!autojoinRunning.value || !autojoinTarget.value || !steamId.value) return;
-            const payload = { steam_id: steamId.value, server_key: autojoinTarget.value.server_key };
+            const serverKey = autojoinActiveServerKey.value || normalizeIpPort(autojoinTarget.value.ip, autojoinTarget.value.port);
+            if (!serverKey) return;
+            const payload = { steam_id: steamId.value, server_key: serverKey };
             if (window.AutojoinUI && typeof window.AutojoinUI.sendBeacon === 'function') {
                 window.AutojoinUI.sendBeacon('/api/autojoin/leave', payload);
                 return;
