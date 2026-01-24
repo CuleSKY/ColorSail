@@ -130,7 +130,7 @@ class AutoJoinManager:
             "steam_id": steam_id,
             "server_key": server_key,
             "expires_at": now + self.ticket_ttl_seconds,
-            "fast_join_url": make_fast_join_url(target.get('game') or 'cs2', target.get('ip'), target.get('port'))
+            "fast_join_url": make_fast_join_url(target.get('game') or 'cs2', target.get('ip'), str(target.get('port')))
         }
         return ticket
 
