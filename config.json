@@ -14,6 +14,30 @@
       "servers": []
     },
     {
+      "id": "fys",
+      "name": "FYS",
+      "short_name": "FYS",
+      "logo": "/static/FYS_Logo.png",
+      "game": "cs2",
+      "servers": [
+        { "name": "FYS 01 RP1", "host": "110.42.9.52", "port": 27900 },
+        { "name": "FYS 02 RP2", "host": "110.42.9.52", "port": 27901 },
+        { "name": "FYS 03", "host": "110.42.9.155", "port": 27015 },
+        { "name": "FYS 04", "host": "110.42.9.203", "port": 27025 },
+        { "name": "FYS 05", "host": "110.42.9.139", "port": 27035 },
+        { "name": "FYS 06", "host": "110.42.9.138", "port": 27045 },
+        { "name": "FYS 07", "host": "110.42.9.138", "port": 27055 },
+        { "name": "FYS 08", "host": "110.42.9.107", "port": 27065 },
+        { "name": "FYS 09", "host": "110.42.9.139", "port": 27075 },
+        { "name": "FYS 10", "host": "110.42.9.107", "port": 27085 },
+        { "name": "FYS 11", "host": "110.42.9.203", "port": 27095 },
+        { "name": "FYS 12", "host": "110.42.9.231", "port": 27105 },
+        { "name": "FYS 13 TTT", "host": "110.42.9.52", "port": 27035 },
+        { "name": "FYS 14 PVP", "host": "110.42.9.52", "port": 27215 },
+        { "name": "FYS 15 MG", "host": "110.42.9.155", "port": 27025 }
+      ]
+    },
+    {
       "id": "zed",
       "name": "ZED",
       "short_name": "ZED",

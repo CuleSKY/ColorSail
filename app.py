@@ -1414,15 +1414,29 @@ def proxy_to_watcher(path, method):
     token = os.environ.get('WATCHER_SHARED_TOKEN')
     if not token:
         return jsonify({"ok": False, "error": "watcher token not configured"}), 500
+
     url = f"{WATCHER_SERVICE_URL}{path}"
     headers = {"X-Shared-Token": token}
+    steam_id = session.get('steam_id')
+
     try:
         if method == 'GET':
-            resp = requests.get(url, headers=headers, params=request.args, timeout=4)
+            params = dict(request.args or {})
+            # Inject steam_id when missing (watcher requires it for queue-related calls)
+            if steam_id and 'steam_id' not in params:
+                params['steam_id'] = steam_id
+            resp = requests.get(url, headers=headers, params=params, timeout=4)
         else:
-            resp = requests.post(url, headers=headers, json=request.get_json(silent=True) or {}, timeout=4)
+            payload = request.get_json(silent=True) or {}
+            if not isinstance(payload, dict):
+                payload = {}
+            # Inject steam_id when missing (watcher requires it for join/poll/leave/report)
+            if steam_id and 'steam_id' not in payload:
+                payload['steam_id'] = steam_id
+            resp = requests.post(url, headers=headers, json=payload, timeout=4)
     except Exception as e:
         return jsonify({"ok": False, "error": f"watcher_unreachable: {e}"}), 502
+
     try:
         data = resp.json()
     except Exception:

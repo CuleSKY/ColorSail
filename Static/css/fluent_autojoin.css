@@ -89,6 +89,12 @@
     color: var(--text-secondary);
 }
 
+.autojoin-granted-hint {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
 .autojoin-expired-hint {
     color: var(--warn-text);
     font-size: 12px;
@@ -102,6 +108,12 @@
 .autojoin-run-actions {
     display: flex;
     gap: 10px;
+}
+
+.autojoin-vip-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .autojoin-modal .btn {
@@ -131,8 +143,9 @@
 }
 
 .autojoin-granted-btn {
-    min-width: 180px;
-    font-size: 14px;
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 15px;
     animation: autojoinPulse 700ms var(--ease-fluent) 1;
 }
 
