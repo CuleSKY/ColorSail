@@ -34,8 +34,6 @@
     <!-- 6. 图标与脚本 -->
     <link id="favicon" rel="icon" href="/static/NERV_Logo.png" type="image/png">
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <link rel="stylesheet" href="/static/css/fluent_autojoin.css">
-    <script src="/static/js/autojoin_ui.js" defer></script>
     <script>
         (function() {
             // 立即恢复侧边栏状态，阻止页面加载时的布局跳变
@@ -778,7 +776,6 @@
                                 </div>
                                 <div class="actions">
                                     <button class="btn btn-primary" @click="joinServer(s, comm)">[[ t('join_server') ]]</button>
-                                    <button v-if="isPrime" class="btn btn-primary autojoin-primary" :disabled="!autojoinButtonState(s).enabled" :title="autojoinButtonState(s).hint" @click="handleAutojoinClick(s, comm)">[[ t('autojoin_button') ]]</button>
                                     <button class="btn btn-sec" v-if="isLoggedIn" @click="copyCmd(s)">[[ t('copy_console_cmd') ]]</button>
                                 </div>
                             </div>
@@ -793,7 +790,6 @@
                             <div class="col-players">[[ s.players ]]/[[ s.max_players ]]</div>
                             <div class="col-actions">
                                 <button class="btn btn-primary" @click="joinServer(s, comm)">[[ t('join_server') ]]</button>
-                                <button v-if="isPrime" class="btn btn-primary autojoin-primary" :disabled="!autojoinButtonState(s).enabled" :title="autojoinButtonState(s).hint" @click="handleAutojoinClick(s, comm)">[[ t('autojoin_button') ]]</button>
                                 <button class="btn btn-sec" v-if="isLoggedIn" @click="copyCmd(s)">[[ t('copy_console_cmd') ]]</button>
                             </div>
                         </div>
@@ -921,75 +917,6 @@
                 </div>
             </div>
         </div>
-        <div class="autojoin-overlay" v-show="autojoinModalOpen" :class="{show: autojoinModalOpen}" @click.self="closeAutojoinModal">
-            <div class="autojoin-modal" :class="{show: autojoinModalOpen, granted: autojoinModalMode === 'granted'}">
-                <div class="autojoin-modal-header">
-                    <div class="autojoin-title">[[ autojoinModalMode === 'granted' ? t('autojoin_granted_title') : t('autojoin_title') ]]</div>
-                    <button class="autojoin-close" @click="closeAutojoinModal">?</button>
-                </div>
-                <div class="autojoin-modal-body">
-                    <div v-if="autojoinModalMode === 'not_eligible'">
-                        <div class="autojoin-message">[[ t('autojoin_not_eligible') ]]</div>
-                        <div class="autojoin-meta">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
-                    </div>
-                    <div v-else-if="autojoinModalMode === 'vip_prompt'">
-                        <div class="autojoin-message">[[ formatTemplate(t('autojoin_vip_prompt'), { community: autojoinTarget ? autojoinTarget.community_name : '' }) ]]</div>
-                        <div class="autojoin-meta">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
-                    </div>
-                    <div v-else-if="autojoinModalMode === 'vip_direct_ready'">
-                        <div class="autojoin-message">[[ t('autojoin_vip_direct_hint') ]]</div>
-                        <div class="autojoin-meta">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
-                    </div>
-                    <div v-else-if="autojoinModalMode === 'vip_out_of_range'">
-                        <div class="autojoin-message">[[ t('autojoin_not_in_priority_range') ]]</div>
-                        <div class="autojoin-meta">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
-                    </div>
-                    <div v-else-if="autojoinModalMode === 'running'">
-                        <div class="autojoin-message">[[ t('autojoin_running') ]]</div>
-                        <div class="autojoin-meta">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
-                        <div class="autojoin-stats">
-                            <div>[[ formatTemplate(t('autojoin_attempts'), { n: autojoinAttempts }) ]]</div>
-                            <div v-if="autojoinPosition !== null">[[ formatTemplate(t('autojoin_queue_position'), { n: autojoinPosition }) ]]</div>
-                            <div class="autojoin-expired-hint" v-if="autojoinExpiredNotice">[[ t('autojoin_grant_expired') ]]</div>
-                        </div>
-                    </div>
-                    <div v-else-if="autojoinModalMode === 'granted'">
-                        <div class="autojoin-message">[[ t('autojoin_granted_hint_manual') ]]</div>
-                        <div class="autojoin-meta">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
-                        <div class="autojoin-countdown" v-if="autojoinCountdown > 0">[[ formatTemplate(t('autojoin_countdown'), { n: autojoinCountdown }) ]]</div>
-                    </div>
-                </div>
-                <div class="autojoin-modal-actions">
-                    <button class="btn btn-primary" v-if="autojoinModalMode === 'not_eligible'" @click="fastJoinFromModal">[[ t('autojoin_enter_now') ]]</button>
-                    <div v-if="autojoinModalMode === 'vip_prompt'" class="autojoin-prompt-actions">
-                        <button class="btn btn-primary" @click="declareVip(true)">[[ t('autojoin_vip_yes') ]]</button>
-                        <button class="btn btn-sec" @click="declareVip(false)">[[ t('autojoin_vip_no') ]]</button>
-                    </div>
-                    <div v-if="autojoinModalMode === 'vip_direct_ready'" class="autojoin-run-actions">
-                        <button class="btn btn-primary autojoin-granted-btn" @click="directEnterWithVip">[[ t('autojoin_direct_enter') ]]</button>
-                    </div>
-                    <div v-if="autojoinModalMode === 'vip_out_of_range'" class="autojoin-run-actions">
-                        <button class="btn btn-sec" @click="startAutojoinFromVip">[[ t('autojoin_start_queue') ]]</button>
-                    </div>
-                    <div v-if="autojoinModalMode === 'running'" class="autojoin-run-actions">
-                        <button class="btn btn-danger" @click="stopAutojoin">[[ t('autojoin_stop') ]]</button>
-                    </div>
-                    <div v-if="autojoinModalMode === 'granted'" class="autojoin-run-actions">
-                        <button class="btn btn-primary autojoin-granted-btn" @click="joinFromGrant">[[ t('autojoin_enter_server') ]]</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div v-if="autojoinRunning" class="autojoin-status-bar" :class="{show: autojoinStatusVisible, flash: autojoinStatusFlash}">
-            <div class="autojoin-status-main">
-                <div class="autojoin-status-title">[[ t('autojoin_status_running') ]]</div>
-                <div class="autojoin-status-sub">[[ autojoinTarget ? autojoinTarget.name : '' ]]</div>
-            </div>
-            <div class="autojoin-status-actions">
-                <button class="btn btn-sec" @click="openAutojoinModal">[[ t('autojoin_open') ]]</button>
-                <button class="btn btn-danger" @click="stopAutojoin">[[ t('autojoin_exit') ]]</button>
-            </div>
-        </div>
         <div class="fixed-logo"><img :src="currentLogoPath" alt="NERV_Logo"></div>
     </div>
     <div class="toast" v-if="toastMsg" :class="{show: toastMsg}">[[ toastMsg ]]</div>
@@ -1070,43 +997,6 @@ createApp({
         const showLoginPrompt = ref(false);
         const feedbackSubject = ref('');
         const feedbackMessage = ref('');
-        const autojoinModalOpen = ref(false);
-        const autojoinModalMode = ref('idle');
-        const autojoinTarget = ref(null);
-        const autojoinAttempts = ref(0);
-        const autojoinPosition = ref(null);
-        const autojoinLastTicketByServer = ref({});
-        const autojoinPendingJoinUrl = ref(null);
-        const autojoinInactivePolls = ref(0);
-        const autojoinErrorPolls = ref(0);
-        const autojoinPositionZeroToastShown = ref(false);
-        const autojoinPollTransientToastShown = ref(false);
-        const autojoinJoinOkAt = ref(0);
-        const autojoinRecoveryAttempted = ref(false);
-        const autojoinActiveServerKey = ref('');
-        const autojoinRunning = ref(false);
-        const autojoinStatusVisible = ref(false);
-        const autojoinQueueType = ref('normal');
-        const autojoinStartedAt = ref(0);
-        const autojoinCountdown = ref(0);
-        const autojoinExpiredNotice = ref(false);
-        const autojoinStatusFlash = ref(false);
-        const autojoinTargets = ref([]);
-        const autojoinTargetsLoading = ref(false);
-        const autojoinTargetsLoaded = ref(false);
-        const autojoinTargetsByEndpoint = computed(() => {
-            const map = {};
-            const list = Array.isArray(autojoinTargets.value) ? autojoinTargets.value : [];
-            for (const target of list) {
-                if (!target) continue;
-                const key = normalizeIpPort(target.ip, target.port);
-                if (key) map[key] = target;
-            }
-            return map;
-        });
-        const autojoinVipChoiceByCommunity = ref({});
-        let autojoinPollTimer = null;
-        let autojoinCountdownTimer = null;
         
         const currentStats = ref([]);
         const totalPlayers = ref(0);
@@ -1122,7 +1012,6 @@ createApp({
         const lastNotifiedMaps = ref({});
         const hasNotification = typeof Notification !== 'undefined';
         const notificationPermission = ref(hasNotification ? Notification.permission : 'denied');
-        const AUTOJOIN_STORAGE_KEY = (window.AutojoinUI && window.AutojoinUI.storageKey) || 'autojoin_active';
 
         const draggedIndex = ref(null);
         const dragOverIndex = ref(null);
@@ -1204,17 +1093,7 @@ createApp({
         };
 
         watch(curLang, () => document.title = t('app_title'), { immediate: true });
-        watch(autojoinRunning, (next) => {
-            if (next) {
-                autojoinStatusVisible.value = false;
-                setTimeout(() => { autojoinStatusVisible.value = true; }, 20);
-            } else {
-                autojoinStatusVisible.value = false;
-            }
-        });
-
         const handleResize = () => isMobile.value = window.innerWidth <= 768;
-        const handlePageHide = () => sendAutojoinLeaveBeacon();
         
         const handleGlobalClick = (e) => {
             const target = e.target;
@@ -1252,67 +1131,12 @@ createApp({
             steamLoginWindow = null;
         };
 
-        const refreshAutojoinTargets = async () => {
-            if (!isPrime.value) {
-                autojoinTargets.value = [];
-                autojoinTargetsLoaded.value = false;
-                autojoinTargetsLoading.value = false;
-                return;
-            }
-            autojoinTargetsLoading.value = true;
-            try {
-                const res = await fetch('/api/autojoin/targets', { credentials: 'same-origin' });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                let targets = [];
-                if (Array.isArray(data)) targets = data;
-                else if (data && Array.isArray(data.targets)) targets = data.targets;
-                else if (data && Array.isArray(data.data)) targets = data.data;
-
-                // Normalize targets: expect objects with ip + port + server_key
-                const normalized = [];
-                for (const item of targets) {
-                    if (!item) continue;
-                    if (typeof item === 'object') {
-                        const ip = String(item.ip ?? '').trim();
-                        const port = String(item.port ?? '').trim();
-                        const server_key = String(item.server_key ?? '').trim();
-                        if (ip && port && server_key) {
-                            normalized.push({ ...item, ip, port: Number(port) || port, server_key });
-                        }
-                        continue;
-                    }
-                    // Backwards compatibility: string server_key
-                    if (typeof item === 'string') {
-                        const key = item.trim();
-                        if (key) normalized.push({ server_key: key });
-                    }
-                }
-                autojoinTargets.value = normalized;
-                autojoinTargetsLoaded.value = true;
-
-                // Apply support flags to existing cached servers (ip:port based)
-                Object.keys(servers.value).forEach((cid) => {
-                    const list = servers.value[cid] || [];
-                    list.forEach((s) => {
-                        const endpoint = normalizeIpPort(s.ip, s.port);
-                        s.autojoin_supported = Boolean(endpoint && autojoinTargetsByEndpoint.value[endpoint]);
-                    });
-                });
-            } catch (e) {
-                // Keep previous targets silently
-            } finally {
-                autojoinTargetsLoading.value = false;
-            }
-        };
-
         const fetchSteamStatus = async (silent = false) => {
             try {
                 const res = await fetch('/api/steam/status', { credentials: 'same-origin' });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 const isLoggedInBool = Boolean(data && data.logged_in);
-                const wasPrime = isPrime.value;
                 authState.value = {
                     loggedIn: isLoggedInBool,
                     role: isLoggedInBool ? (data.role || 'member') : 'guest'
@@ -1328,9 +1152,6 @@ createApp({
                     isPrime.value = false;
                 }
 
-                if (!wasPrime && isPrime.value) {
-                    refreshAutojoinTargets();
-                }
                 return data;
             } catch (e) {
                 if (!silent) {
@@ -1371,7 +1192,6 @@ createApp({
             window.addEventListener('resize', handleResize);
             window.addEventListener('click', handleGlobalClick);
             window.addEventListener('message', handleSteamMessage);
-            window.addEventListener('pagehide', handlePageHide);
             
             if(isDark.value) document.documentElement.setAttribute('data-theme', 'dark');
             updateFavicon();
@@ -1388,8 +1208,6 @@ createApp({
             } catch(e) {}
 
             await fetchSteamStatus(true);
-            restoreAutojoinFromStorage();
-
             if (communities.value.length) {
                 applyCommunities(communities.value);
             }
@@ -1428,10 +1246,8 @@ createApp({
             window.removeEventListener('resize', handleResize);
             window.removeEventListener('click', handleGlobalClick);
             window.removeEventListener('message', handleSteamMessage);
-            window.removeEventListener('pagehide', handlePageHide);
             stopSteamLoginWatcher();
             clearToastTimer();
-            stopAutojoinPolling();
         });
 
         const toggleLangMenu = () => {
@@ -1518,7 +1334,6 @@ createApp({
         const logout = async () => {
             steamAuthPending.value = false;
             showProfileMenu.value = false;
-            await stopAutojoin(true);
             try {
                 await fetch('/api/steam/logout', { method: 'POST', credentials: 'same-origin' });
             } catch (e) {}
@@ -1761,38 +1576,12 @@ createApp({
             return `${ipStr}:${portStr}`;
         }
 
-        const parseFiniteNumber = (val) => {
-            const n = Number(val);
-            if (!Number.isFinite(n)) return null;
-            if (n < 0) return null;
-            return n;
-        };
-
-        const autojoinButtonState = (srv) => {
-            if (!isPrime.value) return { enabled: false, hint: '' };
-            if (autojoinTargetsLoading.value && !autojoinTargetsLoaded.value) {
-                return { enabled: false, hint: t('autojoin_targets_loading') };
-            }
-            const endpoint = normalizeIpPort(srv.ip, srv.port);
-            const supported = Boolean(endpoint && autojoinTargetsByEndpoint.value[endpoint]);
-            if (!supported) {
-                return { enabled: false, hint: t('autojoin_not_supported') };
-            }
-            const players = parseFiniteNumber(srv.players);
-            if (players === null || players < 62) {
-                return { enabled: true, hint: t('autojoin_direct_join_hint') };
-            }
-            return { enabled: true, hint: '' };
-        };
-
         const decorateServer = (srv, comm) => {
             const base = { ...srv };
             if (!base.server_key) base.server_key = getServerKey(base);
             if (!base.community_name) base.community_name = comm ? (comm.name || '') : '';
             if (!base.game) base.game = (comm && comm.game) ? comm.game : 'cs2';
             base.normal_threshold = Number(base.normal_threshold || (comm && comm.normal_threshold) || 62);
-            const endpoint = normalizeIpPort(base.ip, base.port);
-            base.autojoin_supported = Boolean(endpoint && autojoinTargetsByEndpoint.value[endpoint]);
             return base;
         };
 
@@ -2074,465 +1863,9 @@ createApp({
             return `steam://rungameid/${appid}//+connect%20${address}`;
         };
 
-        const persistAutojoinState = () => {
-            if (!autojoinRunning.value || !autojoinTarget.value) return;
-            const payload = {
-                server_key: autojoinActiveServerKey.value || autojoinTarget.value.server_key,
-                queue_type: autojoinQueueType.value,
-                started_at: autojoinStartedAt.value,
-                server_name: autojoinTarget.value.name || '',
-                community_name: autojoinTarget.value.community_name || '',
-                game: autojoinTarget.value.game || 'cs2',
-                ip: autojoinTarget.value.ip,
-                port: autojoinTarget.value.port
-            };
-            localStorage.setItem(AUTOJOIN_STORAGE_KEY, JSON.stringify(payload));
-        };
-
-        const clearAutojoinState = () => {
-            localStorage.removeItem(AUTOJOIN_STORAGE_KEY);
-        };
-
-        const stopAutojoinPolling = () => {
-            if (autojoinPollTimer) {
-                clearInterval(autojoinPollTimer);
-                autojoinPollTimer = null;
-            }
-        };
-
-        const sendAutojoinLeave = async () => {
-            if (!autojoinTarget.value || !steamId.value) return;
-            const serverKey = autojoinActiveServerKey.value || normalizeIpPort(autojoinTarget.value.ip, autojoinTarget.value.port);
-            if (!serverKey) return;
-            try {
-                await fetch('/api/autojoin/leave', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ steam_id: steamId.value, server_key: serverKey }),
-                    credentials: 'same-origin'
-                });
-            } catch (e) {}
-        };
-
-        const stopAutojoin = async (silent = false) => {
-            if (!autojoinRunning.value) {
-                autojoinModalOpen.value = false;
-                return;
-            }
-            await sendAutojoinLeave();
-            stopAutojoinPolling();
-            if (autojoinCountdownTimer) {
-                clearInterval(autojoinCountdownTimer);
-                autojoinCountdownTimer = null;
-            }
-            autojoinRunning.value = false;
-            autojoinModalOpen.value = false;
-            autojoinModalMode.value = 'idle';
-            autojoinAttempts.value = 0;
-            autojoinPosition.value = null;
-            autojoinQueueType.value = 'normal';
-            autojoinStartedAt.value = 0;
-            autojoinTarget.value = null;
-            autojoinActiveServerKey.value = '';
-            autojoinPendingJoinUrl.value = null;
-            autojoinInactivePolls.value = 0;
-            autojoinErrorPolls.value = 0;
-            autojoinPositionZeroToastShown.value = false;
-            autojoinPollTransientToastShown.value = false;
-            autojoinJoinOkAt.value = 0;
-            autojoinRecoveryAttempted.value = false;
-            autojoinCountdown.value = 0;
-            autojoinExpiredNotice.value = false;
-            autojoinStatusFlash.value = false;
-            autojoinLastTicketByServer.value = {};
-            clearAutojoinState();
-            if (!silent) {
-                showToast(t('autojoin_stopped'));
-            }
-        };
-
-        const startGrantCountdown = (seconds) => {
-            if (autojoinCountdownTimer) {
-                clearInterval(autojoinCountdownTimer);
-                autojoinCountdownTimer = null;
-            }
-            autojoinCountdown.value = Math.max(0, Number(seconds) || 0);
-            autojoinExpiredNotice.value = false;
-            if (autojoinCountdown.value <= 0) return;
-            autojoinCountdownTimer = setInterval(() => {
-                autojoinCountdown.value -= 1;
-                if (autojoinCountdown.value <= 0) {
-                    clearInterval(autojoinCountdownTimer);
-                    autojoinCountdownTimer = null;
-                    autojoinCountdown.value = 0;
-                    autojoinExpiredNotice.value = true;
-                    autojoinModalMode.value = 'running';
-                    showToast(t('autojoin_grant_expired'));
-                }
-            }, 1000);
-        };
-
-        const flashAutojoinStatus = () => {
-            autojoinStatusFlash.value = true;
-            setTimeout(() => { autojoinStatusFlash.value = false; }, 900);
-        };
-
-        const startAutojoinPolling = () => {
-            stopAutojoinPolling();
-            autojoinPollTimer = setInterval(async () => {
-                if (!autojoinRunning.value || !autojoinTarget.value || !steamId.value) return;
-                const serverKey = autojoinActiveServerKey.value || normalizeIpPort(autojoinTarget.value.ip, autojoinTarget.value.port);
-                if (!serverKey) return;
-                const joinOkAt = autojoinJoinOkAt.value || autojoinStartedAt.value || Date.now();
-
-                try {
-                    const params = new URLSearchParams({ server_key: serverKey });
-                    const res = await fetch(`/api/autojoin/poll?${params.toString()}`, { credentials: 'same-origin' });
-                    const data = await res.json();
-
-                    // Backend says ok=false means request invalid or temporary state.
-                    if (!data || data.ok === false) {
-                        const err = data && data.error ? String(data.error) : '';
-                        const isFatal = err === 'missing_fields' || err === 'unauthorized';
-
-                        if (isFatal) {
-                            showToast(t('autojoin_inactive'));
-                            await stopAutojoin(true);
-                            return;
-                        }
-
-                        autojoinErrorPolls.value += 1;
-                        if (autojoinErrorPolls.value >= 3 && !autojoinPollTransientToastShown.value) {
-                            autojoinPollTransientToastShown.value = true;
-                            showToast(t('autojoin_poll_retrying'));
-                        }
-                        return;
-                    }
-
-                    // Reset error streak on a valid ok response
-                    autojoinErrorPolls.value = 0;
-                    autojoinPollTransientToastShown.value = false;
-
-                    if (data.granted) {
-                        // Ticket granted repeats on every poll while alive - de-duplicate by ticket_id
-                        autojoinInactivePolls.value = 0;
-                        autojoinPositionZeroToastShown.value = false;
-                        autojoinRecoveryAttempted.value = false;
-
-                        const ticketId = data.ticket_id || 'no_ticket';
-                        const lastTicket = autojoinLastTicketByServer.value[serverKey];
-                        if (lastTicket === ticketId) {
-                            return;
-                        }
-
-                        autojoinLastTicketByServer.value[serverKey] = ticketId;
-                        autojoinAttempts.value += 1;
-                        autojoinPendingJoinUrl.value = data.fast_join_url || null;
-                        autojoinModalMode.value = 'granted';
-                        autojoinModalOpen.value = true;
-                        startGrantCountdown(Number(data.expires_in || 12));
-                        flashAutojoinStatus();
-                        return;
-                    }
-
-                    // Not granted - position queue handling
-                    autojoinPosition.value = typeof data.position === 'number' ? data.position : null;
-
-                    if (data.position === 0) {
-                        // position==0 is treated as transient / unknown. Keep polling.
-                        autojoinInactivePolls.value += 1;
-
-                        if (autojoinInactivePolls.value >= 3 && !autojoinPositionZeroToastShown.value) {
-                            autojoinPositionZeroToastShown.value = true;
-                            showToast(t('autojoin_position_unavailable_retrying'));
-                        }
-
-                        // Recovery: if position==0 persists for >=15s after successful join, try ONE re-join.
-                        const elapsed = Date.now() - joinOkAt;
-                        if (elapsed >= 15000 && !autojoinRecoveryAttempted.value) {
-                            autojoinRecoveryAttempted.value = true;
-                            try {
-                                const joinRes = await fetch('/api/autojoin/join', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        server_key: serverKey,
-                                        queue_type: autojoinQueueType.value
-                                    }),
-                                    credentials: 'same-origin'
-                                });
-                                const joinData = await joinRes.json();
-                                const ok = !!(joinData && joinData.ok);
-                                const already = joinData && joinData.ok === false && joinData.error === 'already_in_queue';
-                                if (ok || already) {
-                                    // keep polling
-                                }
-                            } catch (e) {
-                                // ignore; keep polling
-                            }
-                        }
-                    } else {
-                        autojoinInactivePolls.value = 0;
-                        autojoinPositionZeroToastShown.value = false;
-                        autojoinRecoveryAttempted.value = false;
-                    }
-                } catch (e) {
-                    autojoinErrorPolls.value += 1;
-                    if (autojoinErrorPolls.value >= 3 && !autojoinPollTransientToastShown.value) {
-                        autojoinPollTransientToastShown.value = true;
-                        showToast(t('autojoin_poll_retrying'));
-                    }
-                }
-            }, 1000);
-        };
-
-        const startAutojoin = async (target, queueType) => {
-            if (!steamId.value) {
-                showToast(t('login_required_title'));
-                return;
-            }
-            autojoinModalOpen.value = true;
-            autojoinModalMode.value = 'running';
-            autojoinTarget.value = target;
-            autojoinQueueType.value = queueType || 'normal';
-            autojoinAttempts.value = 0;
-            autojoinPosition.value = null;
-            autojoinPendingJoinUrl.value = null;
-            autojoinInactivePolls.value = 0;
-            autojoinErrorPolls.value = 0;
-            autojoinPositionZeroToastShown.value = false;
-            autojoinPollTransientToastShown.value = false;
-            autojoinJoinOkAt.value = 0;
-            autojoinRecoveryAttempted.value = false;
-            autojoinCountdown.value = 0;
-            autojoinExpiredNotice.value = false;
-            autojoinActiveServerKey.value = '';
-            if (autojoinCountdownTimer) {
-                clearInterval(autojoinCountdownTimer);
-                autojoinCountdownTimer = null;
-            }
-            try {
-                const res = await fetch('/api/autojoin/join', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        server_key: target.server_key,
-                        queue_type: autojoinQueueType.value
-                    }),
-                    credentials: 'same-origin'
-                });
-                const data = await res.json();
-                if (!data || data.ok === false) {
-                    const reason = data && data.error ? data.error : t('unknown_reason');
-                    showToast(formatTemplate(t('autojoin_join_failed_reason'), { reason }));
-                    autojoinModalMode.value = 'idle';
-                    autojoinModalOpen.value = false;
-                    return;
-                }
-            } catch (e) {
-                showToast(t('autojoin_join_failed'));
-                autojoinModalMode.value = 'idle';
-                autojoinModalOpen.value = false;
-                return;
-            }
-            const activeServerKey = normalizeIpPort(target.ip, target.port) || String(target.server_key || '').trim();
-            autojoinActiveServerKey.value = activeServerKey;
-            autojoinLastTicketByServer.value[activeServerKey] = null;
-            autojoinRunning.value = true;
-            autojoinStartedAt.value = Date.now();
-            autojoinJoinOkAt.value = autojoinStartedAt.value;
-            autojoinRecoveryAttempted.value = false;
-            persistAutojoinState();
-            startAutojoinPolling();
-            showToast(t('autojoin_joined_queue'));
-        };
-
-        const directJoinTarget = async (target) => {
-            if (autojoinRunning.value) {
-                await stopAutojoin(true);
-            }
-            window.location.href = getFastJoinUrl(target);
-        };
-
-        const handleAutojoinClick = async (srv, comm) => {
-            if (!isPrime.value) return;
-
-            // Supported detection must use ip + port match
-            const endpoint = normalizeIpPort(srv.ip, srv.port);
-            const supportTarget = endpoint ? autojoinTargetsByEndpoint.value[endpoint] : null;
-            if (!supportTarget || !supportTarget.server_key) {
-                return;
-            }
-
-            const baseTarget = decorateServer(srv, comm);
-            const target = {
-                ...supportTarget,
-                ...baseTarget,
-                server_key: supportTarget.server_key
-            };
-
-            const players = parseFiniteNumber(target.players);
-
-            // X < 62 OR unavailable/unreliable -> Direct Join (no queue, no VIP prompt)
-            if (players === null || players < 62) {
-                await directJoinTarget(target);
-                return;
-            }
-
-            // X >= 62 -> AutoJoin workflow (VIP prompt)
-            autojoinTarget.value = target;
-            autojoinModalMode.value = 'vip_prompt';
-            autojoinModalOpen.value = true;
-        };
-
-        const declareVip = async (hasVip) => {
-            if (!autojoinTarget.value) return;
-            const target = autojoinTarget.value;
-
-            const players = parseFiniteNumber(target.players);
-            const maxPlayers = parseFiniteNumber(target.max_players);
-            const commKey = target.community_name || 'default';
-            autojoinVipChoiceByCommunity.value[commKey] = Boolean(hasVip);
-
-            // If players dropped or became unreliable, fallback to Direct Join
-            if (players === null || players < 62) {
-                autojoinModalOpen.value = false;
-                autojoinModalMode.value = 'idle';
-                await directJoinTarget(target);
-                return;
-            }
-
-            if (hasVip) {
-                // VIP YES: allow direct join when 62 <= X < max_players
-                if (maxPlayers !== null && players >= 62 && players < maxPlayers) {
-                    autojoinModalMode.value = 'vip_direct_ready';
-                    return;
-                }
-                autojoinModalMode.value = 'vip_out_of_range';
-                return;
-            }
-
-            // VIP NO: enter queue via /api/autojoin/join
-            await startAutojoin(target, 'normal');
-        };
-
-        const directEnterWithVip = () => {
-            if (!autojoinTarget.value) return;
-            window.location.href = getFastJoinUrl(autojoinTarget.value);
-        };
-
-        const startAutojoinFromVip = async () => {
-            if (!autojoinTarget.value) return;
-            await startAutojoin(autojoinTarget.value, 'normal');
-        };
-
-        const closeAutojoinModal = () => {
-            autojoinModalOpen.value = false;
-            if (autojoinRunning.value) {
-                showToast(t('autojoin_background'));
-            }
-        };
-
-        const openAutojoinModal = () => {
-            if (!autojoinRunning.value) return;
-            autojoinModalMode.value = 'running';
-            autojoinModalOpen.value = true;
-        };
-
-        const fastJoinFromModal = () => {
-            if (!autojoinTarget.value) return;
-            window.location.href = getFastJoinUrl(autojoinTarget.value);
-        };
-
-        const joinFromGrant = () => {
-            const url = autojoinPendingJoinUrl.value || (autojoinTarget.value ? getFastJoinUrl(autojoinTarget.value) : null);
-            if (!url) return;
-            if (autojoinCountdownTimer) {
-                clearInterval(autojoinCountdownTimer);
-                autojoinCountdownTimer = null;
-            }
-            autojoinCountdown.value = 0;
-            window.location.href = url;
-        };
-
-        const joinServer = async (srv, comm) => {
+        const joinServer = (srv, comm) => {
             const target = decorateServer(srv, comm);
-            if (autojoinRunning.value) {
-                await stopAutojoin(true);
-            }
             window.location.href = getFastJoinUrl(target);
-        };
-
-        const restoreAutojoinFromStorage = () => {
-            const raw = localStorage.getItem(AUTOJOIN_STORAGE_KEY);
-            if (!raw) return;
-            if (!steamId.value || !isPrime.value) {
-                clearAutojoinState();
-                return;
-            }
-            let payload = null;
-            try {
-                payload = JSON.parse(raw);
-            } catch (e) {
-                clearAutojoinState();
-                return;
-            }
-            if (!payload || !payload.server_key) {
-                clearAutojoinState();
-                return;
-            }
-            const parts = String(payload.server_key).split(':');
-            const ip = String(payload.ip || parts[0] || '').trim();
-            const port = String(payload.port || parts[1] || '').trim();
-            const activeServerKey = normalizeIpPort(ip, port) || String(payload.server_key).trim();
-            autojoinTarget.value = {
-                server_key: activeServerKey,
-                ip: ip,
-                port: port,
-                name: payload.server_name || 'Unknown',
-                community_name: payload.community_name || '',
-                game: payload.game || 'cs2',
-                has_priority_lane: false,
-                normal_threshold: 62
-            };
-            autojoinQueueType.value = payload.queue_type || 'normal';
-            autojoinRunning.value = true;
-            autojoinModalMode.value = 'running';
-            autojoinModalOpen.value = false;
-            autojoinStartedAt.value = payload.started_at || Date.now();
-            autojoinJoinOkAt.value = autojoinStartedAt.value;
-            autojoinInactivePolls.value = 0;
-            autojoinErrorPolls.value = 0;
-            autojoinPositionZeroToastShown.value = false;
-            autojoinPollTransientToastShown.value = false;
-            autojoinRecoveryAttempted.value = false;
-            autojoinActiveServerKey.value = activeServerKey;
-            autojoinLastTicketByServer.value[activeServerKey] = null;
-            autojoinCountdown.value = 0;
-            autojoinExpiredNotice.value = false;
-            startAutojoinPolling();
-        };
-
-        const sendAutojoinLeaveBeacon = () => {
-            if (!autojoinRunning.value || !autojoinTarget.value || !steamId.value) return;
-            const serverKey = autojoinActiveServerKey.value || normalizeIpPort(autojoinTarget.value.ip, autojoinTarget.value.port);
-            if (!serverKey) return;
-            const payload = { steam_id: steamId.value, server_key: serverKey };
-            if (window.AutojoinUI && typeof window.AutojoinUI.sendBeacon === 'function') {
-                window.AutojoinUI.sendBeacon('/api/autojoin/leave', payload);
-                return;
-            }
-            if (navigator.sendBeacon) {
-                navigator.sendBeacon('/api/autojoin/leave', JSON.stringify(payload));
-            } else {
-                fetch('/api/autojoin/leave', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
-                    keepalive: true,
-                    credentials: 'same-origin'
-                }).catch(() => {});
-            }
         };
 
         // 兼容 HTTP 的复制函数
@@ -2574,11 +1907,6 @@ createApp({
                 return;
             }
             const address = getConnectAddress(srv);
-            if (autojoinRunning.value) {
-                await stopAutojoin(true);
-                copyText(`connect ${address}`, t('autojoin_copy_stop'));
-                return;
-            }
             copyText(`connect ${address}`, t('copy_console_done'));
         };
 
@@ -2611,10 +1939,8 @@ createApp({
             filteredCommunities, serverSearchNotice,
             isLoggedIn, authRoleLabel, authRoleClass, steamAuthPending, steamId, isPrime,
             startSteamLogin, logout, showLoginPrompt, dismissLoginPrompt,
-            autojoinModalOpen, autojoinModalMode, autojoinTarget, autojoinAttempts, autojoinPosition, autojoinRunning, autojoinStatusVisible, autojoinStatusFlash,
-            autojoinCountdown, autojoinExpiredNotice,
-            autojoinButtonState, handleAutojoinClick, declareVip, directEnterWithVip, startAutojoinFromVip, closeAutojoinModal, openAutojoinModal, fastJoinFromModal, joinFromGrant, stopAutojoin, joinServer,
-            
+            joinServer,
+
             feedbackSubject, feedbackMessage, submitFeedback,
             defaultChineseLang
         };
