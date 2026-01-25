@@ -32,8 +32,8 @@ class DisplayChoice:
     rtt_ms: Optional[float]
 
 
-PING_TIME_REGEX = re.compile(r"time[=<]\s*(\d+(?:\.\d+)?)\s*ms", re.IGNORECASE)
-PING_AVG_REGEX = re.compile(r"Average = (\d+)ms", re.IGNORECASE)
+PING_TIME_REGEX = re.compile(r"(?:time|时间)[=<]\s*(\d+(?:\.\d+)?)\s*ms", re.IGNORECASE)
+PING_AVG_REGEX = re.compile(r"(?:Average|平均)\s*=\s*(\d+)ms", re.IGNORECASE)
 
 
 def _parse_ping_output(output: str) -> Optional[float]:
@@ -79,13 +79,32 @@ def _read_null_terminated(data: bytes, offset: int) -> Tuple[str, int]:
 def a2s_info(ip: str, port: int, timeout: float = 1.0) -> A2SInfoResult:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(timeout)
-    start = time.monotonic()
     try:
-        sock.sendto(A2S_INFO_PAYLOAD, (ip, port))
-        data, _ = sock.recvfrom(4096)
-        rtt_ms = (time.monotonic() - start) * 1000
+        start = time.monotonic()
+        server_addr = (ip, port)
+
+        def _send_and_recv(payload: bytes) -> bytes:
+            for attempt in range(2):
+                sock.sendto(payload, server_addr)
+                try:
+                    data, _ = sock.recvfrom(4096)
+                    return data
+                except socket.timeout:
+                    if attempt == 1:
+                        raise
+            raise socket.timeout
+
+        data = _send_and_recv(A2S_INFO_PAYLOAD)
+        if len(data) < 5:
+            return A2SInfoResult(ok=False, rtt_ms=None, error="invalid_response")
+        if data[4] == 0x41:
+            if len(data) < 9:
+                return A2SInfoResult(ok=False, rtt_ms=None, error="invalid_response")
+            challenge_token = data[5:9]
+            data = _send_and_recv(A2S_INFO_PAYLOAD + challenge_token)
         if len(data) < 5 or data[4] != 0x49:
             return A2SInfoResult(ok=False, rtt_ms=None, error="invalid_response")
+        rtt_ms = (time.monotonic() - start) * 1000
         offset = 5
         _, offset = _read_null_terminated(data, offset)  # server name
         _, offset = _read_null_terminated(data, offset)  # map
