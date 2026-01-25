@@ -17,10 +17,12 @@ from urllib.parse import urlencode
 from datetime import datetime
 from datetime import timedelta
 from flask import Flask, render_template, jsonify, request, redirect, session, url_for, make_response
+from flask_sock import Sock
 from werkzeug.middleware.proxy_fix import ProxyFix
 import a2s
 from apscheduler.schedulers.background import BackgroundScheduler
 from concurrent.futures import ThreadPoolExecutor
+from autojoin_blueprint import AutoJoinHub, EventRateLimiter, WatcherConfig, create_autojoin_blueprint, register_autojoin_ws
 try:
     from opencc import OpenCC
 except Exception:
@@ -36,6 +38,7 @@ if not os.path.isdir(STATIC_DIR) and os.path.isdir('Static'):
 app = Flask(__name__, static_folder=STATIC_DIR)
 app.secret_key = os.environ.get('APP_SECRET_KEY') or os.environ.get('SECRET_KEY') or 'change-me'
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+sock = Sock(app)
 
 #SEO优化
 SEO_DATA = {
@@ -127,6 +130,10 @@ AGENT_ALLOWED_CIDRS = [cidr.strip() for cidr in os.environ.get('AGENT_ALLOWED_CI
 AGENT_TRUSTED_PROXIES = [cidr.strip() for cidr in os.environ.get('AGENT_TRUSTED_PROXIES', '').split(',') if cidr.strip()]
 AGENT_SIGNATURE_TTL_SECONDS = int(os.environ.get('AGENT_SIGNATURE_TTL_SECONDS', '300'))
 WATCHER_SERVICE_URL = os.environ.get('WATCHER_SERVICE_URL', 'http://127.0.0.1:5010').rstrip('/')
+WATCHER_CN_URL = os.environ.get('WATCHER_CN_URL')
+WATCHER_US_URL = os.environ.get('WATCHER_US_URL')
+WATCHER_HMAC_SECRET = os.environ.get('WATCHER_HMAC_SECRET')
+WATCHER_ALLOWED_IDS = {x.strip() for x in os.environ.get('WATCHER_ALLOWED_IDS', '').split(',') if x.strip()}
 
 # --- 1. 辅助函数 ---
 def generate_distinct_colors(n):
@@ -1459,6 +1466,18 @@ def require_prime():
     if not is_prime_user():
         return make_response("Forbidden", 403)
     return None
+
+autojoin_hub = AutoJoinHub()
+autojoin_limiter = EventRateLimiter()
+autojoin_cfg = WatcherConfig(
+    cn_url=WATCHER_CN_URL,
+    us_url=WATCHER_US_URL,
+    shared_token=os.environ.get('WATCHER_SHARED_TOKEN'),
+    hmac_secret=WATCHER_HMAC_SECRET,
+    allowed_ids=WATCHER_ALLOWED_IDS or None,
+)
+app.register_blueprint(create_autojoin_blueprint(autojoin_cfg, autojoin_hub, autojoin_limiter, is_prime_user))
+register_autojoin_ws(sock, autojoin_hub)
 
 @app.route('/api/autojoin/join', methods=['POST'])
 def autojoin_join():
