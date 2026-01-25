@@ -1,27 +1,25 @@
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import requests
 
 from .config import ClientConfig
 
 
-LOGGER = logging.getLogger(__name__)
-
-
 @dataclass
 class ServerEntry:
-    server_key: str
-    name: str
+    game_type: str
     ip: str
     port: int
+    server_key: str
+    connect_target: str
+    name: str
     players: int
     max_players: int
-    community_id: str
-    community_name: str
+    online: bool
+    display_ip: Optional[str]
     raw: Dict[str, Any]
 
 
@@ -29,100 +27,97 @@ class WebAPI:
     def __init__(self, cfg: ClientConfig) -> None:
         self.cfg = cfg
         self.session = requests.Session()
-        if cfg.session_cookie:
-            self.session.headers.update({"Cookie": cfg.session_cookie})
 
-    def _request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
-        url = f"{self.cfg.base_url}{path}"
+    def _request_json(self, url: str, **kwargs: Any) -> Any:
         kwargs.setdefault("timeout", self.cfg.request_timeout)
-        resp = self.session.request(method, url, **kwargs)
-        return resp
-
-    def get_config(self) -> List[Dict[str, Any]]:
-        resp = self._request("GET", "/api/config")
+        resp = self.session.get(url, **kwargs)
         resp.raise_for_status()
-        data = resp.json()
-        if not isinstance(data, list):
-            raise ValueError("Unexpected /api/config response")
-        return data
+        return resp.json()
 
-    def get_servers(self, community_id: str) -> List[Dict[str, Any]]:
-        resp = self._request("GET", f"/api/servers/{community_id}")
-        resp.raise_for_status()
-        data = resp.json()
-        if not isinstance(data, list):
-            raise ValueError("Unexpected /api/servers response")
-        return data
-
-    def get_steam_status(self) -> Dict[str, Any]:
-        resp = self._request("GET", "/api/steam/status")
-        resp.raise_for_status()
-        data = resp.json()
+    def _watcher_request(self, method: str, path: str, **kwargs: Any) -> Dict[str, Any]:
+        if not self.cfg.watcher_url or not self.cfg.auth_token:
+            return {"ok": False, "error": "watcher_disabled"}
+        url = f"{self.cfg.watcher_url.rstrip('/')}{path}"
+        headers = {"X-Shared-Token": self.cfg.auth_token}
+        kwargs.setdefault("timeout", self.cfg.request_timeout)
+        try:
+            resp = self.session.request(method, url, headers=headers, **kwargs)
+        except Exception as exc:
+            return {"ok": False, "error": f"watcher_unreachable: {exc}"}
+        if resp.status_code in (401, 403):
+            return {"ok": False, "error": "unauthorized"}
+        try:
+            data = resp.json()
+        except Exception:
+            return {"ok": False, "error": "invalid watcher response"}
         if not isinstance(data, dict):
-            raise ValueError("Unexpected /api/steam/status response")
+            return {"ok": False, "error": "invalid watcher response"}
         return data
 
-    def autojoin_join(self, server_key: str, queue_type: str = "normal") -> Dict[str, Any]:
-        resp = self._request("POST", "/api/autojoin/join", json={"server_key": server_key, "queue_type": queue_type})
-        if resp.status_code == 403:
-            return {"ok": False, "error": "prime_required"}
-        resp.raise_for_status()
-        data = resp.json()
-        if not isinstance(data, dict):
-            raise ValueError("Unexpected autojoin join response")
-        return data
-
-    def autojoin_poll(self, server_key: str) -> Dict[str, Any]:
-        resp = self._request("GET", "/api/autojoin/poll", params={"server_key": server_key})
-        if resp.status_code == 403:
-            return {"ok": False, "error": "prime_required"}
-        resp.raise_for_status()
-        data = resp.json()
-        if not isinstance(data, dict):
-            raise ValueError("Unexpected autojoin poll response")
-        return data
-
-    def autojoin_leave(self, server_key: str) -> Dict[str, Any]:
-        resp = self._request("POST", "/api/autojoin/leave", json={"server_key": server_key})
-        if resp.status_code == 403:
-            return {"ok": False, "error": "prime_required"}
-        resp.raise_for_status()
-        data = resp.json()
-        if not isinstance(data, dict):
-            raise ValueError("Unexpected autojoin leave response")
-        return data
-
-
-    def fetch_servers(self) -> List[ServerEntry]:
-        communities = self.get_config()
+    def fetch_servers_from_url(self, url: str) -> List[ServerEntry]:
+        payload = self._request_json(url)
+        if not isinstance(payload, list):
+            raise ValueError("Server list response must be a JSON array")
         entries: List[ServerEntry] = []
-        for comm in communities:
-            cid = str(comm.get("id", ""))
-            name = comm.get("name", "") or comm.get("short_name", "") or cid
-            if not cid:
+        for raw in payload:
+            if not isinstance(raw, dict):
+                continue
+            game_type = raw.get("game_type")
+            if game_type not in {"cs2", "css"}:
+                continue
+            ip = raw.get("ip")
+            port = raw.get("port")
+            if not isinstance(ip, str) or not ip:
+                continue
+            if port is None:
                 continue
             try:
-                servers = self.get_servers(cid)
-            except Exception as exc:
-                LOGGER.warning("Failed to load servers for %s: %s", cid, exc)
+                port_num = int(port)
+            except (TypeError, ValueError):
                 continue
-            for srv in servers:
-                ip = srv.get("ip")
-                port = srv.get("port")
-                if not ip or not port:
-                    continue
-                server_key = f"{ip}:{port}"
-                entries.append(
-                    ServerEntry(
-                        server_key=server_key,
-                        name=srv.get("name") or "Unknown",
-                        ip=ip,
-                        port=int(port),
-                        players=int(srv.get("players") or 0),
-                        max_players=int(srv.get("max_players") or 64),
-                        community_id=cid,
-                        community_name=name,
-                        raw=srv,
-                    )
+            connect_ip = raw.get("connect_ip") or ip
+            if not isinstance(connect_ip, str) or not connect_ip:
+                connect_ip = ip
+            connect_target = f"{connect_ip}:{port_num}"
+            server_key = f"{ip}:{port_num}"
+            name = raw.get("name") or "Unknown"
+            try:
+                players = int(raw.get("players") or 0)
+            except (TypeError, ValueError):
+                players = 0
+            try:
+                max_players = int(raw.get("max_players") or 0)
+            except (TypeError, ValueError):
+                max_players = 0
+            online = bool(raw.get("online"))
+            display_ip = raw.get("display_ip")
+            entries.append(
+                ServerEntry(
+                    game_type=game_type,
+                    ip=ip,
+                    port=port_num,
+                    server_key=server_key,
+                    connect_target=connect_target,
+                    name=name,
+                    players=players,
+                    max_players=max_players,
+                    online=online,
+                    display_ip=display_ip,
+                    raw=raw,
                 )
+            )
         return entries
+
+    def fetch_servers(self) -> List[ServerEntry]:
+        if not self.cfg.server_list_url:
+            raise ValueError("Server list URL not configured")
+        return self.fetch_servers_from_url(self.cfg.server_list_url)
+
+    def watcher_join(self, server_key: str, queue_type: str = "normal") -> Dict[str, Any]:
+        return self._watcher_request("POST", "/v1/autojoin/join", json={"server_key": server_key, "queue_type": queue_type})
+
+    def watcher_poll(self, server_key: str) -> Dict[str, Any]:
+        return self._watcher_request("GET", "/v1/autojoin/poll", params={"server_key": server_key})
+
+    def watcher_leave(self, server_key: str) -> Dict[str, Any]:
+        return self._watcher_request("POST", "/v1/autojoin/leave", json={"server_key": server_key})
