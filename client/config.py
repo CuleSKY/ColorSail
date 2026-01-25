@@ -13,9 +13,11 @@ DEFAULT_REQUEST_TIMEOUT = 6.0
 
 @dataclass(frozen=True)
 class ClientConfig:
+    base_url: str
     server_list_url: str | None
     watcher_url: str | None
     auth_token: str | None
+    session_cookie: str | None
     request_timeout: float
     config_path: Path
     settings_path: Path
@@ -35,16 +37,20 @@ def load_config() -> ClientConfig:
     config_dir.mkdir(parents=True, exist_ok=True)
     config_path = config_dir / "config.json"
     raw = read_json(config_path)
+    base_url = os.environ.get("CS2ZE_BASE_URL") or "http://localhost:5000"
     server_list_url = raw.get("server_list_url") or os.environ.get("CS2ZE_SERVER_LIST_URL")
     watcher_url = os.environ.get("CS2ZE_WATCHER_URL")
     auth_token = os.environ.get("CS2ZE_AUTH_TOKEN")
+    session_cookie = os.environ.get("CS2ZE_SESSION_COOKIE")
     request_timeout = DEFAULT_REQUEST_TIMEOUT
     settings_path = config_dir / "settings.json"
     state_path = config_dir / "state.json"
     return ClientConfig(
+        base_url=base_url,
         server_list_url=server_list_url,
         watcher_url=watcher_url,
         auth_token=auth_token,
+        session_cookie=session_cookie,
         request_timeout=request_timeout,
         config_path=config_path,
         settings_path=settings_path,
@@ -83,6 +89,9 @@ def update_config_url(cfg: ClientConfig, server_list_url: str) -> ClientConfig:
 class AutoJoinState:
     server_key: str
     mode: str
+    queue_id: str | None = None
+    watcher_region: str | None = None
+    priority: str | None = None
     started_at: float
     watcher_since: float | None = None
 
@@ -99,6 +108,9 @@ def load_state(cfg: ClientConfig) -> AutoJoinState | None:
     return AutoJoinState(
         server_key=server_key,
         mode=mode,
+        queue_id=raw.get("queue_id"),
+        watcher_region=raw.get("watcher_region"),
+        priority=raw.get("priority"),
         started_at=float(started_at),
         watcher_since=float(raw.get("watcher_since")) if raw.get("watcher_since") else None,
     )
@@ -110,6 +122,9 @@ def save_state(cfg: ClientConfig, state: AutoJoinState) -> None:
         {
             "server_key": state.server_key,
             "mode": state.mode,
+            "queue_id": state.queue_id,
+            "watcher_region": state.watcher_region,
+            "priority": state.priority,
             "started_at": state.started_at,
             "watcher_since": state.watcher_since,
         },

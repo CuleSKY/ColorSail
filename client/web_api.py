@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from urllib.parse import urlparse, urlunparse
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -27,6 +28,8 @@ class WebAPI:
     def __init__(self, cfg: ClientConfig) -> None:
         self.cfg = cfg
         self.session = requests.Session()
+        if cfg.session_cookie:
+            self.session.headers.update({"Cookie": cfg.session_cookie})
 
     def _request_json(self, url: str, **kwargs: Any) -> Any:
         kwargs.setdefault("timeout", self.cfg.request_timeout)
@@ -127,6 +130,38 @@ class WebAPI:
         if not self.cfg.server_list_url:
             raise ValueError("Server list URL not configured")
         return self.fetch_servers_from_url(self.cfg.server_list_url)
+
+    def autojoin_start(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._site_request("POST", "/api/autojoin/start", json=payload)
+
+    def autojoin_joined(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._site_request("POST", "/api/autojoin/joined", json=payload)
+
+    def autojoin_stop(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._site_request("POST", "/api/autojoin/stop", json=payload)
+
+    def _site_request(self, method: str, path: str, **kwargs: Any) -> Dict[str, Any]:
+        base_url = self.cfg.base_url.rstrip("/")
+        url = f"{base_url}{path}"
+        kwargs.setdefault("timeout", self.cfg.request_timeout)
+        try:
+            resp = self.session.request(method, url, **kwargs)
+        except Exception as exc:
+            return {"ok": False, "error": f"main_site_unreachable: {exc}"}
+        if resp.status_code in (401, 403):
+            return {"ok": False, "error": "unauthorized"}
+        try:
+            data = resp.json()
+        except Exception:
+            return {"ok": False, "error": "invalid_response"}
+        if not isinstance(data, dict):
+            return {"ok": False, "error": "invalid_response"}
+        return data
+
+    def ws_url(self, path: str) -> str:
+        base = urlparse(self.cfg.base_url)
+        scheme = "wss" if base.scheme == "https" else "ws"
+        return urlunparse((scheme, base.netloc, path, "", "", ""))
 
     def watcher_join(self, server_key: str, queue_type: str = "normal") -> Dict[str, Any]:
         return self._watcher_request("POST", "/v1/autojoin/join", json={"server_key": server_key, "queue_type": queue_type})
