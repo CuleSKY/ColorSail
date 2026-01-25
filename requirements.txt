@@ -1,7 +1,9 @@
 flask
+flask-sock
 python-a2s
 apscheduler
 requests
+websocket-client
 beautifulsoup4
 cryptography
 opencc-python-reimplemented

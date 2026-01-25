@@ -6,7 +6,9 @@
   },
   "main_site": {
     "base_url": "http://127.0.0.1:5000",
-    "shared_token": "2004615abc"
+    "shared_token": "2004615abc",
+    "watcher_id": "cn-watcher",
+    "hmac_secret": "change-me"
   },
   "games": {
     "cs2": { "appid": 730 },
