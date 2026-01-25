@@ -56,10 +56,25 @@ class WebAPI:
 
     def fetch_servers_from_url(self, url: str) -> List[ServerEntry]:
         payload = self._request_json(url)
-        if not isinstance(payload, list):
+        if isinstance(payload, list):
+            server_payload = payload
+        elif isinstance(payload, dict):
+            servers = payload.get("servers")
+            if isinstance(servers, list):
+                server_payload = servers
+            else:
+                server_payload = []
+                for cid, items in payload.items():
+                    if not isinstance(items, list):
+                        continue
+                    for raw in items:
+                        if isinstance(raw, dict) and "cid" not in raw:
+                            raw["cid"] = cid
+                        server_payload.append(raw)
+        else:
             raise ValueError("Server list response must be a JSON array")
         entries: List[ServerEntry] = []
-        for raw in payload:
+        for raw in server_payload:
             if not isinstance(raw, dict):
                 continue
             game_type = raw.get("game_type")
