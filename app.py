@@ -1306,6 +1306,18 @@ def get_config_meta():
     load_config()
     return jsonify(build_community_meta())
 
+@app.route('/api/servers')
+def get_all_servers():
+    """返回所有社区的实时服务器列表"""
+    load_config()
+    with SERVER_CACHE_LOCK:
+        data = {cid: list(servers) for cid, servers in SERVER_CACHE.items()}
+    for comm in COMMUNITY_META:
+        cid = comm.get('id')
+        if cid:
+            data.setdefault(cid, [])
+    return jsonify(data)
+
 @app.route('/api/servers/<cid>')
 def get_servers(cid):
     """返回指定社区的实时服务器列表"""
