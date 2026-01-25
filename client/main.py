@@ -31,6 +31,15 @@ def format_latency(choice: DisplayChoice) -> str:
     return f"{choice.rtt_ms:.1f} ms ({choice.source})"
 
 
+def format_server_name(server: ServerEntry) -> str:
+    cid = None
+    if isinstance(server.raw, dict):
+        cid = server.raw.get("cid")
+    if isinstance(cid, str) and cid:
+        return f"[{cid}] {server.name}"
+    return server.name
+
+
 def list_servers(api: WebAPI) -> int:
     servers = api.fetch_servers()
     if not servers:
@@ -63,7 +72,8 @@ def list_servers(api: WebAPI) -> int:
         icmp, a2s, choice = results.get(server.server_key, (ProbeResult(False, None), ProbeResult(False, None), DisplayChoice("timeout", None)))
         latency = format_latency(choice)
         players = f"{server.players}/{server.max_players}"
-        print(f"{idx:<3} {server.game_type:<4} {server.name[:32]:<32} {players:<12} {latency:<16}")
+        display_name = format_server_name(server)
+        print(f"{idx:<3} {server.game_type:<4} {display_name[:32]:<32} {players:<12} {latency:<16}")
     return 0
 
 
@@ -77,7 +87,8 @@ def probe_server(api: WebAPI, identifier: str) -> int:
     icmp = ping_icmp(server.ip)
     a2s = a2s_info(server.ip, server.port)
     choice = choose_display(icmp, a2s, None, None)
-    print(f"Server: {server.name} ({server.server_key})")
+    display_name = format_server_name(server)
+    print(f"Server: {display_name} ({server.server_key})")
     print(f"Game: {server.game_type}")
     print(f"ICMP: {'ok' if icmp.ok else 'fail'}", end="")
     if icmp.rtt_ms is not None:
