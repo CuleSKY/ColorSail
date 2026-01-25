@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import webbrowser
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -8,6 +9,9 @@ from .config import AutoJoinState, ClientConfig, clear_state, load_state, read_j
 from .latency import a2s_info, median_rtt
 from .scheduler import RateLimiter
 from .web_api import WebAPI, ServerEntry
+
+APP_ID_BY_GAME = {"cs2": 730, "css": 240}
+LAUNCH_COOLDOWN_SECONDS = 10.0
 
 
 @dataclass
@@ -24,10 +28,12 @@ class AutoJoinMode:
 
 
 class AutoJoinController:
-    def __init__(self, cfg: ClientConfig, api: WebAPI) -> None:
+    def __init__(self, cfg: ClientConfig, api: WebAPI, auto_connect: bool = False) -> None:
         self.cfg = cfg
         self.api = api
+        self.auto_connect = auto_connect
         self.settings = read_json(cfg.settings_path)
+        self._last_launch_at: float | None = None
 
     def _save_settings(self) -> None:
         write_json(self.cfg.settings_path, self.settings)
@@ -60,11 +66,11 @@ class AutoJoinController:
         timeout_ratio = 1.0 - (success / probes)
         return PrecheckResult(success_count=success, timeout_ratio=timeout_ratio, median_rtt=median_rtt(samples))
 
-    def decide_mode(self, precheck: PrecheckResult, is_prime: bool) -> AutoJoinMode:
+    def decide_mode(self, precheck: PrecheckResult, watcher_available: bool) -> AutoJoinMode:
         stable = precheck.success_count >= 3 and precheck.timeout_ratio <= 0.4
         if stable:
             return AutoJoinMode(name="local", watcher=False)
-        if is_prime:
+        if watcher_available:
             return AutoJoinMode(name="watcher", watcher=True)
         return AutoJoinMode(name="local", watcher=False)
 
@@ -72,14 +78,9 @@ class AutoJoinController:
         if not self.confirm_warning():
             print("AutoJoin aborted.")
             return 1
-        is_prime = False
-        try:
-            status = self.api.get_steam_status()
-            is_prime = bool(status.get("prime"))
-        except Exception:
-            pass
+        watcher_available = bool(self.cfg.watcher_url and self.cfg.auth_token)
         precheck = self.run_precheck(server)
-        mode = self.decide_mode(precheck, is_prime)
+        mode = self.decide_mode(precheck, watcher_available)
         if not mode.watcher and precheck.timeout_ratio > 0.4:
             print("Local A2S appears unstable; falling back to local mode with reduced frequency.")
         state = AutoJoinState(server_key=server.server_key, mode=mode.name, started_at=time.time())
@@ -109,7 +110,8 @@ class AutoJoinController:
                         print(f"A2S: {result.players}/{result.max_players} players (RTT {result.rtt_ms:.1f} ms)")
                         if result.players < result.max_players:
                             print("Slot available! You can connect now:")
-                            print(f"connect {server.server_key}")
+                            self._launch_game(server)
+                            print(f"connect {server.connect_target}")
                             return 0
                     else:
                         print("A2S response ok but missing player data.")
@@ -123,31 +125,29 @@ class AutoJoinController:
     def _run_watcher_mode(self, server: ServerEntry) -> int:
         print(f"Running AutoJoin in watcher mode for {server.name} ({server.server_key}).")
         print("Press Ctrl+C to stop.")
-        try:
-            join_resp = self.api.autojoin_join(server.server_key)
-        except Exception as exc:
-            print(f"Watcher join unreachable: {exc}")
-            return self._run_local_mode(server, aggressive=False)
+        join_resp = self.api.watcher_join(server.server_key)
         if not join_resp.get("ok"):
-            if join_resp.get("error") == "prime_required":
-                print("Prime required for watcher mode. Falling back to local mode.")
+            error = join_resp.get("error")
+            if error in {"prime_required", "unauthorized", "watcher_disabled"} or (
+                isinstance(error, str) and error.startswith("watcher_unreachable")
+            ):
+                print("Watcher unavailable; falling back to local mode.")
                 return self._run_local_mode(server, aggressive=False)
-            print(f"Watcher join failed: {join_resp.get('error')}")
+            print(f"Watcher join failed: {error}")
             return 1
         start = time.time()
         last_ticket = None
         try:
             while True:
-                try:
-                    poll = self.api.autojoin_poll(server.server_key)
-                except Exception as exc:
-                    print(f"Watcher poll unreachable: {exc}")
-                    return self._run_local_mode(server, aggressive=False)
-                if poll.get("error") == "prime_required":
-                    print("Prime required for watcher mode. Falling back to local mode.")
+                poll = self.api.watcher_poll(server.server_key)
+                error = poll.get("error")
+                if error in {"prime_required", "unauthorized", "watcher_disabled"} or (
+                    isinstance(error, str) and error.startswith("watcher_unreachable")
+                ):
+                    print("Watcher unavailable; falling back to local mode.")
                     return self._run_local_mode(server, aggressive=False)
                 if not poll.get("ok"):
-                    print(f"Watcher poll error: {poll.get('error')}")
+                    print(f"Watcher poll error: {error}")
                     time.sleep(1.0)
                     continue
                 if poll.get("granted"):
@@ -158,6 +158,7 @@ class AutoJoinController:
                         fast_url = poll.get("fast_join_url")
                         if fast_url:
                             print(f"Fast join URL: {fast_url}")
+                        self._launch_game(server)
                         expires = poll.get("expires_in")
                         if expires:
                             print(f"Expires in {expires} seconds.")
@@ -172,9 +173,27 @@ class AutoJoinController:
                 else:
                     time.sleep(1.0)
         except KeyboardInterrupt:
-            self.api.autojoin_leave(server.server_key)
+            self.api.watcher_leave(server.server_key)
             print("AutoJoin stopped by user.")
             return 0
+
+    def _launch_game(self, server: ServerEntry) -> None:
+        if not self.auto_connect:
+            return
+        now = time.time()
+        if self._last_launch_at and (now - self._last_launch_at) < LAUNCH_COOLDOWN_SECONDS:
+            return
+        app_id = APP_ID_BY_GAME.get(server.game_type)
+        if not app_id:
+            print(f"Unknown game type '{server.game_type}'; unable to launch automatically.")
+            return
+        url = f"steam://rungameid/{app_id}//+connect%20{server.connect_target}"
+        print(f"Launching game via Steam: {url}")
+        try:
+            webbrowser.open(url)
+            self._last_launch_at = now
+        except Exception as exc:
+            print(f"Failed to launch Steam URL: {exc}")
 
 
 def stop_autojoin(cfg: ClientConfig, api: WebAPI) -> int:
@@ -183,12 +202,9 @@ def stop_autojoin(cfg: ClientConfig, api: WebAPI) -> int:
         print("No active AutoJoin state found.")
         return 0
     if state.mode == "watcher":
-        try:
-            resp = api.autojoin_leave(state.server_key)
-            if not resp.get("ok"):
-                print(f"Watcher leave failed: {resp.get('error')}")
-        except Exception as exc:
-            print(f"Watcher leave failed: {exc}")
+        resp = api.watcher_leave(state.server_key)
+        if not resp.get("ok"):
+            print(f"Watcher leave failed: {resp.get('error')}")
     clear_state(cfg)
     print("AutoJoin stopped.")
     return 0

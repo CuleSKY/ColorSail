@@ -2,40 +2,51 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass
+import sys
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Dict
 
 
-DEFAULT_BASE_URL = "http://localhost:5000"
+DEFAULT_REQUEST_TIMEOUT = 6.0
 
 
 @dataclass(frozen=True)
 class ClientConfig:
-    base_url: str
-    session_cookie: str | None
+    server_list_url: str | None
+    watcher_url: str | None
+    auth_token: str | None
     request_timeout: float
+    config_path: Path
     settings_path: Path
     state_path: Path
 
 
-def _default_config_dir() -> Path:
-    root = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
-    return root / "cs2ze_cli"
+def _client_dir() -> Path:
+    if getattr(sys, "frozen", False):
+        base_dir = Path(sys.executable).resolve().parent
+    else:
+        base_dir = Path.cwd()
+    return base_dir / "client"
 
 
 def load_config() -> ClientConfig:
-    base_url = os.environ.get("CS2ZE_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
-    session_cookie = os.environ.get("CS2ZE_SESSION_COOKIE")
-    request_timeout = float(os.environ.get("CS2ZE_TIMEOUT", "6"))
-    config_dir = _default_config_dir()
+    config_dir = _client_dir()
     config_dir.mkdir(parents=True, exist_ok=True)
+    config_path = config_dir / "config.json"
+    raw = read_json(config_path)
+    server_list_url = raw.get("server_list_url") or os.environ.get("CS2ZE_SERVER_LIST_URL")
+    watcher_url = os.environ.get("CS2ZE_WATCHER_URL")
+    auth_token = os.environ.get("CS2ZE_AUTH_TOKEN")
+    request_timeout = DEFAULT_REQUEST_TIMEOUT
     settings_path = config_dir / "settings.json"
     state_path = config_dir / "state.json"
     return ClientConfig(
-        base_url=base_url,
-        session_cookie=session_cookie,
+        server_list_url=server_list_url,
+        watcher_url=watcher_url,
+        auth_token=auth_token,
         request_timeout=request_timeout,
+        config_path=config_path,
         settings_path=settings_path,
         state_path=state_path,
     )
@@ -59,6 +70,13 @@ def write_json(path: Path, payload: Dict[str, Any]) -> None:
     with temp_path.open("w", encoding="utf-8") as handle:
         json.dump(payload, handle, ensure_ascii=False, indent=2)
     temp_path.replace(path)
+
+
+def update_config_url(cfg: ClientConfig, server_list_url: str) -> ClientConfig:
+    payload = read_json(cfg.config_path)
+    payload["server_list_url"] = server_list_url
+    write_json(cfg.config_path, payload)
+    return replace(cfg, server_list_url=server_list_url)
 
 
 @dataclass
