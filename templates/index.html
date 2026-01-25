@@ -965,7 +965,7 @@ createApp({
                 const cacheMap = {};
                 const now = Date.now();
                 sList.forEach(s => {
-                    // 构建 key，保持和 refreshCommunity 逻辑一致
+                    // 构建 key，保持和 refreshAllServers 逻辑一致
                     const key = `${s.ip}:${s.port}`; 
                     cacheMap[key] = { ...s, _lastSeen: now };
                 });
@@ -1625,21 +1625,26 @@ createApp({
 
         const applyCommunities = (data) => {
             communities.value = Array.isArray(data) ? data : [];
+            let needsServerRefresh = false;
             communities.value.forEach(c => {
             // 如果后端传来了 servers 数据，直接初始化到 servers.value 中
                 if (c.servers && c.servers.length > 0) {
                     servers.value[c.id] = c.servers.map(srv => decorateServer(srv, c));
                 } else if (!servers.value[c.id]) {
                     servers.value[c.id] = [];
+                    needsServerRefresh = true;
                 }
             
                 if (!serverCache.value[c.id]) serverCache.value[c.id] = {};
             
                 // 只有当没有初始数据时，才立即请求刷新，避免重复请求
                 if (!c.servers || c.servers.length === 0) {
-                    refreshCommunity(c.id);
+                    needsServerRefresh = true;
                 }
             });
+            if (needsServerRefresh) {
+                refreshAllServers();
+            }
         };
 
         const fetchConfig = async () => {
@@ -1662,31 +1667,41 @@ createApp({
             } catch(e) { console.error("Config fetch failed", e); }
         };
 
-        const refreshCommunity = async (cid) => {
+        const refreshAllServers = async () => {
             const now = Date.now();
-            const comm = communities.value.find(c => c.id === cid);
+            let payload = {};
             try {
-                const res = await fetch(`/api/servers/${cid}`);
-                const data = await res.json();
+                const res = await fetch(`/api/servers`);
+                payload = await res.json();
+            } catch(e) {}
+            if (Array.isArray(payload)) {
+                payload = payload.reduce((acc, item) => {
+                    if (!item || !item.cid) return acc;
+                    if (!acc[item.cid]) acc[item.cid] = [];
+                    acc[item.cid].push(item);
+                    return acc;
+                }, {});
+            }
+            communities.value.forEach(comm => {
+                const cid = comm.id;
                 const cache = serverCache.value[cid] || {};
+                const data = Array.isArray(payload[cid]) ? payload[cid] : [];
                 data.forEach(s => {
                     const decorated = decorateServer(s, comm);
                     cache[getServerKey(decorated)] = { ...decorated, _lastSeen: now };
                     checkSubscriptions(decorated, cid);
                 });
+                Object.keys(cache).forEach((key) => {
+                    if (now - cache[key]._lastSeen > serverStaleMs) {
+                        delete cache[key];
+                    }
+                });
                 serverCache.value[cid] = cache;
-            } catch(e) {}
-            const cache = serverCache.value[cid] || {};
-            Object.keys(cache).forEach((key) => {
-                if (now - cache[key]._lastSeen > serverStaleMs) {
-                    delete cache[key];
-                }
+                servers.value[cid] = Object.values(cache);
             });
-            serverCache.value[cid] = cache;
-            servers.value[cid] = Object.values(cache);
         };
 
-        setInterval(() => communities.value.forEach(c => refreshCommunity(c.id)), refreshIntervalMs);
+        setInterval(() => refreshAllServers(), refreshIntervalMs);
         setInterval(() => {
             if (curView.value === 'stats') {
                 loadStats();
