@@ -56,7 +56,7 @@
       "id": "ub",
       "name": "MoeUB",
       "short_name": "UB",
-      "logo": "https://csgo.moeub.cn/favicon.svg",
+      "logo": "/static/ub_logo.svg",
       "game": "cs2",
       "location": "cn",
       "servers": [
