@@ -4,50 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="google-site-verification" content="XkKhhFgY9EELfEwJLhpwFPgm9RmCI5UiTjQyia5lFC4" />
-    <!-- 1. 资源预加载 (去除了重复项) -->
     <link rel="preconnect" href="https://unpkg.com">
     <link rel="dns-prefetch" href="https://unpkg.com">
     
-    <!-- 2. 动态 SEO 标题与描述 (来自 Flask 后端) -->
     <title>{{ seo_info.title }}</title>
     <meta name="description" content="{{ seo_info.desc }}">
     <meta name="keywords" content="{{ seo_info.keywords }}">
     
-    <!-- 3. Hreflang 多语言标记 (告诉 Google 不同 URL 对应不同语言) -->
-    <!-- x-default 和 zh 指向默认(无参数) URL -->
     <link rel="alternate" hreflang="x-default" href="{{ request.base_url }}" />
     <link rel="alternate" hreflang="zh" href="{{ request.base_url }}" />
-    <!-- 其他语言指向带参数的 URL -->
     <link rel="alternate" hreflang="zh-TW" href="{{ request.base_url }}?lang=zh-TW" />
     <link rel="alternate" hreflang="en" href="{{ request.base_url }}?lang=en" />
     
-    <!-- 4. Canonical 规范链接 (防止参数导致重复收录) -->
     <link rel="canonical" href="{{ request.base_url }}{{ '?lang=' + current_lang if current_lang != 'zh-CN' else '' }}">
     
-    <!-- 5. Open Graph 社交媒体分享卡片 -->
     <meta property="og:title" content="{{ seo_info.title }}">
     <meta property="og:description" content="{{ seo_info.desc }}">
     <meta property="og:image" content="/static/NERV_Logo.png">
     <meta property="og:url" content="{{ request.base_url }}{{ '?lang=' + current_lang if current_lang != 'zh-CN' else '' }}">
     <meta property="og:type" content="website">
 
-    <!-- 6. 图标与脚本 -->
     <link id="favicon" rel="icon" href="/static/NERV_Logo.png" type="image/png">
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script>
         (function() {
-            // 立即恢复侧边栏状态，阻止页面加载时的布局跳变
             const collapsed = localStorage.getItem('sidebar_collapsed') === 'true';
             if (collapsed) {
                 document.documentElement.classList.add('sidebar-is-collapsed');
             }
-            // 立即恢复暗色模式
             const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             if (isDark) document.documentElement.setAttribute('data-theme', 'dark');
         })();
     </script>
     <style>
-        /* --- 1. 基础变量 --- */
         :root {
             --bg-color: #f3f3f3;
             --acrylic-bg: rgba(255, 255, 255, 0.85);
@@ -125,7 +114,6 @@
         @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fluentFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- 2. 侧边栏 --- */
         #sidebar {
             width: var(--sidebar-width) ; height: 100%;
             background: var(--acrylic-bg); backdrop-filter: blur(20px);
@@ -161,15 +149,13 @@
         h1 { margin: 0; font-weight: 600; font-size: 20px; }
 
         .edit-banner { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: repeating-linear-gradient(45deg, var(--warn-text), var(--warn-text) 10px, var(--warn-bg) 10px, var(--warn-bg) 20px); z-index: 101; }
-        /* --- 修复菜单定位的容器 --- */
         .user-menu-wrapper {
             position: relative;
-            display: inline-flex; /* 关键：让容器只包裹头像，不占满整行 */
+            display: inline-flex;
             align-items: center;
             flex-shrink: 0;
         }
 
-        /* 优化下拉菜单位置 */
         .dropdown-menu.profile-menu {
             min-width: 160px;
             top: calc(100% + 8px);
@@ -177,7 +163,6 @@
             z-index: 1000;
         }
 
-        /* 昵称链接样式 */
         .profile-link {
             text-decoration: none;
         color: var(--text-primary);
@@ -235,9 +220,9 @@
         .card-bg-layer { 
             position: absolute; 
             inset: 0; 
-            width: 100%;       /* 强制撑满宽度 */
-            height: 100%;      /* 强制撑满高度 */
-            object-fit: cover; /* 关键：保持比例裁剪，效果等同于 background-size: cover */
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
             object-position: center; 
             z-index: 0; 
             transition: filter 0.4s ease, transform 0.4s ease; 
@@ -354,10 +339,9 @@
         }
 
         @media (max-width: 1024px) {
-        /* --- 强制 Header 保持左右横向布局 --- */
             header { 
                 display: flex; 
-                justify-content: space-between; /* 左边标题，右边头像 */
+                justify-content: space-between;
                 align-items: center; 
                 height: var(--header-height); 
                 padding: 0 16px; 
@@ -378,10 +362,8 @@
                 gap: 8px;
             }
 
-            /* 隐藏手机上不必要的元素以防拥挤 */
             .header-toolbar, .auth-role-badge, .auth-status { display: none; }
     
-            /* ... 保持原本的其他移动端样式 (content-wrapper, community-nav 等) ... */
             }
 
         /* --- Stats Dashboard --- */
@@ -485,7 +467,6 @@
             .sub-search-box { width: 100%; }
             .desktop-only-icon { display: none !important; }
         }
-        /* --- Skeleton Loading (骨架屏) --- */
     .skeleton-loader {
     width: 100%;
     display: flex;
@@ -493,7 +474,7 @@
     gap: 8px;
         }
     .skeleton-row {
-        height: 50px; /* 模拟服务器列表行的高度 */
+        height: 50px;
         background: var(--card-bg);
         border: 1px solid var(--card-border);
         border-radius: 6px;
@@ -504,8 +485,6 @@
         50% { opacity: 0.3; }
         100% { opacity: 0.6; }
     }
-    /* --- Skeleton Loading (骨架屏优化版) --- */
-    /* 列表模式骨架容器 */
     .skeleton-list {
         width: 100%;
         display: flex;
@@ -513,7 +492,6 @@
         gap: 8px;
         margin-bottom: 20px;
     }
-    /* 网格模式骨架容器 (关键：保持与真实 .grid-container 一致的布局参数) */
     .skeleton-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -521,7 +499,6 @@
         width: 100%;
         margin-bottom: 20px;
     }
-    /* 列表条目占位 */
     .skeleton-row {
         height: 50px;
         background: var(--card-bg);
@@ -529,7 +506,6 @@
         border-radius: 6px;
         animation: skeleton-pulse 1.5s infinite ease-in-out;
     }
-    /* 卡片占位 (关键：高度设为 200px，与 .card 的 min-height 一致) */
     .skeleton-card {
         height: 200px; 
         background: var(--card-bg);
@@ -658,7 +634,6 @@
                             </button>
                             <div class="dropdown-menu profile-menu" :class="{show: showProfileMenu}" @click.stop>
                                 <div class="dropdown-item">
-                                    <!-- 有 SteamID 则显示链接，否则显示纯文本 -->
                                     <a v-if="steamId" :href="'https://steamcommunity.com/profiles/' + steamId" target="_blank" class="profile-link">
                                         [[ steamProfileName ]] <span style="font-size:10px; opacity:0.5">↗</span>
                                     </a>
@@ -741,14 +716,11 @@
                     </div>
                         <div v-if="(!getServers(comm.id) || getServers(comm.id).length === 0)">
         
-                        <!-- 情况 A: 列表模式 或 移动端 -> 显示列表骨架 -->
                         <div v-if="viewMode === 'list' || isMobile" class="skeleton-list">
                             <div class="skeleton-row" v-for="i in 5" :key="i"></div>
                         </div>
 
-                        <!-- 情况 B: 网格模式 (且非移动端) -> 显示卡片骨架 -->
                         <div v-else class="skeleton-grid">
-                        <!-- 显示 3 个卡片占位，足以撑开一行 -->
                             <div class="skeleton-card" v-for="i in 3" :key="i"></div>
                         </div>
 
@@ -924,7 +896,6 @@
 
 <script>
 window.__INITIAL_CONFIG__ = {{ initial_config|tojson }};
-//注入服务器列表数据，避免前端再次请求
 window.__INITIAL_SERVERS__ = {{ server_cache|tojson }};
 </script>
 <script>
@@ -965,7 +936,6 @@ createApp({
                 const cacheMap = {};
                 const now = Date.now();
                 sList.forEach(s => {
-                    // 构建 key，保持和 refreshAllServers 逻辑一致
                     const key = `${s.ip}:${s.port}`; 
                     cacheMap[key] = { ...s, _lastSeen: now };
                 });
@@ -986,6 +956,7 @@ createApp({
         const isDark = ref(window.matchMedia('(prefers-color-scheme: dark)').matches);
         const isMobile = ref(window.innerWidth <= 768);
         const isEditMode = ref(false);
+        const sidebarWasAutoExpandedForReorder = ref(false);
         const sortByPlayers = ref(false);
         const serverMapQuery = ref('');
         const serverMapQueryInput = ref('');
@@ -993,7 +964,7 @@ createApp({
         const isPrime = ref(false);
         const steamAuthPending = ref(false);
         const steamProfile = ref({ name: null, avatar: null });
-        const steamId = ref(null); // SteamID获取
+        const steamId = ref(null);
         const showLoginPrompt = ref(false);
         const feedbackSubject = ref('');
         const feedbackMessage = ref('');
@@ -1016,19 +987,15 @@ createApp({
         const draggedIndex = ref(null);
         const dragOverIndex = ref(null);
         
-        // 1. 获取 URL 参数 & 浏览器语言
         const urlParams = new URLSearchParams(window.location.search);
         const paramLang = urlParams.get('lang');
         const sysLang = navigator.language || navigator.userLanguage;
 
-        // 2. 决定默认语言 (变量名保持 defaultLang 以兼容后文)
-        let defaultLang = 'en'; // 兜底默认值
+        let defaultLang = 'en';
 
         if (paramLang) {
-            // 场景 A: URL 带有参数 (爬虫或分享链接)，强制使用
             defaultLang = paramLang;
         } else {
-        // 场景 B: URL 无参数，进行浏览器自动适配
          if (sysLang && sysLang.toLowerCase().startsWith('zh')) {
             if (sysLang.includes('HK')) defaultLang = 'zh-HK';
             else if (sysLang.includes('TW')) defaultLang = 'zh-TW';
@@ -1038,7 +1005,6 @@ createApp({
         }
     }
 
-        // 这一行原本会报错，现在 defaultLang 已经定义了，就不会报错了
         const defaultChineseLang = defaultLang.startsWith('zh') ? defaultLang : 'zh-CN';
         const curLang = ref(defaultLang);
 
@@ -1153,7 +1119,7 @@ createApp({
                 
                 if (isLoggedInBool) {
                     steamProfile.value = data.profile || { name: null, avatar: null };
-                    steamId.value = data.steam_id; // [关键] 保存 ID
+                    steamId.value = data.steam_id;
                 } else {
                     steamProfile.value = { name: null, avatar: null };
                     steamId.value = null;
@@ -1284,20 +1250,17 @@ createApp({
             localStorage.setItem('sidebar_collapsed', isCollapsed.value);
         };
         const toggleTheme = () => { isDark.value = !isDark.value; document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light'); updateFavicon(); };
-        // [更新 URL 状态，不刷新页面]
         const setLang = (l) => { 
             curLang.value = l; 
             showLangMenu.value = false; 
             
             const url = new URL(window.location);
             if (l === 'zh-CN') {
-                url.searchParams.delete('lang'); // 中文默认不带参数
+                url.searchParams.delete('lang');
             } else {
                 url.searchParams.set('lang', l);
             }
             window.history.pushState({}, '', url);
-            
-            // 可选：在这里更新 document.title，提升体验
         };
         
         const closeDropdowns = () => {
@@ -1310,7 +1273,24 @@ createApp({
             viewMode.value = viewMode.value === 'grid' ? 'list' : 'grid';
             localStorage.setItem('view_mode', viewMode.value);
         };
-        const toggleEditMode = () => isEditMode.value = !isEditMode.value;
+        const toggleEditMode = () => {
+            const nextState = !isEditMode.value;
+            if (nextState && isCollapsed.value) {
+                sidebarWasAutoExpandedForReorder.value = true;
+                isCollapsed.value = false;
+                document.documentElement.classList.remove('sidebar-is-collapsed');
+                localStorage.setItem('sidebar_collapsed', isCollapsed.value);
+            }
+            if (!nextState) {
+                if (sidebarWasAutoExpandedForReorder.value) {
+                    isCollapsed.value = true;
+                    document.documentElement.classList.add('sidebar-is-collapsed');
+                    localStorage.setItem('sidebar_collapsed', isCollapsed.value);
+                }
+                sidebarWasAutoExpandedForReorder.value = false;
+            }
+            isEditMode.value = nextState;
+        };
         const toggleSortByPlayers = () => sortByPlayers.value = !sortByPlayers.value;
 
         const startSteamLogin = () => {
@@ -1642,7 +1622,6 @@ createApp({
             communities.value = Array.isArray(data) ? data : [];
             let needsServerRefresh = false;
             communities.value.forEach(c => {
-            // 如果后端传来了 servers 数据，直接初始化到 servers.value 中
                 if (c.servers && c.servers.length > 0) {
                     servers.value[c.id] = c.servers.map(srv => decorateServer(srv, c));
                 } else if (!servers.value[c.id]) {
@@ -1652,7 +1631,6 @@ createApp({
             
                 if (!serverCache.value[c.id]) serverCache.value[c.id] = {};
             
-                // 只有当没有初始数据时，才立即请求刷新，避免重复请求
                 if (!c.servers || c.servers.length === 0) {
                     needsServerRefresh = true;
                 }
@@ -1823,13 +1801,11 @@ createApp({
 
             let data = null;
             try {
-                // 注意：后端需要配合修改 app.py 才能实现真正的秒级刷新（见上一个回答）
                 const res = await fetch('/api/stats');
                 if (!res.ok) throw new Error();
                 data = await res.json();
             } catch (e) { return; }
 
-            // 1. 更新数值
             currentStats.value = data.current_stats;
             totalPlayers.value = data.current_stats.reduce((acc, c) => acc + c.count, 0);
             totalPeak48h.value = data.total_peak_48h || 0;
@@ -1850,7 +1826,6 @@ createApp({
                 });
             }
 
-            // 2. 平滑更新图表 (避免闪烁)
             setTimeout(() => {
                 const lineCtx = document.getElementById('statsLineChart');
                 const pieCtx = document.getElementById('statsPieChart');
@@ -1860,14 +1835,13 @@ createApp({
                 Chart.defaults.color = textColor;
                 Chart.defaults.borderColor = gridColor;
 
-                // 更新折线图
                 if (lineCtx) {
                     if (lineChartInst) {
                         lineChartInst.data.labels = data.line_chart.labels;
                         lineChartInst.data.datasets = data.line_chart.datasets;
                         lineChartInst.options.scales.x.ticks = { color: textColor };
                         lineChartInst.options.scales.y = { grid: { color: gridColor }, ticks: { color: textColor } };
-                        lineChartInst.update('none'); // 无动画模式更新数据
+                        lineChartInst.update('none');
                     } else {
                         lineChartInst = new Chart(lineCtx, { 
                             type: 'line', 
@@ -1877,7 +1851,6 @@ createApp({
                     }
                 }
 
-                // 更新圆环图 (解决圆环闪烁的关键)
                 if (pieCtx) {
                     if (pieChartInst) {
                         pieChartInst.data.labels = data.pie_chart.labels;
@@ -1887,7 +1860,7 @@ createApp({
                         } else {
                             pieChartInst.data.datasets = data.pie_chart.datasets;
                         }
-                        pieChartInst.update(); // 平滑过渡动画
+                        pieChartInst.update();
                     } else {
                         pieChartInst = new Chart(pieCtx, { 
                             type: 'doughnut', 
@@ -1903,7 +1876,6 @@ createApp({
             }, 0);
         };
 
-        // --- 修复功能区 (Connection & Clipboard) ---
         const getConnectAddress = (srv) => {
             const host = srv.connect_ip || srv.ip;
             if (host && srv.port) {
@@ -1927,7 +1899,6 @@ createApp({
             window.location.href = getFastJoinUrl(target);
         };
 
-        // 兼容 HTTP 的复制函数
         const fallbackCopy = (text, toastMessage) => {
             const textArea = document.createElement("textarea");
             textArea.value = text;
