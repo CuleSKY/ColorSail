@@ -594,7 +594,7 @@
             </div>
         </div>
 
-        <div class="nav-item" :class="{active: curView === 'map_sub'}" @click="goToView('map_sub')">
+        <div class="nav-item" v-if="isLoggedIn" :class="{active: curView === 'map_sub'}" @click="goToView('map_sub')">
             <div class="icon-svg" v-html="icons.search_sub"></div>
             <span v-if="!isCollapsed">[[ t('sub_menu') ]]</span>
             <div class="tooltip" v-if="isCollapsed">[[ t('sub_menu') ]]</div>
@@ -681,7 +681,7 @@
                 </div>
 
                 <div class="top-controls">
-                    <div class="desktop-only-icon" style="position: relative;">
+                    <div class="desktop-only-icon" v-if="isLoggedIn" style="position: relative;">
                         <button class="control-btn" :class="{'menu-active': showSubPopover}" @click.stop="toggleSubPopover" :title="t('my_subs')">
                             <div class="icon-svg" v-html="icons.bell"></div>
                         </button>
@@ -804,7 +804,7 @@
                 </div>
             </div>
 
-            <div v-if="curView === 'map_sub'" class="animate-enter">
+            <div v-if="curView === 'map_sub' && isLoggedIn" class="animate-enter">
                 <div class="sub-container">
                     
                     <div class="perm-warning" v-if="notificationPermission !== 'granted'" @click="requestPerm">
@@ -1085,6 +1085,10 @@ createApp({
                 serverMapQuery.value = next;
             }, 200);
         });
+        watch([isLoggedIn, curView], () => {
+            scheduleServerRefresh();
+            scheduleStatsRefresh();
+        });
 
         const updateFavicon = () => {
             const icon = document.getElementById('favicon');
@@ -1103,6 +1107,10 @@ createApp({
                 showSubPopover.value = false;
                 showProfileMenu.value = false;
             }
+        };
+        const handleVisibilityChange = () => {
+            scheduleServerRefresh();
+            scheduleStatsRefresh();
         };
 
         const clearToastTimer = () => {
@@ -1133,7 +1141,7 @@ createApp({
 
         const fetchSteamStatus = async (silent = false) => {
             try {
-                const res = await fetch('/api/steam/status', { credentials: 'same-origin' });
+                const res = await fetch('/auth/me', { credentials: 'same-origin' });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 const isLoggedInBool = Boolean(data && data.logged_in);
@@ -1192,6 +1200,7 @@ createApp({
             window.addEventListener('resize', handleResize);
             window.addEventListener('click', handleGlobalClick);
             window.addEventListener('message', handleSteamMessage);
+            document.addEventListener('visibilitychange', handleVisibilityChange);
             
             if(isDark.value) document.documentElement.setAttribute('data-theme', 'dark');
             updateFavicon();
@@ -1227,7 +1236,7 @@ createApp({
             await loadLanguage();
             await loadTranslations();
             await fetchConfig();
-            if ((initialView === 'stats' || initialView === 'feedback') && !isLoggedIn.value) {
+            if ((initialView === 'map_sub' || initialView === 'stats' || initialView === 'feedback') && !isLoggedIn.value) {
                 curView.value = 'servers';
                 showToast(t('login_required_title'));
             }
@@ -1246,6 +1255,7 @@ createApp({
             window.removeEventListener('resize', handleResize);
             window.removeEventListener('click', handleGlobalClick);
             window.removeEventListener('message', handleSteamMessage);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
             stopSteamLoginWatcher();
             clearToastTimer();
         });
@@ -1348,7 +1358,7 @@ createApp({
 
         const hasFeature = (feat) => communities.value.some(c => c.features.includes(feat));
         const goToView = (view) => {
-            if ((view === 'stats' || view === 'feedback') && !isLoggedIn.value) {
+            if ((view === 'map_sub' || view === 'stats' || view === 'feedback') && !isLoggedIn.value) {
                 showToast(t('login_required_title'));
                 return;
             }
@@ -1400,7 +1410,7 @@ createApp({
 
         const loadLanguage = async (silent = false) => {
             try {
-                const res = await fetch(`/api/language?ts=${Date.now()}`);
+                const res = await fetch('/language.json');
                 if (!res.ok) {
                     throw new Error(`HTTP ${res.status}`);
                 }
@@ -1418,7 +1428,7 @@ createApp({
 
         const loadTranslations = async () => {
             try {
-                const res = await fetch('/api/map_translations');
+                const res = await fetch('/map_translations.json');
                 const data = await res.json();
                 const normalized = {};
                 for (const [key, value] of Object.entries(data)) {
@@ -1620,8 +1630,13 @@ createApp({
 
         const serverStaleMs = 15000;
         const refreshIntervalMs = 15000;
+        const loggedInRefreshIntervalMs = 30000;
+        const hiddenRefreshIntervalMs = 30000;
         const statsRefreshIntervalMs = 15000;
+        const hiddenStatsRefreshIntervalMs = 30000;
         const languageRefreshIntervalMs = 15000;
+        let serverRefreshTimer = null;
+        let statsRefreshTimer = null;
 
         const applyCommunities = (data) => {
             communities.value = Array.isArray(data) ? data : [];
@@ -1649,7 +1664,7 @@ createApp({
 
         const fetchConfig = async () => {
             try {
-                const res = await fetch('/api/config');
+                const res = await fetch('/config.json');
                 const data = await res.json();
                 
                 try {
@@ -1671,7 +1686,7 @@ createApp({
             const now = Date.now();
             let payload = {};
             try {
-                const res = await fetch(`/api/servers`);
+                const res = await fetch(`/servers.json`);
                 payload = await res.json();
             } catch(e) {}
             if (Array.isArray(payload)) {
@@ -1701,12 +1716,41 @@ createApp({
             });
         };
 
-        setInterval(() => refreshAllServers(), refreshIntervalMs);
-        setInterval(() => {
-            if (curView.value === 'stats') {
-                loadStats();
+        const getServerRefreshInterval = () => {
+            const baseInterval = isLoggedIn.value ? loggedInRefreshIntervalMs : refreshIntervalMs;
+            if (document.visibilityState !== 'visible') {
+                return Math.max(baseInterval, hiddenRefreshIntervalMs);
             }
-        }, statsRefreshIntervalMs);
+            return baseInterval;
+        };
+
+        const getStatsRefreshInterval = () => {
+            if (document.visibilityState !== 'visible') {
+                return Math.max(statsRefreshIntervalMs, hiddenStatsRefreshIntervalMs);
+            }
+            return statsRefreshIntervalMs;
+        };
+
+        const scheduleServerRefresh = () => {
+            if (serverRefreshTimer) clearInterval(serverRefreshTimer);
+            serverRefreshTimer = setInterval(() => refreshAllServers(), getServerRefreshInterval());
+        };
+
+        const scheduleStatsRefresh = () => {
+            if (statsRefreshTimer) clearInterval(statsRefreshTimer);
+            if (!isLoggedIn.value || curView.value !== 'stats') {
+                return;
+            }
+            loadStats();
+            statsRefreshTimer = setInterval(() => {
+                if (curView.value === 'stats' && isLoggedIn.value) {
+                    loadStats();
+                }
+            }, getStatsRefreshInterval());
+        };
+
+        scheduleServerRefresh();
+        scheduleStatsRefresh();
         setInterval(() => {
             loadLanguage(true);
         }, languageRefreshIntervalMs);

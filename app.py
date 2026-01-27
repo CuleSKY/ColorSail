@@ -265,9 +265,13 @@ def validate_csrf_token():
         return False
     return True
 
+def is_logged_in():
+    steam_id = session.get('steam_id')
+    return bool(session.get('steam_logged_in')) and bool(steam_id)
+
 def is_admin_user():
     steam_id = session.get('steam_id')
-    return bool(session.get('steam_logged_in')) and steam_id in ADMIN_STEAM_IDS
+    return is_logged_in() and steam_id in ADMIN_STEAM_IDS
 
 def require_admin():
     load_config()
@@ -277,7 +281,7 @@ def require_admin():
 
 def is_prime_user():
     steam_id = session.get('steam_id')
-    if not (session.get('steam_logged_in') and steam_id):
+    if not is_logged_in():
         return False
     return steam_id in PRIME_USERS_SET
 
@@ -367,6 +371,59 @@ def fetch_persona_name(steam_id):
         return "Unknown"
     match = re.search(r"<steamID><!\[CDATA\[(.*?)\]\]></steamID>", resp.text)
     return match.group(1) if match else "Unknown"
+
+def make_etag_response(payload, cache_control=None):
+    payload_json = json.dumps(payload, sort_keys=True, separators=(',', ':'))
+    etag = hashlib.sha256(payload_json.encode('utf-8')).hexdigest()
+    etag_value = f"\"{etag}\""
+    if_none_match = request.headers.get('If-None-Match', '')
+    if if_none_match:
+        candidates = [tag.strip() for tag in if_none_match.split(',')]
+        if etag_value in candidates or f'W/{etag_value}' in candidates:
+            resp = make_response('', 304)
+            resp.headers['ETag'] = etag_value
+            if cache_control:
+                resp.headers['Cache-Control'] = cache_control
+            return resp
+    resp = make_response(payload_json, 200)
+    resp.headers['Content-Type'] = 'application/json'
+    resp.headers['ETag'] = etag_value
+    if cache_control:
+        resp.headers['Cache-Control'] = cache_control
+    return resp
+
+def build_language_payload():
+    try:
+        if os.path.exists(LANGUAGE_FILE):
+            with open(LANGUAGE_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                zh_cn = data.get('zh-CN')
+                if isinstance(zh_cn, dict):
+                    if 'zh-TW' not in data:
+                        if OPENCC_S2TWP:
+                            data['zh-TW'] = {key: OPENCC_S2TWP.convert(str(value)) for key, value in zh_cn.items()}
+                        else:
+                            data['zh-TW'] = dict(zh_cn)
+                    if 'zh-HK' not in data:
+                        if OPENCC_S2HK:
+                            data['zh-HK'] = {key: OPENCC_S2HK.convert(str(value)) for key, value in zh_cn.items()}
+                        else:
+                            data['zh-HK'] = dict(zh_cn)
+                return data
+    except Exception as e:
+        print(f"[Language] 加载失败: {e}")
+    return {}
+
+def build_server_snapshot():
+    load_config()
+    with SERVER_CACHE_LOCK:
+        data = {cid: list(servers) for cid, servers in SERVER_CACHE.items()}
+    for comm in COMMUNITY_META:
+        cid = comm.get('id')
+        if cid:
+            data.setdefault(cid, [])
+    return data
 
 def check_prime_rate_limit(admin_id):
     now = time.time()
@@ -1084,6 +1141,8 @@ def initialize_app():
 @app.route('/stats')
 @app.route('/feedback')
 def index():
+    if request.path in {'/map-sub', '/stats', '/feedback'} and not is_logged_in():
+        return redirect(url_for('index'))
     # [替换原来的逻辑]
     
     # 1. 处理语言参数
@@ -1183,7 +1242,23 @@ def steam_callback():
 def steam_status():
     load_config()
     steam_id = session.get('steam_id')
-    logged_in = bool(session.get('steam_logged_in')) and bool(steam_id)
+    logged_in = is_logged_in()
+    profile = get_cached_steam_profile(steam_id) if logged_in else None
+    role = "admin" if logged_in and steam_id in ADMIN_STEAM_IDS else "member"
+    prime = bool(logged_in and steam_id in PRIME_USERS_SET)
+    return jsonify({
+        "logged_in": logged_in,
+        "steam_id": steam_id if logged_in else None,
+        "role": role if logged_in else "guest",
+        "prime": prime if logged_in else False,
+        "profile": profile
+    })
+
+@app.route('/auth/me')
+def auth_me():
+    load_config()
+    steam_id = session.get('steam_id')
+    logged_in = is_logged_in()
     profile = get_cached_steam_profile(steam_id) if logged_in else None
     role = "admin" if logged_in and steam_id in ADMIN_STEAM_IDS else "member"
     prime = bool(logged_in and steam_id in PRIME_USERS_SET)
@@ -1313,17 +1388,23 @@ def get_config_meta():
     load_config()
     return jsonify(build_community_meta())
 
+@app.route('/config.json')
+def get_public_config():
+    """公开的社区元数据（只读）"""
+    load_config()
+    return make_etag_response(build_community_meta(), 'public, max-age=1')
+
 @app.route('/api/servers')
 def get_all_servers():
     """返回所有社区的实时服务器列表"""
-    load_config()
-    with SERVER_CACHE_LOCK:
-        data = {cid: list(servers) for cid, servers in SERVER_CACHE.items()}
-    for comm in COMMUNITY_META:
-        cid = comm.get('id')
-        if cid:
-            data.setdefault(cid, [])
+    data = build_server_snapshot()
     return jsonify(data)
+
+@app.route('/servers.json')
+def get_public_servers():
+    """公开的服务器快照（只读）"""
+    data = build_server_snapshot()
+    return make_etag_response(data, 'public, max-age=1')
 
 @app.route('/api/servers/<cid>')
 def get_servers(cid):
@@ -1519,29 +1600,19 @@ def get_translations():
     refresh_local_caches()
     return jsonify(MAP_TRANS_CACHE)
 
+@app.route('/map_translations.json')
+def get_public_translations():
+    refresh_local_caches()
+    return make_etag_response(MAP_TRANS_CACHE, 'public, max-age=1')
+
 @app.route('/api/language')
 def get_language_pack():
-    try:
-        if os.path.exists(LANGUAGE_FILE):
-            with open(LANGUAGE_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            if isinstance(data, dict):
-                zh_cn = data.get('zh-CN')
-                if isinstance(zh_cn, dict):
-                    if 'zh-TW' not in data:
-                        if OPENCC_S2TWP:
-                            data['zh-TW'] = {key: OPENCC_S2TWP.convert(str(value)) for key, value in zh_cn.items()}
-                        else:
-                            data['zh-TW'] = dict(zh_cn)
-                    if 'zh-HK' not in data:
-                        if OPENCC_S2HK:
-                            data['zh-HK'] = {key: OPENCC_S2HK.convert(str(value)) for key, value in zh_cn.items()}
-                        else:
-                            data['zh-HK'] = dict(zh_cn)
-                return jsonify(data)
-    except Exception as e:
-        print(f"[Language] 加载失败: {e}")
-    return jsonify({})
+    return jsonify(build_language_payload())
+
+@app.route('/language.json')
+def get_public_language_pack():
+    data = build_language_payload()
+    return make_etag_response(data, 'public, max-age=1')
 
 @app.route('/api/stats')
 def get_stats():
@@ -1635,8 +1706,21 @@ def get_stats():
         "total_peak_48h": total_peak_48h
     }
     
-    return jsonify(payload)
+    return make_etag_response(payload)
 
+
+@app.before_request
+def enforce_api_authentication():
+    path = request.path or ''
+    if not path.startswith('/api/'):
+        return None
+    if path.startswith('/api/steam/login') or path.startswith('/api/steam/callback') or path.startswith('/api/steam/status'):
+        return None
+    if path.startswith('/api/agent/'):
+        return None
+    if is_logged_in():
+        return None
+    return jsonify({"ok": False, "error": "login_required"}), 401
 
 @app.before_request
 def ensure_csrf_on_login():
