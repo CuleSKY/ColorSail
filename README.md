@@ -8,6 +8,10 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Deployment notes
+
+See `docs/autojoin_v2_deploy.md` for AutoJoin v2 deployment requirements and WebSocket proxying notes.
+
 ## Required environment variables
 
 - `CS2ZE_BASE_URL` (optional, default `http://localhost:5000`)
