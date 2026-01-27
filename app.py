@@ -22,7 +22,22 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 import a2s
 from apscheduler.schedulers.background import BackgroundScheduler
 from concurrent.futures import ThreadPoolExecutor
-from autojoin_blueprint import AutoJoinHub, EventRateLimiter, WatcherConfig, create_autojoin_blueprint, register_autojoin_ws
+try:
+    from autojoin_blueprint import (
+        AutoJoinHub,
+        EventRateLimiter,
+        WatcherConfig,
+        create_autojoin_blueprint,
+        register_autojoin_ws,
+    )
+    AUTOJOIN_AVAILABLE = True
+except ModuleNotFoundError:
+    AutoJoinHub = None
+    EventRateLimiter = None
+    WatcherConfig = None
+    create_autojoin_blueprint = None
+    register_autojoin_ws = None
+    AUTOJOIN_AVAILABLE = False
 try:
     from opencc import OpenCC
 except Exception:
@@ -1548,52 +1563,55 @@ def require_prime():
         return make_response("Forbidden", 403)
     return None
 
-autojoin_hub = AutoJoinHub()
-autojoin_limiter = EventRateLimiter()
-autojoin_cfg = WatcherConfig(
-    cn_url=WATCHER_CN_URL,
-    us_url=WATCHER_US_URL,
-    shared_token=os.environ.get('WATCHER_SHARED_TOKEN'),
-    hmac_secret=WATCHER_HMAC_SECRET,
-    allowed_ids=WATCHER_ALLOWED_IDS or None,
-)
-app.register_blueprint(create_autojoin_blueprint(autojoin_cfg, autojoin_hub, autojoin_limiter, is_prime_user))
-register_autojoin_ws(sock, autojoin_hub)
+if AUTOJOIN_AVAILABLE:
+    autojoin_hub = AutoJoinHub()
+    autojoin_limiter = EventRateLimiter()
+    autojoin_cfg = WatcherConfig(
+        cn_url=WATCHER_CN_URL,
+        us_url=WATCHER_US_URL,
+        shared_token=os.environ.get('WATCHER_SHARED_TOKEN'),
+        hmac_secret=WATCHER_HMAC_SECRET,
+        allowed_ids=WATCHER_ALLOWED_IDS or None,
+    )
+    app.register_blueprint(create_autojoin_blueprint(autojoin_cfg, autojoin_hub, autojoin_limiter, is_prime_user))
+    register_autojoin_ws(sock, autojoin_hub)
 
-@app.route('/api/autojoin/join', methods=['POST'])
-def autojoin_join():
-    denied = require_prime()
-    if denied:
-        return denied
-    return proxy_to_watcher('/v1/autojoin/join', 'POST')
+    @app.route('/api/autojoin/join', methods=['POST'])
+    def autojoin_join():
+        denied = require_prime()
+        if denied:
+            return denied
+        return proxy_to_watcher('/v1/autojoin/join', 'POST')
 
-@app.route('/api/autojoin/poll')
-def autojoin_poll():
-    denied = require_prime()
-    if denied:
-        return denied
-    return proxy_to_watcher('/v1/autojoin/poll', 'GET')
+    @app.route('/api/autojoin/poll')
+    def autojoin_poll():
+        denied = require_prime()
+        if denied:
+            return denied
+        return proxy_to_watcher('/v1/autojoin/poll', 'GET')
 
-@app.route('/api/autojoin/report', methods=['POST'])
-def autojoin_report():
-    denied = require_prime()
-    if denied:
-        return denied
-    return proxy_to_watcher('/v1/autojoin/report', 'POST')
+    @app.route('/api/autojoin/report', methods=['POST'])
+    def autojoin_report():
+        denied = require_prime()
+        if denied:
+            return denied
+        return proxy_to_watcher('/v1/autojoin/report', 'POST')
 
-@app.route('/api/autojoin/leave', methods=['POST'])
-def autojoin_leave():
-    denied = require_prime()
-    if denied:
-        return denied
-    return proxy_to_watcher('/v1/autojoin/leave', 'POST')
+    @app.route('/api/autojoin/leave', methods=['POST'])
+    def autojoin_leave():
+        denied = require_prime()
+        if denied:
+            return denied
+        return proxy_to_watcher('/v1/autojoin/leave', 'POST')
 
-@app.route('/api/autojoin/targets')
-def autojoin_targets():
-    denied = require_prime()
-    if denied:
-        return denied
-    return proxy_to_watcher('/v1/targets', 'GET')
+    @app.route('/api/autojoin/targets')
+    def autojoin_targets():
+        denied = require_prime()
+        if denied:
+            return denied
+        return proxy_to_watcher('/v1/targets', 'GET')
+else:
+    print("[AutoJoin] autojoin_blueprint not available; AutoJoin features disabled.")
 
 @app.route('/api/map_translations')
 def get_translations():
