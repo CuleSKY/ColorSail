@@ -94,6 +94,7 @@ os.makedirs(STATIC_MAP_DIR, exist_ok=True)
 
 # --- 全局状态 ---
 SERVER_CACHE = {}
+SERVER_CACHE_VERSION = 0  # bump when SERVER_CACHE mutates so public caches can rebuild
 AGENT_CACHE = {}
 AGENT_CACHE_UPDATED_AT = {}
 COMMUNITY_META = []
@@ -111,6 +112,13 @@ MAP_TRANS_NORMALIZED = {}
 MAP_TRANS_LOCK = threading.Lock()
 SERVER_CACHE_LOCK = threading.Lock()
 AGENT_CACHE_LOCK = threading.Lock()
+PUBLIC_SERVERS_LOCK = threading.Lock()
+PUBLIC_SERVERS_BYTES = b''  # cached /servers.json payload to avoid per-request serialization
+PUBLIC_SERVERS_ETAG = '"0"'
+PUBLIC_SERVERS_BUILT_AT = 0.0
+PUBLIC_SERVERS_BUILT_VER = -1
+CID_CACHE_LOCK = threading.Lock()
+CID_SERVERS_CACHE = {}  # per-cid cache keyed by SERVER_CACHE_VERSION
 MAP_TRANS_DIRTY = False
 MAP_TRANS_LAST_WRITE = 0
 MAP_CACHE_UPDATED_AT = 0
@@ -405,20 +413,36 @@ def fetch_persona_name(steam_id):
     match = re.search(r"<steamID><!\[CDATA\[(.*?)\]\]></steamID>", resp.text)
     return match.group(1) if match else "Unknown"
 
+def normalize_json(payload):
+    if isinstance(payload, MappingProxyType):
+        return {key: normalize_json(value) for key, value in payload.items()}
+    if isinstance(payload, dict):
+        return {key: normalize_json(value) for key, value in payload.items()}
+    if isinstance(payload, (list, tuple)):
+        return [normalize_json(value) for value in payload]
+    if isinstance(payload, set):
+        return sorted((normalize_json(value) for value in payload), key=repr)
+    if payload is None or isinstance(payload, (str, int, float, bool)):
+        return payload
+    raise TypeError(f"Unsupported payload type: {type(payload)!r}")
+
+def etag_matches(if_none_match, etag_value):
+    if not if_none_match:
+        return False
+    candidates = [tag.strip() for tag in if_none_match.split(',')]
+    return etag_value in candidates or f'W/{etag_value}' in candidates
+
 def make_etag_response(payload, cache_control=None):
-    payload_normalized = normalize_payload(payload)
+    payload_normalized = normalize_json(payload)
     payload_json = json.dumps(payload_normalized, sort_keys=True, separators=(',', ':'))
     etag = hashlib.sha256(payload_json.encode('utf-8')).hexdigest()
     etag_value = f"\"{etag}\""
-    if_none_match = request.headers.get('If-None-Match', '')
-    if if_none_match:
-        candidates = [tag.strip() for tag in if_none_match.split(',')]
-        if etag_value in candidates or f'W/{etag_value}' in candidates:
-            resp = make_response('', 304)
-            resp.headers['ETag'] = etag_value
-            if cache_control:
-                resp.headers['Cache-Control'] = cache_control
-            return resp
+    if etag_matches(request.headers.get('If-None-Match', ''), etag_value):
+        resp = make_response('', 304)
+        resp.headers['ETag'] = etag_value
+        if cache_control:
+            resp.headers['Cache-Control'] = cache_control
+        return resp
     resp = make_response(payload_json, 200)
     resp.headers['Content-Type'] = 'application/json'
     resp.headers['ETag'] = etag_value
@@ -426,14 +450,46 @@ def make_etag_response(payload, cache_control=None):
         resp.headers['Cache-Control'] = cache_control
     return resp
 
-def normalize_payload(payload):
-    if isinstance(payload, MappingProxyType):
-        return {key: normalize_payload(value) for key, value in payload.items()}
-    if isinstance(payload, dict):
-        return {key: normalize_payload(value) for key, value in payload.items()}
-    if isinstance(payload, (list, tuple)):
-        return [normalize_payload(value) for value in payload]
-    return payload
+def server_sort_key(server):
+    if not isinstance(server, dict):
+        return ('', '', '', '')
+    server_key = server.get('server_key')
+    if server_key:
+        return (str(server_key), '', '', '')
+    display_ip = server.get('display_ip')
+    ip = server.get('ip')
+    port = server.get('port')
+    return (str(display_ip or ''), str(ip or ''), str(port or ''), '')
+
+def rebuild_public_servers_cache_if_needed(min_interval=1.0):
+    global PUBLIC_SERVERS_BYTES, PUBLIC_SERVERS_ETAG, PUBLIC_SERVERS_BUILT_AT, PUBLIC_SERVERS_BUILT_VER
+    with SERVER_CACHE_LOCK:
+        current_version = SERVER_CACHE_VERSION
+    now = time.time()
+    with PUBLIC_SERVERS_LOCK:
+        if PUBLIC_SERVERS_BUILT_VER == current_version:
+            return
+        if now - PUBLIC_SERVERS_BUILT_AT < min_interval:
+            return
+    snapshot = get_config_snapshot()
+    with SERVER_CACHE_LOCK:
+        current_version = SERVER_CACHE_VERSION
+        data = {cid: list(servers) for cid, servers in SERVER_CACHE.items()}
+    for comm in snapshot['community_meta']:
+        cid = comm.get('id')
+        if cid:
+            data.setdefault(cid, [])
+    for cid, servers in data.items():
+        data[cid] = sorted(servers, key=server_sort_key)
+    payload_json = json.dumps(data, sort_keys=True, separators=(',', ':'))
+    payload_bytes = payload_json.encode('utf-8')
+    etag = hashlib.sha256(payload_bytes).hexdigest()
+    etag_value = f"\"{etag}\""
+    with PUBLIC_SERVERS_LOCK:
+        PUBLIC_SERVERS_BYTES = payload_bytes
+        PUBLIC_SERVERS_ETAG = etag_value
+        PUBLIC_SERVERS_BUILT_AT = now
+        PUBLIC_SERVERS_BUILT_VER = current_version
 
 def build_language_payload():
     try:
@@ -1042,7 +1098,7 @@ def count_players_for_stats(cid, servers):
 
 def update_single_comm(comm):
     """更新单个社区数据并写入缓存"""
-    global SERVER_CACHE
+    global SERVER_CACHE, SERVER_CACHE_VERSION
     cid = comm['id']
     result = []
     now = int(time.time())
@@ -1080,6 +1136,9 @@ def update_single_comm(comm):
 
     with SERVER_CACHE_LOCK:
         SERVER_CACHE[cid] = result
+        SERVER_CACHE_VERSION += 1  # bump version so public caches rebuild
+    with CID_CACHE_LOCK:
+        CID_SERVERS_CACHE.pop(cid, None)
     return result
 
 
@@ -1283,13 +1342,8 @@ def index():
     initial_view = view_map.get(request.path, 'servers')
     snapshot = get_config_snapshot()
     initial_config = [dict(comm) for comm in snapshot['community_meta']]
-    with SERVER_CACHE_LOCK:
-        for comm in initial_config:
-            cid = comm['id']
-            if cid in SERVER_CACHE and SERVER_CACHE[cid]:
-                comm['servers'] = SERVER_CACHE[cid]
-            else:
-                comm['servers'] = [] 
+    for comm in initial_config:
+        comm['servers'] = []
                 
     return render_template('index.html', 
                            initial_view=initial_view, 
@@ -1519,18 +1573,54 @@ def get_all_servers():
 @app.route('/servers.json')
 def get_public_servers():
     """公开的服务器快照（只读）"""
-    data = build_server_snapshot()
-    return make_etag_response(data, 'public, max-age=1')
+    rebuild_public_servers_cache_if_needed(min_interval=1.0)
+    with PUBLIC_SERVERS_LOCK:
+        payload_bytes = PUBLIC_SERVERS_BYTES
+        etag_value = PUBLIC_SERVERS_ETAG
+    if etag_matches(request.headers.get('If-None-Match', ''), etag_value):
+        resp = make_response('', 304)
+        resp.headers['ETag'] = etag_value
+        resp.headers['Cache-Control'] = 'public, max-age=2'
+        return resp
+    resp = make_response(payload_bytes, 200)
+    resp.headers['Content-Type'] = 'application/json; charset=utf-8'
+    resp.headers['ETag'] = etag_value
+    resp.headers['Cache-Control'] = 'public, max-age=2'
+    return resp
 
 @app.route('/api/servers/<cid>')
 def get_servers(cid):
     """返回指定社区的实时服务器列表"""
     with SERVER_CACHE_LOCK:
-        data = SERVER_CACHE.get(cid, [])
-    return jsonify(data)
+        current_version = SERVER_CACHE_VERSION
+    with CID_CACHE_LOCK:
+        cached = CID_SERVERS_CACHE.get(cid)
+    if cached and cached[0] == current_version:
+        payload_bytes, etag_value = cached[1], cached[2]
+    else:
+        with SERVER_CACHE_LOCK:
+            current_version = SERVER_CACHE_VERSION
+            servers = list(SERVER_CACHE.get(cid, []))
+        servers = sorted(servers, key=server_sort_key)
+        payload_json = json.dumps(servers, sort_keys=True, separators=(',', ':'))
+        payload_bytes = payload_json.encode('utf-8')
+        etag_value = f"\"{hashlib.sha256(payload_bytes).hexdigest()}\""
+        with CID_CACHE_LOCK:
+            CID_SERVERS_CACHE[cid] = (current_version, payload_bytes, etag_value)
+    if etag_matches(request.headers.get('If-None-Match', ''), etag_value):
+        resp = make_response('', 304)
+        resp.headers['ETag'] = etag_value
+        resp.headers['Cache-Control'] = 'public, max-age=2'
+        return resp
+    resp = make_response(payload_bytes, 200)
+    resp.headers['Content-Type'] = 'application/json; charset=utf-8'
+    resp.headers['ETag'] = etag_value
+    resp.headers['Cache-Control'] = 'public, max-age=2'
+    return resp
 
 @app.route('/api/agent/update', methods=['POST'])
 def update_agent_data():
+    global SERVER_CACHE_VERSION
     initialize_app()
     token = os.environ.get('AGENT_SHARED_TOKEN')
     if not token:
@@ -1588,6 +1678,9 @@ def update_agent_data():
             AGENT_CACHE_UPDATED_AT[cid] = int(time.time())
         with SERVER_CACHE_LOCK:
             SERVER_CACHE[cid] = normalized
+            SERVER_CACHE_VERSION += 1  # bump version so public caches rebuild
+        with CID_CACHE_LOCK:
+            CID_SERVERS_CACHE.pop(cid, None)
 
     return jsonify({"status": "ok", "updated": list(communities.keys())})
 
