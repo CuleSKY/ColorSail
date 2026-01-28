@@ -454,6 +454,13 @@ def check_prime_rate_limit(admin_id):
         dq.append(now)
         return True
 
+def set_no_store(response):
+    response.headers['Cache-Control'] = 'private, no-store, no-cache, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    response.headers['Vary'] = 'Cookie'
+    return response
+
 def build_steam_openid_url():
     state = secrets.token_urlsafe(24)
     session['steam_login_state'] = state
@@ -552,8 +559,7 @@ def render_steam_callback(status, reason, steam_id=None):
 </body>
 </html>"""
     resp = make_response(html)
-    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    return resp
+    return set_no_store(resp)
 
 def fetch_steam_profile(steam_id):
     if not steam_id:
@@ -1201,7 +1207,7 @@ def index():
 @app.route('/api/steam/login')
 def steam_login():
     login_url = build_steam_openid_url()
-    return redirect(login_url)
+    return set_no_store(redirect(login_url))
 
 @app.route('/api/steam/callback')
 def steam_callback():
@@ -1261,13 +1267,13 @@ def steam_status():
     profile = get_cached_steam_profile(steam_id) if logged_in else None
     role = "admin" if logged_in and steam_id in ADMIN_STEAM_IDS else "member"
     prime = bool(logged_in and steam_id in PRIME_USERS_SET)
-    return jsonify({
+    return set_no_store(jsonify({
         "logged_in": logged_in,
         "steam_id": steam_id if logged_in else None,
         "role": role if logged_in else "guest",
         "prime": prime if logged_in else False,
         "profile": profile
-    })
+    }))
 
 @app.route('/auth/me')
 def auth_me():
@@ -1277,24 +1283,24 @@ def auth_me():
     profile = get_cached_steam_profile(steam_id) if logged_in else None
     role = "admin" if logged_in and steam_id in ADMIN_STEAM_IDS else "member"
     prime = bool(logged_in and steam_id in PRIME_USERS_SET)
-    return jsonify({
+    return set_no_store(jsonify({
         "logged_in": logged_in,
         "steam_id": steam_id if logged_in else None,
         "role": role if logged_in else "guest",
         "prime": prime if logged_in else False,
         "profile": profile
-    })
+    }))
 
 @app.route('/api/steam/logout', methods=['POST'])
 def steam_logout():
-    session.pop('steam_id', None)
-    session.pop('steam_logged_in', None)
-    session.pop('steam_login_state', None)
-    session.pop('steam_login_created_at', None)
-    session.pop('steam_profile', None)
-    session.pop('steam_profile_updated_at', None)
-    session.pop('csrf_token', None)
-    return jsonify({"logged_in": False})
+    session.clear()
+    resp = set_no_store(jsonify({"logged_in": False}))
+    cookie_domain = app.config.get('SESSION_COOKIE_DOMAIN')
+    if cookie_domain:
+        resp.delete_cookie(app.session_cookie_name, path='/', domain=cookie_domain)
+    else:
+        resp.delete_cookie(app.session_cookie_name, path='/')
+    return resp
 
 @app.route('/admin/prime')
 def admin_prime():
@@ -1733,6 +1739,8 @@ def enforce_api_authentication():
     if not path.startswith('/api/'):
         return None
     if path.startswith('/api/steam/login') or path.startswith('/api/steam/callback') or path.startswith('/api/steam/status'):
+        return None
+    if path.startswith('/api/steam/logout'):
         return None
     if path.startswith('/api/agent/'):
         return None
