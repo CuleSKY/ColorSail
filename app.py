@@ -13,6 +13,7 @@ import ipaddress
 import secrets
 import re
 from collections import deque
+from types import MappingProxyType
 from urllib.parse import urlencode
 from datetime import datetime
 from datetime import timedelta
@@ -115,6 +116,20 @@ MAP_TRANS_LAST_WRITE = 0
 MAP_CACHE_UPDATED_AT = 0
 APP_INIT_LOCK = threading.Lock()
 APP_INITIALIZED = False
+CONFIG_SNAPSHOT = {
+    "communities": tuple(),
+    "community_meta": tuple(),
+    "admin_steam_ids": frozenset(),
+    "fys_ids": frozenset(),
+    "stats_export_retention_days": 30
+}
+CONFIG_SNAPSHOT_MTIME = 0.0
+CONFIG_SNAPSHOT_VERSION = 0
+CONFIG_SNAPSHOT_LOCK = threading.Lock()
+CONFIG_REFRESH_INTERVAL_SECONDS = 2
+CONFIG_REFRESHER_STARTED = False
+CONFIG_REFRESHER_THREAD = None
+CONFIG_SNAPSHOT_ERROR_MTIME = None
 CACHE_REFRESH_INTERVAL_SECONDS = 300
 OPENCC_S2T = OpenCC('s2t') if OpenCC else None
 OPENCC_S2HK = OpenCC('s2hk') if OpenCC else None
@@ -284,12 +299,15 @@ def is_logged_in():
     steam_id = session.get('steam_id')
     return bool(session.get('steam_logged_in')) and bool(steam_id)
 
+def get_config_snapshot():
+    return CONFIG_SNAPSHOT
+
 def is_admin_user():
     steam_id = session.get('steam_id')
-    return is_logged_in() and steam_id in ADMIN_STEAM_IDS
+    snapshot = get_config_snapshot()
+    return is_logged_in() and steam_id in snapshot['admin_steam_ids']
 
 def require_admin():
-    load_config()
     if not is_admin_user():
         return make_response("Forbidden", 403)
     return None
@@ -431,10 +449,10 @@ def build_language_payload():
     return {}
 
 def build_server_snapshot():
-    load_config()
+    snapshot = get_config_snapshot()
     with SERVER_CACHE_LOCK:
         data = {cid: list(servers) for cid, servers in SERVER_CACHE.items()}
-    for comm in COMMUNITY_META:
+    for comm in snapshot['community_meta']:
         cid = comm.get('id')
         if cid:
             data.setdefault(cid, [])
@@ -703,39 +721,100 @@ def get_map_image_url(map_name):
         return f"/static/maps/{filename}"
     return None
 
-def load_config():
-    """加载 config.json 中的社区列表结构"""
+def build_config_snapshot(data):
+    communities = []
+    if isinstance(data, dict):
+        raw_communities = data.get('communities', [])
+        if isinstance(raw_communities, list):
+            for comm in raw_communities:
+                if isinstance(comm, dict):
+                    communities.append(MappingProxyType(dict(comm)))
+    admin_ids = set()
+    if isinstance(data, dict):
+        admin_ids = {str(sid).strip() for sid in data.get('admin_steam_ids', []) if str(sid).strip()}
+    fys_ids = set()
+    for comm in communities:
+        cid = str(comm.get('id', '')).strip()
+        name = str(comm.get('name', '')).strip()
+        short_name = str(comm.get('short_name', '')).strip()
+        if cid.casefold() == "fys" or name.casefold() == "fys" or short_name.casefold() == "fys":
+            if cid:
+                fys_ids.add(cid)
+    retention_days = STATS_EXPORT_RETENTION_DAYS
+    if isinstance(data, dict):
+        candidate = data.get('stats_export_retention_days')
+        if isinstance(candidate, int) and candidate > 0:
+            retention_days = candidate
+    community_meta = [MappingProxyType(entry) for entry in build_community_meta(communities)]
+    return {
+        "communities": tuple(communities),
+        "community_meta": tuple(community_meta),
+        "admin_steam_ids": frozenset(admin_ids),
+        "fys_ids": frozenset(fys_ids),
+        "stats_export_retention_days": retention_days
+    }
+
+def refresh_config_snapshot(force=False):
+    """加载 config.json 并刷新内存快照（仅初始化和后台线程调用）"""
+    global CONFIG_SNAPSHOT, CONFIG_SNAPSHOT_MTIME, CONFIG_SNAPSHOT_VERSION, CONFIG_SNAPSHOT_ERROR_MTIME
     global COMMUNITY_META, STATS_EXPORT_RETENTION_DAYS, FYS_COMMUNITY_IDS, ADMIN_STEAM_IDS
+    try:
+        if os.path.exists(CONFIG_FILE):
+            config_mtime = os.path.getmtime(CONFIG_FILE)
+        else:
+            config_mtime = 0.0
+    except Exception as e:
+        print(f"[Config] 配置文件检测失败: {e}")
+        return False
+
+    if not force and config_mtime == CONFIG_SNAPSHOT_MTIME:
+        return False
+
     try:
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                COMMUNITY_META = data.get('communities', [])
-                ADMIN_STEAM_IDS = {str(sid).strip() for sid in data.get('admin_steam_ids', []) if str(sid).strip()}
-                fys_ids = set()
-                for comm in COMMUNITY_META:
-                    cid = str(comm.get('id', '')).strip()
-                    name = str(comm.get('name', '')).strip()
-                    short_name = str(comm.get('short_name', '')).strip()
-                    if cid.casefold() == "fys" or name.casefold() == "fys" or short_name.casefold() == "fys":
-                        if cid:
-                            fys_ids.add(cid)
-                FYS_COMMUNITY_IDS = fys_ids
-                retention_days = data.get('stats_export_retention_days')
-                if isinstance(retention_days, int) and retention_days > 0:
-                    STATS_EXPORT_RETENTION_DAYS = retention_days
-                print(f"[Config] 已加载 {len(COMMUNITY_META)} 个社区配置")
+            snapshot = build_config_snapshot(data)
+            print(f"[Config] 已加载 {len(snapshot['communities'])} 个社区配置")
         else:
+            snapshot = build_config_snapshot({})
             print("[Config] 配置文件不存在")
-            COMMUNITY_META = []
-            FYS_COMMUNITY_IDS = set()
-            ADMIN_STEAM_IDS = set()
+        with CONFIG_SNAPSHOT_LOCK:
+            CONFIG_SNAPSHOT = snapshot
+            CONFIG_SNAPSHOT_MTIME = config_mtime
+            CONFIG_SNAPSHOT_VERSION += 1
+            COMMUNITY_META = list(snapshot['communities'])
+            ADMIN_STEAM_IDS = set(snapshot['admin_steam_ids'])
+            FYS_COMMUNITY_IDS = set(snapshot['fys_ids'])
+            STATS_EXPORT_RETENTION_DAYS = snapshot['stats_export_retention_days']
+        CONFIG_SNAPSHOT_ERROR_MTIME = None
+        return True
     except Exception as e:
-        print(f"[Config] 加载失败: {e}")
-        FYS_COMMUNITY_IDS = set()
-        ADMIN_STEAM_IDS = set()
+        if CONFIG_SNAPSHOT_ERROR_MTIME != config_mtime:
+            print(f"[Config] 加载失败: {e}")
+            CONFIG_SNAPSHOT_ERROR_MTIME = config_mtime
+        with CONFIG_SNAPSHOT_LOCK:
+            CONFIG_SNAPSHOT_MTIME = config_mtime
+        return False
 
-def build_community_meta():
+def start_config_refresher():
+    global CONFIG_REFRESHER_STARTED, CONFIG_REFRESHER_THREAD
+    if CONFIG_REFRESHER_STARTED:
+        return
+    CONFIG_REFRESHER_STARTED = True
+
+    def refresher():
+        while True:
+            time.sleep(CONFIG_REFRESH_INTERVAL_SECONDS)
+            try:
+                refresh_config_snapshot()
+            except Exception as e:
+                print(f"[Config] 刷新线程异常: {e}")
+
+    CONFIG_REFRESHER_THREAD = threading.Thread(target=refresher, name="config-refresher", daemon=True)
+    CONFIG_REFRESHER_THREAD.start()
+
+def build_community_meta(communities=None):
     def is_svg_asset(value):
         if not value:
             return False
@@ -743,7 +822,10 @@ def build_community_meta():
         return value.lower().split('?', 1)[0].endswith('.svg')
 
     meta = []
-    for c in COMMUNITY_META:
+    if communities is None:
+        snapshot = get_config_snapshot()
+        communities = snapshot['communities']
+    for c in communities:
         meta.append({
             "id": c['id'],
             "name": c['name'],
@@ -932,7 +1014,8 @@ def is_exg_stats_eligible(server):
     return not any(keyword.casefold() in normalized for keyword in EXG_STATS_EXCLUDE_KEYWORDS)
 
 def is_fys_community_id(cid):
-    return cid.casefold() == "fys" or cid in FYS_COMMUNITY_IDS
+    snapshot = get_config_snapshot()
+    return cid.casefold() == "fys" or cid in snapshot['fys_ids']
 
 def is_fys_stats_eligible(server):
     name = str(server.get("name", ""))
@@ -992,9 +1075,9 @@ def update_single_comm(comm):
 
 def update_all_data():
     """立即刷新所有社区数据（仅用于启动或手动调用）"""
-    load_config()
     refresh_local_caches()
-    for comm in COMMUNITY_META:
+    snapshot = get_config_snapshot()
+    for comm in snapshot['communities']:
         update_single_comm(comm)
     save_stats()
     flush_map_translations()
@@ -1067,7 +1150,8 @@ def cleanup_stat_exports():
     stat_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Statistic')
     if not os.path.isdir(stat_dir):
         return
-    cutoff = time.time() - STATS_EXPORT_RETENTION_DAYS * 24 * 3600
+    snapshot = get_config_snapshot()
+    cutoff = time.time() - snapshot['stats_export_retention_days'] * 24 * 3600
     for name in os.listdir(stat_dir):
         if not name.startswith('ZEData_') or not name.endswith('.xlsx'):
             continue
@@ -1090,17 +1174,17 @@ scheduler.add_job(cleanup_stat_exports, 'interval', days=1, id='stats_cleanup')
 
 def schedule_community_jobs():
     """为每个社区建立错位轮询任务"""
-    load_config()
     refresh_local_caches()
-    if not COMMUNITY_META:
+    snapshot = get_config_snapshot()
+    if not snapshot['communities']:
         return
-    job_ids = {f"comm_update_{c['id']}" for c in COMMUNITY_META}
+    job_ids = {f"comm_update_{c['id']}" for c in snapshot['communities']}
     for job in scheduler.get_jobs():
         if job.id.startswith("comm_update_") and job.id not in job_ids:
             scheduler.remove_job(job.id)
-    spread = SCHEDULE_INTERVAL_SECONDS / max(1, len(COMMUNITY_META))
+    spread = SCHEDULE_INTERVAL_SECONDS / max(1, len(snapshot['communities']))
     now = datetime.now()
-    for index, comm in enumerate(COMMUNITY_META):
+    for index, comm in enumerate(snapshot['communities']):
         job_id = f"comm_update_{comm['id']}"
         if scheduler.get_job(job_id):
             continue
@@ -1141,7 +1225,7 @@ def initialize_app():
         print("=" * 70 + "\n")
 
         init_db()
-        load_config()
+        refresh_config_snapshot(force=True)
         load_prime_users()
         refresh_local_caches()
 
@@ -1152,6 +1236,7 @@ def initialize_app():
         print("-" * 70)
         print("\n✓ 初始化完成，服务器启动中...\n")
 
+        start_config_refresher()
         start_scheduler()
         APP_INITIALIZED = True
 
@@ -1186,8 +1271,8 @@ def index():
         '/feedback': 'feedback'
     }
     initial_view = view_map.get(request.path, 'servers')
-    load_config()
-    initial_config = build_community_meta()
+    snapshot = get_config_snapshot()
+    initial_config = [dict(comm) for comm in snapshot['community_meta']]
     with SERVER_CACHE_LOCK:
         for comm in initial_config:
             cid = comm['id']
@@ -1261,11 +1346,11 @@ def steam_callback():
 
 @app.route('/api/steam/status')
 def steam_status():
-    load_config()
+    snapshot = get_config_snapshot()
     steam_id = session.get('steam_id')
     logged_in = is_logged_in()
     profile = get_cached_steam_profile(steam_id) if logged_in else None
-    role = "admin" if logged_in and steam_id in ADMIN_STEAM_IDS else "member"
+    role = "admin" if logged_in and steam_id in snapshot['admin_steam_ids'] else "member"
     prime = bool(logged_in and steam_id in PRIME_USERS_SET)
     return set_no_store(jsonify({
         "logged_in": logged_in,
@@ -1277,11 +1362,11 @@ def steam_status():
 
 @app.route('/auth/me')
 def auth_me():
-    load_config()
+    snapshot = get_config_snapshot()
     steam_id = session.get('steam_id')
     logged_in = is_logged_in()
     profile = get_cached_steam_profile(steam_id) if logged_in else None
-    role = "admin" if logged_in and steam_id in ADMIN_STEAM_IDS else "member"
+    role = "admin" if logged_in and steam_id in snapshot['admin_steam_ids'] else "member"
     prime = bool(logged_in and steam_id in PRIME_USERS_SET)
     return set_no_store(jsonify({
         "logged_in": logged_in,
@@ -1406,14 +1491,14 @@ def admin_prime_remove():
 @app.route('/api/config')
 def get_config_meta():
     """返回社区的元数据"""
-    load_config()
-    return jsonify(build_community_meta())
+    snapshot = get_config_snapshot()
+    return jsonify(list(snapshot['community_meta']))
 
 @app.route('/config.json')
 def get_public_config():
     """公开的社区元数据（只读）"""
-    load_config()
-    return make_etag_response(build_community_meta(), 'public, max-age=1')
+    snapshot = get_config_snapshot()
+    return make_etag_response(list(snapshot['community_meta']), 'public, max-age=1')
 
 @app.route('/api/servers')
 def get_all_servers():
@@ -1644,8 +1729,9 @@ def get_stats():
     now = int(time.time())
     
     # 1. 实时计算当前在线数据 (Pie Chart / Total Count) - 从内存读取，无需缓存，保证秒级刷新
-    colors = generate_distinct_colors(len(COMMUNITY_META))
-    meta_map = {c['id']: {'name': c.get('short_name', c['name']), 'color': colors[i]} for i, c in enumerate(COMMUNITY_META)}
+    snapshot = get_config_snapshot()
+    colors = generate_distinct_colors(len(snapshot['community_meta']))
+    meta_map = {c['id']: {'name': c.get('short_name', c['name']), 'color': colors[i]} for i, c in enumerate(snapshot['community_meta'])}
     
     current_stats = []
     total_players = 0
