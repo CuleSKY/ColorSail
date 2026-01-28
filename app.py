@@ -112,7 +112,10 @@ MAP_TRANS_NORMALIZED = {}
 MAP_TRANS_LOCK = threading.Lock()
 SERVER_CACHE_LOCK = threading.Lock()
 AGENT_CACHE_LOCK = threading.Lock()
-PUBLIC_SERVERS_LOCK = threading.Lock()
+PUBLIC_BUILD_LOCK = threading.Lock()
+PUBLIC_BUILD_COND = threading.Condition(PUBLIC_BUILD_LOCK)
+PUBLIC_BUILDING = False
+PUBLIC_BUILD_TARGET_VER = -1
 PUBLIC_SERVERS_BYTES = b''  # cached /servers.json payload to avoid per-request serialization
 PUBLIC_SERVERS_ETAG = '"0"'
 PUBLIC_SERVERS_BUILT_AT = 0.0
@@ -463,33 +466,61 @@ def server_sort_key(server):
 
 def rebuild_public_servers_cache_if_needed(min_interval=1.0):
     global PUBLIC_SERVERS_BYTES, PUBLIC_SERVERS_ETAG, PUBLIC_SERVERS_BUILT_AT, PUBLIC_SERVERS_BUILT_VER
+    global PUBLIC_BUILDING, PUBLIC_BUILD_TARGET_VER
     with SERVER_CACHE_LOCK:
         current_version = SERVER_CACHE_VERSION
     now = time.time()
-    with PUBLIC_SERVERS_LOCK:
+    with PUBLIC_BUILD_LOCK:
         if PUBLIC_SERVERS_BUILT_VER == current_version:
             return
         if now - PUBLIC_SERVERS_BUILT_AT < min_interval:
             return
-    snapshot = get_config_snapshot()
-    with SERVER_CACHE_LOCK:
-        current_version = SERVER_CACHE_VERSION
-        data = {cid: list(servers) for cid, servers in SERVER_CACHE.items()}
-    for comm in snapshot['community_meta']:
-        cid = comm.get('id')
-        if cid:
-            data.setdefault(cid, [])
-    for cid, servers in data.items():
-        data[cid] = sorted(servers, key=server_sort_key)
-    payload_json = json.dumps(data, sort_keys=True, separators=(',', ':'))
-    payload_bytes = payload_json.encode('utf-8')
-    etag = hashlib.sha256(payload_bytes).hexdigest()
-    etag_value = f"\"{etag}\""
-    with PUBLIC_SERVERS_LOCK:
-        PUBLIC_SERVERS_BYTES = payload_bytes
-        PUBLIC_SERVERS_ETAG = etag_value
-        PUBLIC_SERVERS_BUILT_AT = now
-        PUBLIC_SERVERS_BUILT_VER = current_version
+        if PUBLIC_BUILDING:
+            deadline = time.time() + 1.0
+            while PUBLIC_BUILDING and time.time() < deadline:
+                remaining = deadline - time.time()
+                if remaining <= 0:
+                    break
+                PUBLIC_BUILD_COND.wait(timeout=remaining)
+                if PUBLIC_SERVERS_BUILT_VER == current_version:
+                    return
+                if time.time() - PUBLIC_SERVERS_BUILT_AT < min_interval:
+                    return
+            return
+        PUBLIC_BUILDING = True
+        PUBLIC_BUILD_TARGET_VER = current_version
+    payload_bytes = None
+    etag_value = None
+    build_ok = False
+    try:
+        snapshot = get_config_snapshot()
+        with SERVER_CACHE_LOCK:
+            current_version = SERVER_CACHE_VERSION
+            data = {cid: list(servers) for cid, servers in SERVER_CACHE.items()}
+        for comm in snapshot['community_meta']:
+            cid = comm.get('id')
+            if cid:
+                data.setdefault(cid, [])
+        for cid, servers in data.items():
+            data[cid] = sorted(servers, key=server_sort_key)
+        payload_json = json.dumps(data, sort_keys=True, separators=(',', ':'))
+        payload_bytes = payload_json.encode('utf-8')
+        etag = hashlib.sha256(payload_bytes).hexdigest()
+        etag_value = f"\"{etag}\""
+        build_ok = True
+    except Exception as e:
+        print(f"[PublicServers] cache build failed: {e}")
+    finally:
+        with PUBLIC_BUILD_LOCK:
+            if build_ok:
+                now = time.time()
+                PUBLIC_SERVERS_BYTES = payload_bytes
+                PUBLIC_SERVERS_ETAG = etag_value
+                PUBLIC_SERVERS_BUILT_AT = now
+                PUBLIC_SERVERS_BUILT_VER = current_version
+            PUBLIC_BUILDING = False
+            PUBLIC_BUILD_TARGET_VER = -1
+            PUBLIC_BUILD_COND.notify_all()
 
 def build_language_payload():
     try:
@@ -1348,7 +1379,7 @@ def index():
     return render_template('index.html', 
                            initial_view=initial_view, 
                            initial_config=initial_config, 
-                           server_cache=SERVER_CACHE,
+                           server_cache={},
                            seo_info=seo_info,      # 新增SEO
                            current_lang=render_lang # 新增語言渲染
                            )
@@ -1574,18 +1605,18 @@ def get_all_servers():
 def get_public_servers():
     """公开的服务器快照（只读）"""
     rebuild_public_servers_cache_if_needed(min_interval=1.0)
-    with PUBLIC_SERVERS_LOCK:
+    with PUBLIC_BUILD_LOCK:
         payload_bytes = PUBLIC_SERVERS_BYTES
         etag_value = PUBLIC_SERVERS_ETAG
     if etag_matches(request.headers.get('If-None-Match', ''), etag_value):
         resp = make_response('', 304)
         resp.headers['ETag'] = etag_value
-        resp.headers['Cache-Control'] = 'public, max-age=2'
+        resp.headers['Cache-Control'] = 'public, max-age=15'
         return resp
     resp = make_response(payload_bytes, 200)
     resp.headers['Content-Type'] = 'application/json; charset=utf-8'
     resp.headers['ETag'] = etag_value
-    resp.headers['Cache-Control'] = 'public, max-age=2'
+    resp.headers['Cache-Control'] = 'public, max-age=15'
     return resp
 
 @app.route('/api/servers/<cid>')
