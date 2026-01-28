@@ -1827,6 +1827,7 @@ def update_agent_data():
         refresh_local_caches()
 
     normalized_updates = {}
+    updates = []
     for cid, servers in communities.items():
         if not isinstance(servers, list):
             continue
@@ -1855,6 +1856,7 @@ def update_agent_data():
                 srv['map_tw'] = entry.get('zh_tw', '')
             normalized.append(srv)
         normalized_updates[cid] = normalized
+        updates.append((cid, normalized, compute_servers_hash(normalized)))
 
     if normalized_updates:
         now = int(time.time())
@@ -1862,10 +1864,8 @@ def update_agent_data():
             for cid, normalized in normalized_updates.items():
                 AGENT_CACHE[cid] = normalized
                 AGENT_CACHE_UPDATED_AT[cid] = now
-        updates = []
-        for cid, normalized in normalized_updates.items():
-            updates.append((cid, normalized, compute_servers_hash(normalized)))
-        apply_server_cache_updates(updates)
+        if updates:
+            apply_server_cache_updates(updates)
 
     return make_json_response({"status": "ok", "updated": list(communities.keys())})
 
