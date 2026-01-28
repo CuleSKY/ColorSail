@@ -406,7 +406,8 @@ def fetch_persona_name(steam_id):
     return match.group(1) if match else "Unknown"
 
 def make_etag_response(payload, cache_control=None):
-    payload_json = json.dumps(payload, sort_keys=True, separators=(',', ':'))
+    payload_normalized = normalize_payload(payload)
+    payload_json = json.dumps(payload_normalized, sort_keys=True, separators=(',', ':'))
     etag = hashlib.sha256(payload_json.encode('utf-8')).hexdigest()
     etag_value = f"\"{etag}\""
     if_none_match = request.headers.get('If-None-Match', '')
@@ -424,6 +425,15 @@ def make_etag_response(payload, cache_control=None):
     if cache_control:
         resp.headers['Cache-Control'] = cache_control
     return resp
+
+def normalize_payload(payload):
+    if isinstance(payload, MappingProxyType):
+        return {key: normalize_payload(value) for key, value in payload.items()}
+    if isinstance(payload, dict):
+        return {key: normalize_payload(value) for key, value in payload.items()}
+    if isinstance(payload, (list, tuple)):
+        return [normalize_payload(value) for value in payload]
+    return payload
 
 def build_language_payload():
     try:
