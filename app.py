@@ -121,7 +121,7 @@ PUBLIC_SERVERS_ETAG = '"0"'
 PUBLIC_SERVERS_BUILT_AT = 0.0
 PUBLIC_SERVERS_BUILT_VER = -1
 CID_CACHE_LOCK = threading.Lock()
-CID_SERVERS_CACHE = {}  # per-cid cache keyed by SERVER_CACHE_VERSION
+CID_SERVERS_CACHE = {}  # per-cid cache for /api/servers/<cid>
 MAP_TRANS_DIRTY = False
 MAP_TRANS_LAST_WRITE = 0
 MAP_CACHE_UPDATED_AT = 0
@@ -1127,7 +1127,12 @@ def count_players_for_stats(cid, servers):
         return sum(s['players'] for s in servers if s.get('online') and is_fys_stats_eligible(s))
     return sum(s['players'] for s in servers if s.get('online'))
 
-def update_single_comm(comm):
+def servers_equivalent_for_public(previous, current):
+    if len(previous) != len(current):
+        return False
+    return sorted(previous, key=server_sort_key) == sorted(current, key=server_sort_key)
+
+def update_single_comm(comm, bump_version=True):
     """更新单个社区数据并写入缓存"""
     global SERVER_CACHE, SERVER_CACHE_VERSION
     cid = comm['id']
@@ -1166,19 +1171,29 @@ def update_single_comm(comm):
             print(f"[Update] {comm['name']}: {online_count}/{len(agent_servers)} 在线, {total_players} 玩家 (agent)")
 
     with SERVER_CACHE_LOCK:
-        SERVER_CACHE[cid] = result
-        SERVER_CACHE_VERSION += 1  # bump version so public caches rebuild
-    with CID_CACHE_LOCK:
-        CID_SERVERS_CACHE.pop(cid, None)
-    return result
+        previous = list(SERVER_CACHE.get(cid, []))
+    changed = not servers_equivalent_for_public(previous, result)
+    if changed:
+        with SERVER_CACHE_LOCK:
+            SERVER_CACHE[cid] = result
+            if bump_version:
+                SERVER_CACHE_VERSION += 1  # bump version so public caches rebuild
+        with CID_CACHE_LOCK:
+            CID_SERVERS_CACHE.pop(cid, None)
+    return changed
 
 
 def update_all_data():
     """立即刷新所有社区数据（仅用于启动或手动调用）"""
     refresh_local_caches()
     snapshot = get_config_snapshot()
+    any_changed = False
     for comm in snapshot['communities']:
-        update_single_comm(comm)
+        if update_single_comm(comm, bump_version=False):
+            any_changed = True
+    if any_changed:
+        with SERVER_CACHE_LOCK:
+            SERVER_CACHE_VERSION += 1  # bump version so public caches rebuild
     save_stats()
     flush_map_translations()
 
@@ -1622,22 +1637,19 @@ def get_public_servers():
 @app.route('/api/servers/<cid>')
 def get_servers(cid):
     """返回指定社区的实时服务器列表"""
-    with SERVER_CACHE_LOCK:
-        current_version = SERVER_CACHE_VERSION
     with CID_CACHE_LOCK:
         cached = CID_SERVERS_CACHE.get(cid)
-    if cached and cached[0] == current_version:
-        payload_bytes, etag_value = cached[1], cached[2]
+    if cached:
+        payload_bytes, etag_value = cached[0], cached[1]
     else:
         with SERVER_CACHE_LOCK:
-            current_version = SERVER_CACHE_VERSION
             servers = list(SERVER_CACHE.get(cid, []))
         servers = sorted(servers, key=server_sort_key)
         payload_json = json.dumps(servers, sort_keys=True, separators=(',', ':'))
         payload_bytes = payload_json.encode('utf-8')
         etag_value = f"\"{hashlib.sha256(payload_bytes).hexdigest()}\""
         with CID_CACHE_LOCK:
-            CID_SERVERS_CACHE[cid] = (current_version, payload_bytes, etag_value)
+            CID_SERVERS_CACHE[cid] = (payload_bytes, etag_value)
     if etag_matches(request.headers.get('If-None-Match', ''), etag_value):
         resp = make_response('', 304)
         resp.headers['ETag'] = etag_value
@@ -1677,6 +1689,7 @@ def update_agent_data():
     if not MAP_IMAGE_INDEX:
         refresh_local_caches()
 
+    changed_cids = []
     for cid, servers in communities.items():
         if not isinstance(servers, list):
             continue
@@ -1708,10 +1721,17 @@ def update_agent_data():
             AGENT_CACHE[cid] = normalized
             AGENT_CACHE_UPDATED_AT[cid] = int(time.time())
         with SERVER_CACHE_LOCK:
-            SERVER_CACHE[cid] = normalized
+            previous = list(SERVER_CACHE.get(cid, []))
+        if not servers_equivalent_for_public(previous, normalized):
+            with SERVER_CACHE_LOCK:
+                SERVER_CACHE[cid] = normalized
+            changed_cids.append(cid)
+            with CID_CACHE_LOCK:
+                CID_SERVERS_CACHE.pop(cid, None)
+
+    if changed_cids:
+        with SERVER_CACHE_LOCK:
             SERVER_CACHE_VERSION += 1  # bump version so public caches rebuild
-        with CID_CACHE_LOCK:
-            CID_SERVERS_CACHE.pop(cid, None)
 
     return jsonify({"status": "ok", "updated": list(communities.keys())})
 
