@@ -94,6 +94,7 @@ os.makedirs(STATIC_MAP_DIR, exist_ok=True)
 
 # --- 全局状态 ---
 SERVER_CACHE = {}
+SERVER_CACHE_HASH = {}  # per-cid hash to avoid cache churn when payloads are unchanged
 SERVER_CACHE_VERSION = 0  # bump when SERVER_CACHE mutates so public caches can rebuild
 AGENT_CACHE = {}
 AGENT_CACHE_UPDATED_AT = {}
@@ -463,6 +464,30 @@ def server_sort_key(server):
     ip = server.get('ip')
     port = server.get('port')
     return (str(display_ip or ''), str(ip or ''), str(port or ''), '')
+
+def compute_servers_hash(servers):
+    sorted_servers = sorted(servers, key=server_sort_key)
+    payload_json = json.dumps(sorted_servers, sort_keys=True, separators=(',', ':'))
+    return hashlib.sha1(payload_json.encode('utf-8')).hexdigest()
+
+def apply_server_cache_updates(updates):
+    global SERVER_CACHE_VERSION
+    changed_cids = []
+    with SERVER_CACHE_LOCK:
+        for cid, servers, servers_hash in updates:
+            if SERVER_CACHE_HASH.get(cid) == servers_hash:
+                # hash unchanged -> skip cache writes to avoid churn/invalidation
+                continue
+            SERVER_CACHE[cid] = servers
+            SERVER_CACHE_HASH[cid] = servers_hash
+            changed_cids.append(cid)
+        if changed_cids:
+            SERVER_CACHE_VERSION += 1  # bump once per batch so public caches rebuild once
+    if changed_cids:
+        with CID_CACHE_LOCK:
+            for cid in changed_cids:
+                CID_SERVERS_CACHE.pop(cid, None)
+    return changed_cids
 
 def rebuild_public_servers_cache_if_needed(min_interval=1.0):
     global PUBLIC_SERVERS_BYTES, PUBLIC_SERVERS_ETAG, PUBLIC_SERVERS_BUILT_AT, PUBLIC_SERVERS_BUILT_VER
@@ -1169,6 +1194,7 @@ def update_single_comm(comm, bump_version=True):
             online_count = sum(1 for s in agent_servers if s.get('online'))
             total_players = sum(s['players'] for s in agent_servers if s.get('online'))
             print(f"[Update] {comm['name']}: {online_count}/{len(agent_servers)} 在线, {total_players} 玩家 (agent)")
+    return result
 
     with SERVER_CACHE_LOCK:
         previous = list(SERVER_CACHE.get(cid, []))
@@ -1663,7 +1689,6 @@ def get_servers(cid):
 
 @app.route('/api/agent/update', methods=['POST'])
 def update_agent_data():
-    global SERVER_CACHE_VERSION
     initialize_app()
     token = os.environ.get('AGENT_SHARED_TOKEN')
     if not token:
@@ -1717,6 +1742,9 @@ def update_agent_data():
                 srv['map_cn'] = entry.get('zh_cn', '')
                 srv['map_tw'] = entry.get('zh_tw', '')
             normalized.append(srv)
+        normalized_updates[cid] = normalized
+
+    if normalized_updates:
         with AGENT_CACHE_LOCK:
             AGENT_CACHE[cid] = normalized
             AGENT_CACHE_UPDATED_AT[cid] = int(time.time())
