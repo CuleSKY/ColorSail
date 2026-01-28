@@ -94,6 +94,7 @@ os.makedirs(STATIC_MAP_DIR, exist_ok=True)
 
 # --- 全局状态 ---
 SERVER_CACHE = {}
+SERVER_CACHE_HASH = {}  # per-cid hash to avoid cache churn when payloads are unchanged
 SERVER_CACHE_VERSION = 0  # bump when SERVER_CACHE mutates so public caches can rebuild
 AGENT_CACHE = {}
 AGENT_CACHE_UPDATED_AT = {}
@@ -463,6 +464,30 @@ def server_sort_key(server):
     ip = server.get('ip')
     port = server.get('port')
     return (str(display_ip or ''), str(ip or ''), str(port or ''), '')
+
+def compute_servers_hash(servers):
+    sorted_servers = sorted(servers, key=server_sort_key)
+    payload_json = json.dumps(sorted_servers, sort_keys=True, separators=(',', ':'))
+    return hashlib.sha1(payload_json.encode('utf-8')).hexdigest()
+
+def apply_server_cache_updates(updates):
+    global SERVER_CACHE_VERSION
+    changed_cids = []
+    with SERVER_CACHE_LOCK:
+        for cid, servers, servers_hash in updates:
+            if SERVER_CACHE_HASH.get(cid) == servers_hash:
+                # hash unchanged -> skip cache writes to avoid churn/invalidation
+                continue
+            SERVER_CACHE[cid] = servers
+            SERVER_CACHE_HASH[cid] = servers_hash
+            changed_cids.append(cid)
+        if changed_cids:
+            SERVER_CACHE_VERSION += 1  # bump once per batch so public caches rebuild once
+    if changed_cids:
+        with CID_CACHE_LOCK:
+            for cid in changed_cids:
+                CID_SERVERS_CACHE.pop(cid, None)
+    return changed_cids
 
 def rebuild_public_servers_cache_if_needed(min_interval=1.0):
     global PUBLIC_SERVERS_BYTES, PUBLIC_SERVERS_ETAG, PUBLIC_SERVERS_BUILT_AT, PUBLIC_SERVERS_BUILT_VER
@@ -1127,9 +1152,8 @@ def count_players_for_stats(cid, servers):
         return sum(s['players'] for s in servers if s.get('online') and is_fys_stats_eligible(s))
     return sum(s['players'] for s in servers if s.get('online'))
 
-def update_single_comm(comm):
-    """更新单个社区数据并写入缓存"""
-    global SERVER_CACHE, SERVER_CACHE_VERSION
+def fetch_comm_servers(comm):
+    """更新单个社区数据（不直接写入缓存）"""
     cid = comm['id']
     result = []
     now = int(time.time())
@@ -1164,12 +1188,14 @@ def update_single_comm(comm):
             online_count = sum(1 for s in agent_servers if s.get('online'))
             total_players = sum(s['players'] for s in agent_servers if s.get('online'))
             print(f"[Update] {comm['name']}: {online_count}/{len(agent_servers)} 在线, {total_players} 玩家 (agent)")
+    return result
 
-    with SERVER_CACHE_LOCK:
-        SERVER_CACHE[cid] = result
-        SERVER_CACHE_VERSION += 1  # bump version so public caches rebuild
-    with CID_CACHE_LOCK:
-        CID_SERVERS_CACHE.pop(cid, None)
+def update_single_comm(comm):
+    """更新单个社区数据并写入缓存"""
+    cid = comm['id']
+    result = fetch_comm_servers(comm)
+    servers_hash = compute_servers_hash(result)
+    apply_server_cache_updates([(cid, result, servers_hash)])
     return result
 
 
@@ -1177,8 +1203,12 @@ def update_all_data():
     """立即刷新所有社区数据（仅用于启动或手动调用）"""
     refresh_local_caches()
     snapshot = get_config_snapshot()
+    updates = []
     for comm in snapshot['communities']:
-        update_single_comm(comm)
+        result = fetch_comm_servers(comm)
+        servers_hash = compute_servers_hash(result)
+        updates.append((comm['id'], result, servers_hash))
+    apply_server_cache_updates(updates)
     save_stats()
     flush_map_translations()
 
@@ -1651,7 +1681,6 @@ def get_servers(cid):
 
 @app.route('/api/agent/update', methods=['POST'])
 def update_agent_data():
-    global SERVER_CACHE_VERSION
     initialize_app()
     token = os.environ.get('AGENT_SHARED_TOKEN')
     if not token:
@@ -1677,6 +1706,8 @@ def update_agent_data():
     if not MAP_IMAGE_INDEX:
         refresh_local_caches()
 
+    normalized_updates = {}
+    updated_at = int(time.time())
     for cid, servers in communities.items():
         if not isinstance(servers, list):
             continue
@@ -1704,14 +1735,19 @@ def update_agent_data():
                 srv['map_cn'] = entry.get('zh_cn', '')
                 srv['map_tw'] = entry.get('zh_tw', '')
             normalized.append(srv)
+        normalized_updates[cid] = normalized
+
+    if normalized_updates:
         with AGENT_CACHE_LOCK:
-            AGENT_CACHE[cid] = normalized
-            AGENT_CACHE_UPDATED_AT[cid] = int(time.time())
-        with SERVER_CACHE_LOCK:
-            SERVER_CACHE[cid] = normalized
-            SERVER_CACHE_VERSION += 1  # bump version so public caches rebuild
-        with CID_CACHE_LOCK:
-            CID_SERVERS_CACHE.pop(cid, None)
+            for cid, normalized in normalized_updates.items():
+                AGENT_CACHE[cid] = normalized
+                AGENT_CACHE_UPDATED_AT[cid] = updated_at
+
+        updates = []
+        for cid, normalized in normalized_updates.items():
+            servers_hash = compute_servers_hash(normalized)
+            updates.append((cid, normalized, servers_hash))
+        apply_server_cache_updates(updates)
 
     return jsonify({"status": "ok", "updated": list(communities.keys())})
 
