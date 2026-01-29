@@ -12,7 +12,7 @@ import hmac
 import ipaddress
 import secrets
 import re
-from collections import deque
+from collections import deque, OrderedDict
 from types import MappingProxyType
 from urllib.parse import urlencode
 from datetime import datetime
@@ -141,6 +141,7 @@ APP_INITIALIZED = False
 CONFIG_SNAPSHOT = {
     "communities": tuple(),
     "community_meta": tuple(),
+    "server_order_index": MappingProxyType({}),
     "admin_steam_ids": frozenset(),
     "fys_ids": frozenset(),
     "stats_export_retention_days": 30
@@ -522,9 +523,46 @@ def server_sort_key(server):
     port = server.get('port')
     return (str(display_ip or ''), str(ip or ''), str(port or ''), '')
 
+def server_order_key(server):
+    if not isinstance(server, dict):
+        return None
+    server_key = server.get('server_key')
+    if server_key:
+        return str(server_key)
+    display_ip = server.get('display_ip')
+    if display_ip:
+        return str(display_ip)
+    ip = server.get('ip')
+    port = server.get('port')
+    if ip is not None and port is not None:
+        return f"{ip}:{port}"
+    return None
+
+def apply_config_server_order(cid, servers):
+    snapshot = get_config_snapshot()
+    order_index = snapshot.get('server_order_index')
+    if not order_index:
+        return servers
+    order_map = order_index.get(cid)
+    if not order_map or not isinstance(servers, list) or not servers:
+        return servers
+    buckets = {}
+    unmatched = []
+    for srv in servers:
+        key = server_order_key(srv)
+        if key and key in order_map:
+            buckets.setdefault(key, []).append(srv)
+        else:
+            unmatched.append(srv)
+    ordered = []
+    for key, _ in sorted(order_map.items(), key=lambda item: item[1]):
+        ordered.extend(buckets.get(key, []))
+    if unmatched:
+        ordered.extend(unmatched)
+    return ordered
+
 def compute_servers_hash(servers):
-    sorted_servers = sorted(servers, key=server_sort_key)
-    payload_json = json.dumps(sorted_servers, sort_keys=True, separators=(',', ':'))
+    payload_json = json.dumps(normalize_json(servers), sort_keys=True, separators=(',', ':'))
     return hashlib.sha1(payload_json.encode('utf-8')).hexdigest()
 
 def apply_server_cache_updates(updates):
@@ -551,13 +589,19 @@ def build_servers_payload_bytes():
     with SERVER_CACHE_LOCK:
         current_version = SERVER_CACHE_VERSION
         data = {cid: list(servers) for cid, servers in SERVER_CACHE.items()}
+    ordered = OrderedDict()
     for comm in snapshot['community_meta']:
         cid = comm.get('id')
         if cid:
-            data.setdefault(cid, [])
-    for cid, servers in data.items():
-        data[cid] = sorted(servers, key=server_sort_key)
-    payload_json = json.dumps(normalize_json(data), sort_keys=True, separators=(',', ':'))
+            ordered[cid] = data.pop(cid, [])
+    if data:
+        for cid in sorted(data.keys()):
+            ordered[cid] = data[cid]
+    # Self-check notes:
+    # - /servers.json top-level order follows community_meta; extras appended in sorted order.
+    # - per-community server list order is preserved from SERVER_CACHE (EXG/config/agent).
+    # - payload_bytes/ETag are derived from final bytes for stable 304 handling.
+    payload_json = json.dumps(normalize_json(ordered), separators=(',', ':'))
     payload_bytes = payload_json.encode('utf-8')
     etag = hashlib.sha256(payload_bytes).hexdigest()
     etag_value = f"\"{etag}\""
@@ -958,6 +1002,27 @@ def build_config_snapshot(data):
             for comm in raw_communities:
                 if isinstance(comm, dict):
                     communities.append(MappingProxyType(dict(comm)))
+    server_order_index = {}
+    for comm in communities:
+        server_list = comm.get('servers')
+        if not isinstance(server_list, list) or not server_list:
+            continue
+        cid = str(comm.get('id', '')).strip()
+        if not cid:
+            continue
+        order_map = {}
+        for idx, entry in enumerate(server_list):
+            if not isinstance(entry, dict):
+                continue
+            host = entry.get('host')
+            port = entry.get('port')
+            if host is None or port is None:
+                continue
+            key = f"{host}:{port}"
+            if key not in order_map:
+                order_map[key] = idx
+        if order_map:
+            server_order_index[cid] = MappingProxyType(order_map)
     admin_ids = set()
     if isinstance(data, dict):
         admin_ids = {str(sid).strip() for sid in data.get('admin_steam_ids', []) if str(sid).strip()}
@@ -978,6 +1043,7 @@ def build_config_snapshot(data):
     return {
         "communities": tuple(communities),
         "community_meta": tuple(community_meta),
+        "server_order_index": MappingProxyType(server_order_index),
         "admin_steam_ids": frozenset(admin_ids),
         "fys_ids": frozenset(fys_ids),
         "stats_export_retention_days": retention_days
@@ -1186,11 +1252,10 @@ def fetch_a2s_data(server_cfg, game_type='cs2'):
     host = server_cfg['host']
     port = server_cfg['port']
     name = server_cfg.get('name', f"{host}:{port}")
-    resolved_ip = None
-    try:
-        resolved_ip = socket.gethostbyname(host)
-    except Exception:
-        resolved_ip = None
+    if is_ip_literal(host):
+        resolved_ip = host
+    else:
+        resolved_ip = resolve_connect_ip(host)
     
     res = {
         "name": name,
@@ -1301,7 +1366,7 @@ def fetch_comm_servers(comm):
 def update_single_comm(comm):
     """更新单个社区数据并写入缓存"""
     cid = comm['id']
-    result = fetch_comm_servers(comm)
+    result = apply_config_server_order(cid, fetch_comm_servers(comm))
     servers_hash = compute_servers_hash(result)
     changed_cids = apply_server_cache_updates([(cid, result, servers_hash)])
     return bool(changed_cids)
@@ -1314,7 +1379,7 @@ def update_all_data():
     updates = []
     for comm in snapshot['communities']:
         cid = comm['id']
-        result = fetch_comm_servers(comm)
+        result = apply_config_server_order(cid, fetch_comm_servers(comm))
         updates.append((cid, result, compute_servers_hash(result)))
     apply_server_cache_updates(updates)
     save_stats()
@@ -1513,7 +1578,13 @@ def index():
     initial_config = [dict(comm) for comm in snapshot['community_meta']]
     for comm in initial_config:
         comm['servers'] = []
-                
+    if os.environ.get('PERF_DEBUG') == '1':
+        try:
+            debug_len = len(json.dumps(initial_config, separators=(',', ':')))
+        except Exception:
+            debug_len = -1
+        print(f"[PerfDebug] index initial_config communities={len(initial_config)} json_len={debug_len}")
+
     return render_template('index.html', 
                            initial_view=initial_view, 
                            initial_config=initial_config, 
@@ -1782,7 +1853,6 @@ def get_servers(cid):
     else:
         with SERVER_CACHE_LOCK:
             servers = list(SERVER_CACHE.get(cid, []))
-        servers = sorted(servers, key=server_sort_key)
         payload_json = json.dumps(normalize_json(servers), sort_keys=True, separators=(',', ':'))
         payload_bytes = payload_json.encode('utf-8')
         etag_value = f"\"{hashlib.sha256(payload_bytes).hexdigest()}\""
@@ -1855,8 +1925,9 @@ def update_agent_data():
                 srv['map_cn'] = entry.get('zh_cn', '')
                 srv['map_tw'] = entry.get('zh_tw', '')
             normalized.append(srv)
-        normalized_updates[cid] = normalized
-        updates.append((cid, normalized, compute_servers_hash(normalized)))
+        ordered = apply_config_server_order(cid, normalized)
+        normalized_updates[cid] = ordered
+        updates.append((cid, ordered, compute_servers_hash(ordered)))
 
     if normalized_updates:
         now = int(time.time())
