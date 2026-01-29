@@ -29,7 +29,7 @@ EXG_API_URL = "https://list.darkrp.cn:9000/ServerList/CurrentStatus"
 EXG_SESSION = requests.Session()
 EXG_CACHE = []
 EXG_CACHE_UPDATED_AT = 0
-EXG_FETCH_INTERVAL_SECONDS = 15
+EXG_FETCH_INTERVAL_SECONDS = 10
 EXG_VERIFY_SSL = os.environ.get('EXG_VERIFY_SSL', 'true').lower() in ('1', 'true', 'yes')
 
 def load_secrets():
@@ -225,7 +225,7 @@ def run_agent():
     if not STEAM_API_KEY:
         print("[Warning] 未能加载 Steam API Key，将仅使用 A2S 查询。")
 
-    base_interval = 15
+    base_interval = 10
     comm_index = 0
     comm_count = 1
 
