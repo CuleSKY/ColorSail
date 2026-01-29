@@ -215,9 +215,9 @@ def refresh_local_caches(force=False):
                 files = {}
                 # 先遍历一遍，建立基础索引
                 for f in os.listdir(STATIC_MAP_DIR):
-                 if f.lower().endswith(('.jpg', '.png', '.webp', '.jpeg')):
-                    map_name = f.rsplit('.', 1)[0].lower()
-                    ext = f.rsplit('.', 1)[1].lower()
+                    if f.lower().endswith(('.jpg', '.png', '.webp', '.jpeg')):
+                        map_name = f.rsplit('.', 1)[0].lower()
+                        ext = f.rsplit('.', 1)[1].lower()
         
                     # 逻辑：如果这个地图还没记录，或者新发现的是 webp (由于 webp 体积小，我们希望覆盖掉 jpg/png)
                     if map_name not in files:
