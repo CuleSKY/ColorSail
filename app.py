@@ -162,7 +162,7 @@ OPENCC_S2T = OpenCC('s2t') if OpenCC else None
 OPENCC_S2HK = OpenCC('s2hk') if OpenCC else None
 OPENCC_S2TWP = OpenCC('s2twp') if OpenCC else None
 
-EXG_FETCH_INTERVAL_SECONDS = 15
+EXG_FETCH_INTERVAL_SECONDS = 10
 EXG_VERIFY_SSL = os.environ.get('EXG_VERIFY_SSL', 'true').lower() in ('1', 'true', 'yes')
 
 EXG_STATS_EXCLUDE_KEYWORDS = ("pve", "大厅", "躲猫猫", "mg")
@@ -1466,7 +1466,7 @@ def cleanup_stat_exports():
             print(f"[Stats] Cleanup failed for {path}: {e}")
 
 # --- 6. 任务调度 ---
-SCHEDULE_INTERVAL_SECONDS = 15
+SCHEDULE_INTERVAL_SECONDS = 10
 SCHEDULE_CONFIG_SYNC_SECONDS = 300
 SCHEDULE_STATS_SAVE_SECONDS = 60
 AGENT_STALE_SECONDS = 60
