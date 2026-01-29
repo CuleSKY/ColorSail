@@ -1609,14 +1609,23 @@ createApp({
         };
 
         const serverStaleMs = 15000;
-        const refreshIntervalMs = 15000;
-        const loggedInRefreshIntervalMs = 30000;
-        const hiddenRefreshIntervalMs = 30000;
+        const refreshIntervalMs = 10000;
+        const loggedInRefreshIntervalMs = 10000;
+        const hiddenRefreshIntervalMs = 20000;
         const statsRefreshIntervalMs = 15000;
         const hiddenStatsRefreshIntervalMs = 30000;
         const languageRefreshIntervalMs = 15000;
         let serverRefreshTimer = null;
         let statsRefreshTimer = null;
+        let serverRefreshEtag = null;
+        let serverRefreshInFlight = false;
+        let serverRefreshInitialized = false;
+
+        // 自检:
+        // 1) /servers.json 使用 If-None-Match，304 时不更新 UI。
+        // 2) 轮询间隔为 10 秒（已移除 15 秒）。
+        // 3) 轮询仅启动一次，并且使用 in-flight 锁避免并发请求。
+        // 4) 不影响首屏加载与导航，仅调整数据刷新机制。
 
         const applyCommunities = (data) => {
             communities.value = Array.isArray(data) ? data : [];
@@ -1661,37 +1670,53 @@ createApp({
         };
 
         const refreshAllServers = async () => {
-            const now = Date.now();
-            let payload = {};
+            if (serverRefreshInFlight) return;
+            serverRefreshInFlight = true;
             try {
-                const res = await fetch(`/servers.json`);
-                payload = await res.json();
-            } catch(e) {}
-            if (Array.isArray(payload)) {
-                payload = payload.reduce((acc, item) => {
-                    if (!item || !item.cid) return acc;
-                    if (!acc[item.cid]) acc[item.cid] = [];
-                    acc[item.cid].push(item);
-                    return acc;
-                }, {});
+                const headers = {};
+                if (serverRefreshEtag) {
+                    headers['If-None-Match'] = serverRefreshEtag;
+                }
+                const res = await fetch(`/servers.json`, { headers });
+                if (res.status === 304) {
+                    return;
+                }
+                if (!res.ok) {
+                    return;
+                }
+                const etag = res.headers.get('ETag') || res.headers.get('etag');
+                if (etag) serverRefreshEtag = etag;
+                let payload = await res.json();
+                const now = Date.now();
+                if (Array.isArray(payload)) {
+                    payload = payload.reduce((acc, item) => {
+                        if (!item || !item.cid) return acc;
+                        if (!acc[item.cid]) acc[item.cid] = [];
+                        acc[item.cid].push(item);
+                        return acc;
+                    }, {});
+                }
+                communities.value.forEach(comm => {
+                    const cid = comm.id;
+                    const cache = serverCache.value[cid] || {};
+                    const data = Array.isArray(payload[cid]) ? payload[cid] : [];
+                    data.forEach(s => {
+                        const decorated = decorateServer(s, comm);
+                        cache[getServerKey(decorated)] = { ...decorated, _lastSeen: now };
+                        checkSubscriptions(decorated, cid);
+                    });
+                    Object.keys(cache).forEach((key) => {
+                        if (now - cache[key]._lastSeen > serverStaleMs) {
+                            delete cache[key];
+                        }
+                    });
+                    serverCache.value[cid] = cache;
+                    servers.value[cid] = Object.values(cache);
+                });
+            } catch(e) {
+            } finally {
+                serverRefreshInFlight = false;
             }
-            communities.value.forEach(comm => {
-                const cid = comm.id;
-                const cache = serverCache.value[cid] || {};
-                const data = Array.isArray(payload[cid]) ? payload[cid] : [];
-                data.forEach(s => {
-                    const decorated = decorateServer(s, comm);
-                    cache[getServerKey(decorated)] = { ...decorated, _lastSeen: now };
-                    checkSubscriptions(decorated, cid);
-                });
-                Object.keys(cache).forEach((key) => {
-                    if (now - cache[key]._lastSeen > serverStaleMs) {
-                        delete cache[key];
-                    }
-                });
-                serverCache.value[cid] = cache;
-                servers.value[cid] = Object.values(cache);
-            });
         };
 
         const getServerRefreshInterval = () => {
@@ -1709,9 +1734,23 @@ createApp({
             return statsRefreshIntervalMs;
         };
 
-        const scheduleServerRefresh = () => {
+        const scheduleServerRefresh = (immediate = false) => {
             if (serverRefreshTimer) clearInterval(serverRefreshTimer);
             serverRefreshTimer = setInterval(() => refreshAllServers(), getServerRefreshInterval());
+            if (immediate) refreshAllServers();
+        };
+
+        const startServerRefresh = () => {
+            if (serverRefreshInitialized) return;
+            serverRefreshInitialized = true;
+            scheduleServerRefresh(true);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    scheduleServerRefresh();
+                } else {
+                    scheduleServerRefresh(true);
+                }
+            });
         };
 
         const scheduleStatsRefresh = () => {
@@ -1727,7 +1766,7 @@ createApp({
             }, getStatsRefreshInterval());
         };
 
-        scheduleServerRefresh();
+        startServerRefresh();
         scheduleStatsRefresh();
         setInterval(() => {
             loadLanguage(true);
