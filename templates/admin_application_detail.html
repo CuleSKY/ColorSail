@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Application {{ application.id }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 24px; }
+        .meta { margin-bottom: 16px; }
+        .meta div { margin-bottom: 4px; }
+        .content { border: 1px solid #ddd; padding: 12px; margin-bottom: 16px; }
+        .images img { max-width: 240px; margin: 8px; border: 1px solid #eee; }
+        textarea { width: 100%; min-height: 80px; }
+        .actions { margin-top: 16px; }
+        .actions form { margin-bottom: 16px; }
+    </style>
+</head>
+<body>
+    <p><a href="/admin/applications">&larr; Back to list</a></p>
+    <h1>Application {{ application.id }}</h1>
+    <div class="meta">
+        <div><strong>Steam ID:</strong> {{ application.steam_id }}</div>
+        <div><strong>Status:</strong> {{ application.status }}</div>
+        <div><strong>Created:</strong> {{ application.created_at_human }}</div>
+        <div><strong>Reviewed:</strong> {{ application.reviewed_at_human }}</div>
+        <div><strong>Reviewed By:</strong> {{ application.reviewed_by }}</div>
+    </div>
+
+    <h2>Submitted HTML</h2>
+    <div class="content">
+        <iframe
+            sandbox
+            srcdoc="{{ application.html | e }}"
+            style="width:100%; min-height:240px; border:0;">
+        </iframe>
+    </div>
+
+    <h2>Images</h2>
+    <div class="images">
+        {% for image in application.images %}
+            <img src="{{ image }}" alt="Application image">
+        {% else %}
+            <p>No images provided.</p>
+        {% endfor %}
+    </div>
+
+    <div class="actions">
+        <form method="post" action="/admin/applications/{{ application.id }}/approve" onsubmit="return confirm('Approve this application?');">
+            <button type="submit">Approve</button>
+        </form>
+
+        <form method="post" action="/admin/applications/{{ application.id }}/reject" onsubmit="return confirm('Reject this application?');">
+            <label for="reject_reason"><strong>Reject reason (required):</strong></label>
+            <textarea id="reject_reason" name="reject_reason" required>{{ application.reject_reason }}</textarea>
+            <label for="admin_note"><strong>Admin note (optional):</strong></label>
+            <textarea id="admin_note" name="admin_note">{{ application.admin_note }}</textarea>
+            <button type="submit">Reject</button>
+        </form>
+    </div>
+</body>
+</html>
