@@ -12,6 +12,11 @@ pip install -r requirements.txt
 
 See `docs/autojoin_v2_deploy.md` for AutoJoin v2 deployment requirements and WebSocket proxying notes.
 
+## Admin + client scaffolding notes
+
+- Admin routes are intended to be served from `admin.cs2ze.org` behind Cloudflare Access; `/admin` on `www.cs2ze.org` returns 404.
+- The new `client_app/` package contains **scaffolding only** for a future desktop client and is not packaged or wired into the web runtime.
+
 ## Required environment variables
 
 - `CS2ZE_BASE_URL` (optional, default `http://localhost:5000`)
