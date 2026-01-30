@@ -27,7 +27,11 @@
 
     <h2>Submitted HTML</h2>
     <div class="content">
-        {{ application.html }}
+        <iframe
+            sandbox
+            srcdoc="{{ application.html | e }}"
+            style="width:100%; min-height:240px; border:0;">
+        </iframe>
     </div>
 
     <h2>Images</h2>

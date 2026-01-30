@@ -18,7 +18,6 @@ from urllib.parse import urlencode
 from datetime import datetime
 from datetime import timedelta
 from flask import Flask, render_template, jsonify, request, redirect, session, url_for, make_response, abort
-from markupsafe import Markup
 from flask_sock import Sock
 from werkzeug.middleware.proxy_fix import ProxyFix
 import a2s
@@ -1995,7 +1994,7 @@ def admin_application_detail(app_id):
         "id": row['id'],
         "steam_id": row['steam_id'] or "",
         "status": row['status'] or "pending",
-        "html": Markup(sanitized_html),
+        "html": sanitized_html,
         "images": images,
         "created_at_human": datetime.utcfromtimestamp(created_at).strftime('%Y-%m-%d %H:%M:%S UTC') if created_at else "Unknown",
         "reviewed_at_human": datetime.utcfromtimestamp(reviewed_at).strftime('%Y-%m-%d %H:%M:%S UTC') if reviewed_at else "",
