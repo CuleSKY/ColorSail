@@ -17,7 +17,7 @@ from types import MappingProxyType
 from urllib.parse import urlencode
 from datetime import datetime
 from datetime import timedelta
-from flask import Flask, render_template, jsonify, request, redirect, session, url_for, make_response
+from flask import Flask, render_template, jsonify, request, redirect, session, url_for, make_response, abort
 from flask_sock import Sock
 from werkzeug.middleware.proxy_fix import ProxyFix
 import a2s
@@ -83,6 +83,8 @@ DB_FILE = "stats.db"
 STATIC_MAP_DIR = os.path.join(STATIC_DIR, 'maps')
 PRIME_USERS_FILE = 'prime_users.json'
 PRIME_AUDIT_FILE = 'prime_audit.log'
+ADMIN_HOSTNAME = "admin.cs2ze.org"
+PUBLIC_HOSTNAMES = {"www.cs2ze.org", "cs2ze.org"}
 
 # EXG API 地址
 EXG_API_URL = "https://list.darkrp.cn:9000/ServerList/CurrentStatus"
@@ -334,7 +336,27 @@ def is_admin_user():
     snapshot = get_config_snapshot()
     return is_logged_in() and steam_id in snapshot['admin_steam_ids']
 
+def get_request_host():
+    forwarded_host = request.headers.get('X-Forwarded-Host', '')
+    host = forwarded_host or request.headers.get('Host', '')
+    if not host:
+        return ""
+    return host.split(',')[0].strip()
+
+def normalize_host(host):
+    if not host:
+        return ""
+    return host.split(':')[0].strip().lower()
+
+def is_admin_host():
+    return normalize_host(get_request_host()) == ADMIN_HOSTNAME
+
+def is_public_host():
+    return normalize_host(get_request_host()) in PUBLIC_HOSTNAMES
+
 def require_admin():
+    if is_admin_host():
+        return None
     if not is_admin_user():
         return make_response("Forbidden", 403)
     return None
@@ -1390,8 +1412,115 @@ def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS player_stats (timestamp INTEGER, community TEXT, count INTEGER)''')
+    c.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS autojoin_applications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            steam_id TEXT,
+            html TEXT,
+            images_json TEXT,
+            status TEXT,
+            created_at INTEGER,
+            reviewed_at INTEGER,
+            reviewed_by TEXT,
+            reject_reason TEXT,
+            admin_note TEXT
+        )
+        '''
+    )
     conn.commit()
     conn.close()
+
+def _get_cf_access_email():
+    for header_name, value in request.headers.items():
+        if header_name.lower() == "cf-access-authenticated-user-email":
+            return value
+    return None
+
+def sanitize_autojoin_html(raw_html):
+    if not raw_html:
+        return ""
+    cleaned = re.sub(r"<\s*script[^>]*>.*?<\s*/\s*script\s*>", "", raw_html, flags=re.IGNORECASE | re.DOTALL)
+    cleaned = re.sub(r"\son\w+\s*=\s*(['\"]).*?\1", "", cleaned, flags=re.IGNORECASE | re.DOTALL)
+    cleaned = re.sub(r"javascript:", "", cleaned, flags=re.IGNORECASE)
+    return cleaned
+
+def create_autojoin_application(steam_id, html, images):
+    created_at = int(time.time())
+    payload = json.dumps(images or [], ensure_ascii=False)
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute(
+        '''
+        INSERT INTO autojoin_applications
+        (steam_id, html, images_json, status, created_at, reviewed_at, reviewed_by, reject_reason, admin_note)
+        VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL, NULL)
+        ''',
+        (steam_id, html, payload, "pending", created_at),
+    )
+    conn.commit()
+    app_id = c.lastrowid
+    conn.close()
+    return app_id
+
+def update_autojoin_application_status(app_id, status, reviewed_by, reject_reason=None, admin_note=None):
+    reviewed_at = int(time.time())
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute(
+        '''
+        UPDATE autojoin_applications
+        SET status = ?, reviewed_at = ?, reviewed_by = ?, reject_reason = ?, admin_note = ?
+        WHERE id = ?
+        ''',
+        (status, reviewed_at, reviewed_by, reject_reason, admin_note, app_id),
+    )
+    conn.commit()
+    conn.close()
+
+def fetch_autojoin_applications():
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute(
+        '''
+        SELECT id, steam_id, html, images_json, status, created_at, reviewed_at, reviewed_by, reject_reason, admin_note
+        FROM autojoin_applications
+        ORDER BY CASE status WHEN 'pending' THEN 0 ELSE 1 END, created_at DESC
+        '''
+    )
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+def fetch_autojoin_application(app_id):
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute(
+        '''
+        SELECT id, steam_id, html, images_json, status, created_at, reviewed_at, reviewed_by, reject_reason, admin_note
+        FROM autojoin_applications
+        WHERE id = ?
+        ''',
+        (app_id,),
+    )
+    row = c.fetchone()
+    conn.close()
+    return row
+
+def get_autojoin_enabled(steam_id):
+    if not steam_id:
+        return False
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute(
+        "SELECT 1 FROM autojoin_applications WHERE steam_id = ? AND status = 'approved' LIMIT 1",
+        (steam_id,),
+    )
+    row = c.fetchone()
+    conn.close()
+    return bool(row)
 
 def save_stats():
     timestamp = int(time.time())
@@ -1544,6 +1673,11 @@ def initialize_app():
         APP_INITIALIZED = True
 
 # --- 7. Flask 路由 ---
+@app.before_request
+def block_admin_routes_on_public_host():
+    if request.path.startswith("/admin") and is_public_host():
+        abort(404)
+
 @app.route('/')
 @app.route('/servers')
 @app.route('/map-sub')
@@ -1664,6 +1798,17 @@ def steam_status():
         "profile": profile
     }))
 
+@app.route('/api/me')
+def api_me():
+    steam_id = session.get('steam_id')
+    logged_in = is_logged_in()
+    autojoin_enabled = get_autojoin_enabled(steam_id) if logged_in else False
+    return set_no_store(make_json_response({
+        "logged_in": logged_in,
+        "steam_id": steam_id if logged_in else None,
+        "autojoin_enabled": autojoin_enabled
+    }))
+
 @app.route('/auth/me')
 def auth_me():
     snapshot = get_config_snapshot()
@@ -1680,6 +1825,20 @@ def auth_me():
         "profile": profile
     }))
 
+@app.route('/api/autojoin/apply', methods=['POST'])
+def autojoin_apply():
+    if not is_logged_in():
+        return make_response("Unauthorized", 401)
+    payload = request.get_json(silent=True) or {}
+    html = payload.get('html', '')
+    images = payload.get('images') or []
+    if not isinstance(html, str) or not isinstance(images, list):
+        return make_response("Invalid request", 400)
+    if len(images) > 8:
+        return make_response("Too many images", 400)
+    app_id = create_autojoin_application(session.get('steam_id'), html, images)
+    return make_json_response({"ok": True, "id": app_id})
+
 @app.route('/api/steam/logout', methods=['POST'])
 def steam_logout():
     session.clear()
@@ -1693,6 +1852,8 @@ def steam_logout():
 
 @app.route('/admin/prime')
 def admin_prime():
+    if not is_admin_host():
+        abort(404)
     denied = require_admin()
     if denied:
         return denied
@@ -1712,14 +1873,16 @@ def admin_prime():
 
 @app.route('/admin/prime/add', methods=['POST'])
 def admin_prime_add():
+    if not is_admin_host():
+        abort(404)
     denied = require_admin()
     if denied:
         return denied
-    admin_id = session.get('steam_id', '')
+    admin_id = (_get_cf_access_email() or "admin") if is_admin_host() else session.get('steam_id', '')
     if not check_prime_rate_limit(admin_id):
         log_prime_audit("ADD", admin_id, request.form.get('steam_id', ''), "FAIL", "rate_limited")
         return make_response("Too Many Requests", 429)
-    if not validate_csrf_token():
+    if not (is_admin_host() or validate_csrf_token()):
         log_prime_audit("ADD", admin_id, request.form.get('steam_id', ''), "FAIL", "csrf_invalid")
         return make_response("Forbidden", 403)
     target_raw = request.form.get('steam_id', '')
@@ -1760,14 +1923,16 @@ def admin_prime_add():
 
 @app.route('/admin/prime/remove', methods=['POST'])
 def admin_prime_remove():
+    if not is_admin_host():
+        abort(404)
     denied = require_admin()
     if denied:
         return denied
-    admin_id = session.get('steam_id', '')
+    admin_id = (_get_cf_access_email() or "admin") if is_admin_host() else session.get('steam_id', '')
     if not check_prime_rate_limit(admin_id):
         log_prime_audit("REMOVE", admin_id, request.form.get('steam_id', ''), "FAIL", "rate_limited")
         return make_response("Too Many Requests", 429)
-    if not validate_csrf_token():
+    if not (is_admin_host() or validate_csrf_token()):
         log_prime_audit("REMOVE", admin_id, request.form.get('steam_id', ''), "FAIL", "csrf_invalid")
         return make_response("Forbidden", 403)
     target_raw = request.form.get('steam_id', '')
@@ -1791,6 +1956,73 @@ def admin_prime_remove():
     reason = "removed" if removed else "not_found"
     log_prime_audit("REMOVE", admin_id, target_id, "OK", reason)
     return redirect(url_for('admin_prime'))
+
+@app.route('/admin/applications')
+def admin_applications():
+    if not is_admin_host():
+        abort(404)
+    applications = []
+    for row in fetch_autojoin_applications():
+        created_at = int(row['created_at'] or 0)
+        reviewed_at = int(row['reviewed_at'] or 0) if row['reviewed_at'] else 0
+        applications.append({
+            "id": row['id'],
+            "steam_id": row['steam_id'] or "",
+            "status": row['status'] or "pending",
+            "created_at": created_at,
+            "created_at_human": datetime.utcfromtimestamp(created_at).strftime('%Y-%m-%d %H:%M:%S UTC') if created_at else "Unknown",
+            "reviewed_at_human": datetime.utcfromtimestamp(reviewed_at).strftime('%Y-%m-%d %H:%M:%S UTC') if reviewed_at else "",
+        })
+    return render_template('admin_applications.html', applications=applications)
+
+@app.route('/admin/applications/<int:app_id>')
+def admin_application_detail(app_id):
+    if not is_admin_host():
+        abort(404)
+    row = fetch_autojoin_application(app_id)
+    if not row:
+        abort(404)
+    images = []
+    try:
+        images = json.loads(row['images_json'] or "[]")
+    except Exception:
+        images = []
+    sanitized_html = sanitize_autojoin_html(row['html'] or "")
+    created_at = int(row['created_at'] or 0)
+    reviewed_at = int(row['reviewed_at'] or 0) if row['reviewed_at'] else 0
+    application = {
+        "id": row['id'],
+        "steam_id": row['steam_id'] or "",
+        "status": row['status'] or "pending",
+        "html": sanitized_html,
+        "images": images,
+        "created_at_human": datetime.utcfromtimestamp(created_at).strftime('%Y-%m-%d %H:%M:%S UTC') if created_at else "Unknown",
+        "reviewed_at_human": datetime.utcfromtimestamp(reviewed_at).strftime('%Y-%m-%d %H:%M:%S UTC') if reviewed_at else "",
+        "reviewed_by": row['reviewed_by'] or "",
+        "reject_reason": row['reject_reason'] or "",
+        "admin_note": row['admin_note'] or "",
+    }
+    return render_template('admin_application_detail.html', application=application)
+
+@app.route('/admin/applications/<int:app_id>/approve', methods=['POST'])
+def admin_application_approve(app_id):
+    if not is_admin_host():
+        abort(404)
+    reviewed_by = _get_cf_access_email() or "admin"
+    update_autojoin_application_status(app_id, "approved", reviewed_by)
+    return redirect(url_for('admin_application_detail', app_id=app_id))
+
+@app.route('/admin/applications/<int:app_id>/reject', methods=['POST'])
+def admin_application_reject(app_id):
+    if not is_admin_host():
+        abort(404)
+    reviewed_by = _get_cf_access_email() or "admin"
+    reason = request.form.get('reject_reason', '').strip()
+    note = request.form.get('admin_note', '').strip()
+    if not reason:
+        return make_response("Reject reason required", 400)
+    update_autojoin_application_status(app_id, "rejected", reviewed_by, reject_reason=reason, admin_note=note)
+    return redirect(url_for('admin_application_detail', app_id=app_id))
 
 @app.route('/api/config')
 def get_config_meta():
