@@ -1,6 +1,6 @@
 {
   "map_cd_url": "https://list.darkrp.cn:9000/serverlist/cs2maplist",
-  "stats_export_retention_days": 30,
+  "stats_export_retention_days": 90,
   "admin_steam_ids": [76561199141517683],
   "communities": [
     {
@@ -17,7 +17,8 @@
       "id": "fys",
       "name": "FYS",
       "short_name": "FYS",
-      "logo": "/static/FYS_Logo.png",
+      "logo": "/static/fys_logo.png",
+      "location": "cn",
       "game": "cs2",
       "servers": [
         { "name": "FYS 01 RP1", "host": "110.42.9.52", "port": 27900 },
@@ -42,8 +43,8 @@
       "name": "ZED",
       "short_name": "ZED",
       "logo": "/static/zed_logo.png",
-      "game": "cs2",
       "location": "cn",
+      "game": "cs2",
       "servers": [
         { "name": "ZED 01", "host": "cs1.zombieden.cn", "port": 27016 },
         { "name": "ZED 02", "host": "cs3.zombieden.cn", "port": 27015 },
@@ -57,8 +58,8 @@
       "name": "MoeUB",
       "short_name": "UB",
       "logo": "/static/ub_logo.svg",
-      "game": "cs2",
       "location": "cn",
+      "game": "cs2",
       "servers": [
         { "name": "UB 01", "host": "110.42.9.188", "port": 27011 },
         { "name": "UB 02", "host": "110.42.9.188", "port": 27021 },
@@ -70,33 +71,44 @@
     },
     {
       "id": "gfl",
-      "name": "GFL ZE",
-      "short_name": "GFL",
+      "name": "Others (CS2)",
+      "short_name": "Others",
       "logo": "/static/gfl-icon-small.svg",
       "game": "cs2",
       "servers": [
-        { "name": "GFL ZE 01", "host": "74.91.124.21", "port": 27015 }
+        { "name": "GFL ZE 01", "host": "74.91.124.21", "port": 27015 },
+        { "name": "Mapeadores", "host": "87.98.228.196", "port": 27040 },
+        { "name": "PSE", "host": "103.62.49.55", "port": 27015 },
+        { "name": "RSS", "host": "rssgo.kr", "port": 27015 }
       ]
     },
     {
       "id": "nide",
-      "name": "NiDE (CSS)",
-      "short_name": "NiDE",
+      "name": "NiDE/UNLOZE (CSS)",
+      "short_name": "CSS ZE",
       "logo": "/static/nide_logo.png",
       "game": "css",
       "servers": [
-        { "name": "NiDE ZE", "host": "46.105.73.18", "port": 27015 }
+        { "name": "NiDE ZE", "host": "46.105.73.18", "port": 27015 },
+        { "name": "Unloze ZE 01", "host": "51.195.188.106", "port": 27015 },
+        { "name": "Unloze ZE 02", "host": "51.195.188.106", "port": 27035 }
       ]
     },
     {
-      "id": "unloze",
-      "name": "UNLOZE (CSS)",
-      "short_name": "UNLOZE",
-      "logo": "/static/unloze_logo.ico",
-      "game": "css",
-      "servers": [
-        { "name": "Unloze ZE 01", "host": "51.195.188.106", "port": 27015 },
-        { "name": "Unloze ZE 02", "host": "51.195.188.106", "port": 27035 }
+      "id": "csgo",
+      "name": "CSGO ZE",
+      "short_name": "GOZE",
+      "logo": "/static/csgo_logo.svg",
+      "location": "cn",
+      "game": "cs2",
+      "servers":  [
+        { "name": "ZEDGO 01", "host": "cs2.zombieden.cn", "port": 27050 },
+        { "name": "ZEDGO 01", "host": "cs2.zombieden.cn", "port": 27051 },
+        { "name": "UBGO 01", "host": "110.42.9.200", "port": 27011 },
+        { "name": "UBGO 02", "host": "110.42.9.200", "port": 27021 },
+        { "name": "UBGO 03", "host": "110.42.9.200", "port": 27051 },
+        { "name": "UBGO 04", "host": "110.42.9.200", "port": 27061 },
+        { "name": "UBGO 05", "host": "110.42.9.200", "port": 27071 }
       ]
     }
   ]

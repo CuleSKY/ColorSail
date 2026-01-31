@@ -1,3 +1,5 @@
-from app import app
+from app import app, initialize_app
 
-__all__ = ["app"]
+initialize_app()
+
+application = app

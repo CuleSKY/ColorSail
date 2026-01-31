@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NERV CS2ZE Browser</title>
+    <link id="favicon" rel="icon" href="/static/NERV_Logo.png" type="image/png">
+    
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <style>
+        /* --- 1. 基础变量 --- */
+        :root {
+            --bg-color: #f3f3f3;
+            --acrylic-bg: rgba(255, 255, 255, 0.85);
+            --card-bg: #ffffff;
+            --list-row-bg: #ffffff;
+            --list-hover-bg: #f9f9f9;
+            --card-border: rgba(0, 0, 0, 0.08);
+            --text-primary: #202020;
+            --text-secondary: #606060;
+            --accent: #0078d4;
+            --accent-hover: #006abc;
+            --shadow: 0 4px 16px rgba(0,0,0,0.08);
+            --radius: 8px;
+            --sidebar-width-expanded: 260px;
+            --sidebar-width-collapsed: 60px;
+            --header-height: 60px;
+            --nav-height: 50px;
+            --font: "Segoe UI Variable", "Segoe UI", sans-serif;
+            --status-online: #107c10;
+            --status-offline: #d13438;
+            --warn-bg: #fff4ce;
+            --warn-text: #7d630c;
+            --ease-fluent: cubic-bezier(0.1, 0.9, 0.2, 1);
+            --scrollbar-track: rgba(0, 0, 0, 0.06);
+            --scrollbar-thumb: rgba(0, 0, 0, 0.28);
+            --scrollbar-thumb-hover: rgba(0, 0, 0, 0.45);
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #202020;
+            --acrylic-bg: rgba(32, 32, 32, 0.85);
+            --card-bg: #2d2d2d;
+            --list-row-bg: #2d2d2d;
+            --list-hover-bg: #383838;
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #ffffff;
+            --text-secondary: #d0d0d0;
+            --accent: #60cdff;
+            --accent-hover: #60ccffcc;
+            --shadow: 0 4px 16px rgba(0,0,0,0.4);
+            --warn-bg: #463b15;
+            --warn-text: #fce100;
+            --scrollbar-track: rgba(255, 255, 255, 0.08);
+            --scrollbar-thumb: rgba(255, 255, 255, 0.3);
+            --scrollbar-thumb-hover: rgba(255, 255, 255, 0.5);
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100vh;
+            font-family: var(--font); background-color: var(--bg-color);
+            background-image: radial-gradient(circle at top left, rgba(0,120,212,0.1), transparent 40%);
+            color: var(--text-primary); overflow: hidden; 
+        }
+
+        #app { display: flex; width: 100%; height: 100%; }
+
+        * { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); }
+        *::-webkit-scrollbar { width: 10px; height: 10px; }
+        *::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 8px; }
+        *::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+        *::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+
+        * { transition: background-color 0.3s var(--ease-fluent), border-color 0.3s var(--ease-fluent), color 0.3s var(--ease-fluent), box-shadow 0.3s var(--ease-fluent), transform 0.3s var(--ease-fluent), opacity 0.3s var(--ease-fluent); }
+        #app * { animation: fluentFadeIn 0.35s var(--ease-fluent) both; }
+        .animate-enter { animation: fadeSlideUp 0.4s var(--ease-fluent) forwards; }
+        @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fluentFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- 2. 侧边栏 --- */
+        #sidebar {
+            width: var(--sidebar-width-expanded); height: 100%;
+            background: var(--acrylic-bg); backdrop-filter: blur(20px);
+            border-right: 1px solid var(--card-border);
+            display: flex; flex-direction: column; padding: 12px;
+            transition: width 0.4s var(--ease-fluent); z-index: 100; flex-shrink: 0;
+        }
+        #sidebar.collapsed { width: var(--sidebar-width-collapsed); padding: 12px 8px; }
+
+        .sidebar-logo { margin-bottom: 24px; display: flex; justify-content: center; align-items: center; height: 40px; overflow: hidden; }
+        .sidebar-logo img { height: 100%; width: auto; object-fit: contain; transition: transform 0.3s; }
+        #sidebar.collapsed .sidebar-logo img { transform: scale(0.8); }
+
+        .hamburger-btn { width: 36px; height: 36px; border: none; background: transparent; color: var(--text-primary); cursor: pointer; border-radius: 4px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; align-self: flex-start; }
+        .hamburger-btn:hover { background: rgba(128,128,128,0.1); }
+
+        .nav-item { min-height: 42px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 0 12px; margin-bottom: 6px; color: var(--text-secondary); position: relative; font-weight: 500; transition: all 0.2s; }
+        #sidebar.collapsed .nav-item { justify-content: center; padding: 0; height: 42px; }
+        .nav-item:hover { background: rgba(128,128,128,0.08); color: var(--text-primary); }
+        .nav-item.active { background: rgba(128,128,128,0.12); color: var(--accent); font-weight: 600; }
+        .nav-item.active .icon-svg { color: var(--accent); }
+        .nav-item.edit-mode-active { background: var(--warn-bg); color: var(--warn-text); border: 1px solid var(--warn-text); }
+
+        .tooltip { position: absolute; left: 100%; top: 50%; transform: translateY(-50%) translateX(10px); margin-left: 0; padding: 6px 12px; background: var(--card-bg); border: 1px solid var(--card-border); backdrop-filter: blur(10px); border-radius: 4px; box-shadow: var(--shadow); color: var(--text-primary); font-size: 13px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; z-index: 999; }
+        #sidebar.collapsed .nav-item:hover .tooltip { opacity: 1; transform: translateY(-50%) translateX(0); }
+        .icon-svg { width: 22px; height: 22px; flex-shrink: 0; fill: currentColor; display: block; }
+
+        /* --- 3. Header --- */
+        .content-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; height: 100%; position: relative; z-index: 1; }
+        header { height: var(--header-height); width: 100%; display: grid; grid-template-columns: auto 1fr auto; align-items: center; padding: 0 30px; flex-shrink: 0; background: var(--bg-color); border-bottom: 1px solid transparent; position: relative; z-index: 200; column-gap: 16px; }
+        .header-title-area { display: flex; align-items: center; gap: 16px; }
+        .header-logo img { height: 32px; width: auto; display: block; }
+        h1 { margin: 0; font-weight: 600; font-size: 20px; }
+
+        .edit-banner { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: repeating-linear-gradient(45deg, var(--warn-text), var(--warn-text) 10px, var(--warn-bg) 10px, var(--warn-bg) 20px); z-index: 101; }
+
+        .header-right { display: flex; align-items: center; gap: 16px; justify-self: end; }
+        .header-toolbar { display: flex; align-items: center; gap: 12px; }
+        .toolbar-btn { display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 20px; background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-primary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02); line-height: 1; }
+        .toolbar-btn:hover { background: rgba(128,128,128,0.1); transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.08); }
+        .toolbar-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+        .toolbar-btn .icon-svg { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
+        .toolbar-btn .icon-svg svg { display: block; }
+        .toolbar-btn span { line-height: 1; }
+
+        .top-controls { display: flex; gap: 12px; align-items: center; position: relative; z-index: 210; }
+        .control-btn { background: transparent; border: none; cursor: pointer; padding: 8px; border-radius: 50%; color: var(--text-primary); display: flex; align-items: center; justify-content: center; transition: background 0.2s; position: relative; }
+        .control-btn:hover { background: rgba(128,128,128,0.1); }
+        .control-btn.menu-active { background: rgba(128,128,128,0.15); color: var(--accent); }
+        .desktop-only-icon { display: block; }
+
+        .community-nav { height: var(--nav-height); width: 100%; display: flex; align-items: center; gap: 12px; padding: 0 30px; overflow-x: auto; flex-shrink: 0; border-bottom: 1px solid var(--card-border); scrollbar-width: none; background: var(--bg-color); }
+        .community-nav::-webkit-scrollbar { display: none; }
+        .jump-pill { display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 18px; cursor: pointer; transition: all 0.2s; font-size: 13px; white-space: nowrap; font-weight: 500; }
+        .jump-pill:hover { background: var(--accent); color: white; border-color: var(--accent); transform: translateY(-1px); }
+        .jump-pill img { width: 16px; height: 16px; border-radius: 50%; object-fit: contain; background: rgba(255,255,255,0.2); }
+
+        .server-search-bar { display: flex; align-items: center; padding: 12px 30px; border-bottom: 1px solid var(--card-border); background: var(--bg-color); gap: 12px; }
+        .server-search-input { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--card-bg); color: var(--text-primary); font-size: 14px; outline: none; }
+        .server-search-input::placeholder { color: var(--text-secondary); }
+        .server-search-hint { padding: 6px 30px 12px 30px; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--card-border); background: var(--bg-color); }
+        .server-search-hint strong { color: var(--text-primary); }
+
+        #main-content { flex: 1; padding: 20px 30px 80px 30px; overflow-y: auto; scroll-behavior: smooth; width: 100%; }
+        [id^="comm-"] { scroll-margin-top: 20px; }
+
+        /* --- 4. Main Views (Grid/List) --- */
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; width: 100%; }
+        .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); box-shadow: var(--shadow); position: relative; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.3s, box-shadow 0.3s; min-height: 200px; }
+        .card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .card-bg-layer { position: absolute; inset: 0; background-size: cover; background-position: center; z-index: 0; transition: filter 0.4s ease, transform 0.4s ease; }
+        .card:hover .card-bg-layer { filter: blur(4px); transform: scale(1.05); }
+        .card-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.65); z-index: 1; }
+        .card-content { padding: 16px; position: relative; z-index: 2; display: flex; flex-direction: column; flex: 1; justify-content: space-between; }
+        .card.has-image .card-content { color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+        .card.has-image .srv-name { color: #ffffff; }
+        .card.has-image .info-row { color: #ffffff; }
+        .card.has-image .info-label { color: rgba(255,255,255,0.88); }
+        .card.has-image .map-info { color: #ffffff; }
+        .card.has-image .map-trans { color: rgba(255,255,255,0.92); }
+        .card.has-image .btn-sec { border-color: rgba(255,255,255,0.4); background: rgba(0,0,0,0.3); color: white; backdrop-filter: blur(4px); }
+        .card.has-image .btn-sec:hover { background: rgba(0,0,0,0.6); }
+        .status-line { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--status-offline); z-index: 3; transition: width 0.2s; }
+        .card.online .status-line { background: var(--status-online); }
+        .card-header-row { display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center; }
+        .srv-name { font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 75%; }
+        .info-block { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+        .info-row { display: flex; justify-content: space-between; align-items: flex-start; font-size: 13px; color: var(--text-primary); }
+        .info-label { color: var(--text-secondary); min-width: 40px; }
+        .map-info { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+        .map-trans { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+        .actions { display: flex; gap: 8px; margin-top: 16px; }
+        .btn { flex: 1; padding: 8px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; font-family: inherit; font-size: 12px; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: background 0.2s; white-space: nowrap; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-sec { background: rgba(128,128,128,0.1); border: 1px solid transparent; color: var(--text-primary); }
+        .btn-sec:hover { background: rgba(128,128,128,0.2); }
+
+        .list-container { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+        .list-row { display: flex; align-items: center; background: var(--list-row-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 12px 16px; position: relative; overflow: hidden; transition: all 0.2s; }
+        .list-row:hover { background: var(--list-hover-bg); transform: translateX(4px); box-shadow: var(--shadow); }
+        .col-status { width: 4px; position: absolute; left: 0; top: 0; bottom: 0; background: var(--status-offline); }
+        .list-row.online .col-status { background: var(--status-online); }
+        .col-name { flex: 2; font-weight: 600; font-size: 15px; padding-left: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .col-map { flex: 2; font-size: 14px; color: var(--text-primary); display: flex; flex-direction: column; justify-content: center; padding: 0 10px; }
+        .col-map .map-name { font-weight: 500; }
+        .col-map .map-cn { font-size: 12px; color: var(--text-secondary); }
+        .col-players { flex: 1; font-size: 14px; text-align: center; color: var(--text-secondary); }
+        .col-actions { flex: 2.5; display: flex; gap: 8px; justify-content: flex-end; }
+        .col-actions .btn { max-width: 100px; }
+
+        .mobile-list-container { display: none; width: 100%; }
+        .mobile-item { background: var(--card-bg); border-bottom: 1px solid var(--card-border); padding: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .mobile-item-left { display: flex; flex-direction: column; gap: 4px; overflow: hidden; max-width: 70%; }
+        .mobile-srv-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mobile-map-name { font-size: 13px; color: var(--text-secondary); display: flex; flex-direction: column; }
+        .mobile-trans { font-size: 12px; opacity: 0.8; }
+        .mobile-item-right { font-weight: bold; font-size: 14px; white-space: nowrap; margin-left: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+
+        /* --- Stats Dashboard --- */
+        .stats-dashboard { display: flex; flex-direction: column; gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .stats-summary-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+        .summary-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 20px; display: flex; flex-direction: column; gap: 8px; box-shadow: var(--shadow); }
+        .summary-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+        .summary-value { font-size: 28px; font-weight: 700; color: var(--text-primary); }
+        .summary-sub { font-size: 12px; color: var(--accent); display: flex; align-items: center; gap: 4px; }
+        .stats-charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start; }
+        .chart-wrapper { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); display: flex; flex-direction: column; height: 400px; }
+        .chart-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: var(--text-primary); }
+        .chart-subtitle { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; }
+        .chart-content { flex: 1; position: relative; min-height: 0; }
+        .community-list-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 0; box-shadow: var(--shadow); display: flex; flex-direction: column; height: auto; overflow: visible; }
+        .comm-list-header { padding: 16px; font-weight: 600; border-bottom: 1px solid var(--card-border); }
+        .pie-container { height: 200px; padding: 10px; display: flex; justify-content: center; position: relative; }
+        .comm-list-body { overflow: visible; height: auto; }
+        .comm-stat-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--card-border); }
+        .comm-stat-row:last-child { border-bottom: none; }
+        .comm-stat-info { display: flex; align-items: center; gap: 10px; }
+        .comm-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .comm-stat-name { font-size: 14px; font-weight: 500; }
+        .comm-stat-val { font-weight: 700; font-size: 14px; }
+        @media (max-width: 900px) { .stats-charts-row { grid-template-columns: 1fr; } }
+
+        /* --- Sub Page --- */
+        .sub-container { max-width: 900px; margin: 0 auto; padding-top: 20px; }
+        .sub-search-area { display: flex; flex-direction: column; gap: 16px; align-items: center; margin-bottom: 30px; position: relative; }
+        .sub-search-box { width: 100%; max-width: 600px; padding: 14px 20px; border-radius: 30px; border: 1px solid var(--card-border); background: var(--card-bg); color: var(--text-primary); box-shadow: var(--shadow); font-size: 16px; transition: all 0.3s; outline: none; }
+        .sub-search-box:focus { border-color: var(--accent); box-shadow: 0 6px 20px rgba(0,0,0,0.15); transform: translateY(-2px); }
+        .search-results-panel { width: 100%; max-width: 600px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); box-shadow: var(--shadow); max-height: 300px; overflow-y: auto; position: relative; z-index: 10; }
+        .search-res-item { padding: 12px 16px; border-bottom: 1px solid var(--card-border); cursor: pointer; transition: background 0.1s; }
+        .search-res-item:hover { background: rgba(128,128,128,0.05); }
+        .search-res-item.selected { background: var(--accent); color: white; }
+        .comm-select-area { width: 100%; max-width: 600px; padding: 20px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); box-shadow: var(--shadow); animation: fadeSlideUp 0.3s ease; }
+        .comm-options { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+        .comm-pill { padding: 8px 16px; border: 1px solid var(--card-border); border-radius: 20px; cursor: pointer; font-size: 13px; transition: all 0.2s; background: var(--list-row-bg); }
+        .comm-pill:hover { background: rgba(128,128,128,0.1); transform: scale(1.05); }
+        .comm-pill.active { background: var(--accent); color: white; border-color: var(--accent); box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+        .sub-table { width: 100%; background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--card-border); overflow: hidden; box-shadow: var(--shadow); }
+        .sub-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--card-border); transition: background 0.2s; }
+        .sub-row:hover { background: rgba(128,128,128,0.03); }
+        .sub-col-info { flex: 1; display: flex; flex-direction: column; }
+        .sub-map-key { font-weight: 600; font-size: 16px; }
+        .sub-map-val { font-size: 14px; color: var(--text-secondary); margin-top: 2px; }
+        .sub-comms { font-size: 12px; color: var(--accent); margin-top: 6px; background: rgba(128,128,128,0.08); padding: 2px 8px; border-radius: 4px; align-self: flex-start; }
+        .btn-unsub { padding: 8px 16px; border-radius: 6px; cursor: pointer; border: 1px solid var(--status-offline); background: transparent; color: var(--status-offline); font-size: 13px; font-weight: 600; transition: all 0.2s; }
+        .btn-unsub:hover { background: var(--status-offline); color: white; transform: scale(1.05); }
+        
+        .perm-warning { background: var(--warn-bg); color: var(--warn-text); padding: 12px; border-radius: 6px; margin-bottom: 20px; text-align: center; font-size: 14px; cursor: pointer; border: 1px solid var(--warn-text); animation: fadeSlideUp 0.3s; }
+        .keep-alive-hint { font-size: 12px; color: var(--text-secondary); background: rgba(128,128,128,0.05); border: 1px dashed var(--card-border); padding: 10px; border-radius: 6px; margin-bottom: 20px; text-align: center; display: block; animation: fadeSlideUp 0.3s; }
+        .sub-test-btn { margin-top: 50px; margin-bottom: 20px; text-align: center; color: var(--text-secondary); font-size: 11px; cursor: pointer; opacity: 0.4; transition: opacity 0.2s; }
+        .sub-test-btn:hover { opacity: 0.8; }
+
+        /* --- Components --- */
+        .fixed-logo { position: fixed; bottom: 20px; right: 20px; z-index: -1; pointer-events: none; opacity: 0.8; transition: opacity 0.3s; }
+        .fixed-logo img { width: 140px; height: auto; display: block; }
+        .dropdown-menu { position: absolute; top: 100%; right: 0; background: var(--card-bg); backdrop-filter: blur(20px); border: 1px solid var(--card-border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 5px; min-width: 150px; z-index: 200; display: none; flex-direction: column; animation: fadeSlideUp 0.2s; }
+        .dropdown-menu.show { display: flex; }
+        .dropdown-item { padding: 8px 16px; cursor: pointer; font-size: 14px; color: var(--text-primary); border-radius: 4px; transition: background 0.1s; }
+        .dropdown-item:hover { background: rgba(128,128,128,0.1); }
+        .dropdown-item.active { color: var(--accent); font-weight: bold; }
+        .sub-popover { min-width: 280px; max-width: 320px; max-height: 450px; overflow-y: auto; right: -10px; padding: 0; }
+        .sub-pop-item { padding: 12px 16px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; transition: background 0.1s; }
+        .sub-pop-item:hover { background: rgba(128,128,128,0.03); }
+        .sub-pop-info { display: flex; flex-direction: column; overflow: hidden; flex: 1; padding-right: 10px; }
+        .sub-pop-map { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sub-pop-trans { font-size: 12px; color: var(--text-secondary); }
+        .sub-pop-del { cursor: pointer; color: var(--text-secondary); padding: 6px; border-radius: 4px; transition: all 0.2s; }
+        .sub-pop-del:hover { color: var(--status-offline); background: rgba(255,0,0,0.1); }
+        .sub-pop-empty { padding: 20px; text-align: center; color: var(--text-secondary); font-size: 13px; }
+        .sub-pop-footer { padding: 12px; background: rgba(128,128,128,0.05); border-top: 1px solid var(--card-border); text-align: center; font-size: 13px; color: var(--accent); font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .sub-pop-footer:hover { background: rgba(128,128,128,0.1); }
+        
+        .drag-hint { font-size: 12px; color: var(--accent); background: rgba(0, 120, 212, 0.1); padding: 8px; border-radius: 4px; margin-bottom: 10px; text-align: center; border: 1px dashed var(--accent); animation: fadeSlideUp 0.3s; }
+        .draggable-item { cursor: grab; border: 1px solid transparent; transition: transform 0.2s; }
+        .draggable-item:active { cursor: grabbing; transform: scale(0.98); }
+        .draggable-item.dragging { opacity: 0.5; background: var(--card-bg); }
+        .draggable-item.drag-over { border-top: 2px solid var(--accent); background: rgba(128,128,128,0.05); }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: #333; color: white; padding: 10px 24px; border-radius: 20px; opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 1000; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        @media (max-width: 768px) {
+            html, body { overflow-x: hidden; overflow-y: auto !important; height: auto !important; -webkit-overflow-scrolling: touch; }
+            #app { display: block; height: auto; }
+            #sidebar { display: none; }
+            header { position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--card-border); padding: 0 16px; }
+            .header-title-area { gap: 10px; }
+            h1 { font-size: 18px; }
+            .content-wrapper { height: auto; overflow: visible; display: block; }
+            #main-content { height: auto; overflow: visible; padding: 20px 16px 120px 16px; }
+            .community-nav { position: sticky; top: var(--header-height); z-index: 99; padding: 0 16px; }
+            .grid-container, .list-container, .desktop-header { display: none !important; }
+            .mobile-list-container { display: block; }
+            .fixed-logo, .view-toggle-btn { display: none; }
+            .community-title-bar { padding: 12px 16px; background: rgba(128,128,128,0.05); font-weight: 600; color: var(--accent); font-size: 14px; border-bottom: 1px solid var(--card-border); display: flex; align-items: center; gap: 8px; }
+            .community-title-bar img { width: 20px; height: 20px; object-fit: contain; }
+            .header-toolbar { display: none; }
+            .sub-search-box { width: 100%; }
+            .desktop-only-icon { display: none !important; }
+        }
+    </style>
+</head>
+<body data-initial-view="{{ initial_view or 'servers' }}">
+
+<div id="app" :style="isMobile ? {} : { display: 'flex', width: '100%', height: '100%' }" @click="closeDropdowns">
+
+    <div id="sidebar" :class="{ collapsed: isCollapsed }" @click.stop>
+        <button class="hamburger-btn" @click="toggleSidebar">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <div class="sidebar-logo"><img :src="currentLogoPath" alt="Logo"></div>
+        
+        <div class="nav-item" :class="{active: curView === 'servers'}" @click="goToView('servers')">
+            <div class="icon-svg" v-html="icons.server"></div>
+            <span v-if="!isCollapsed">[[ t('servers') ]]</span>
+            <div class="tooltip" v-if="isCollapsed">[[ t('servers') ]]</div>
+        </div>
+
+        <div v-if="!isCollapsed && isEditMode" class="animate-enter">
+            <div class="drag-hint">[[ t('drag_hint') ]]</div>
+            <div 
+                class="draggable-item" 
+                v-for="(comm, idx) in communities" 
+                :key="comm.id"
+                draggable="true"
+                @dragstart="onDragStart($event, idx)"
+                @dragover.prevent
+                @dragenter="onDragEnter($event, idx)"
+                @dragleave="onDragLeave($event)"
+                @drop="onDrop($event, idx)"
+                :class="{ 'dragging': draggedIndex === idx, 'drag-over': dragOverIndex === idx }"
+                style="padding: 10px; font-size:13px; background: rgba(128,128,128,0.05); margin-bottom:4px; border-radius:4px; display:flex; align-items:center; gap:8px;"
+            >
+                <div class="icon-svg" v-html="icons.drag" style="width:16px; opacity:0.5"></div>
+                <span>[[ comm.name ]]</span>
+            </div>
+        </div>
+
+        <div class="nav-item" :class="{active: curView === 'map_sub'}" @click="goToView('map_sub')">
+            <div class="icon-svg" v-html="icons.search_sub"></div>
+            <span v-if="!isCollapsed">[[ t('sub_menu') ]]</span>
+            <div class="tooltip" v-if="isCollapsed">[[ t('sub_menu') ]]</div>
+        </div>
+
+        <div class="nav-item" :class="{active: curView === 'stats'}" @click="goToView('stats')">
+            <div class="icon-svg" v-html="icons.stats"></div>
+            <div v-if="!isCollapsed" style="display:flex; flex-direction:column; justify-content:center; line-height:1.2;">
+                <span>[[ t('stats') ]]</span>
+                <span style="font-size: 10px; opacity: 0.7;">[[ t('stats_note') ]]</span>
+            </div>
+            <div class="tooltip" v-if="isCollapsed">[[ t('stats') ]]</div>
+        </div>
+        <div class="nav-item" @click="openMapLink" v-if="hasFeature('map_cd')">
+            <div class="icon-svg" v-html="icons.map"></div>
+            <div v-if="!isCollapsed" style="display:flex; flex-direction:column; justify-content:center; line-height:1.2;">
+                <span>[[ t('mapcd') ]]</span>
+                <span style="font-size: 10px; opacity: 0.7;">[[ t('exg_only') ]]</span>
+            </div>
+            <div class="tooltip" v-if="isCollapsed">[[ t('mapcd') ]]</div>
+        </div>
+
+        <div style="margin-top: auto; padding: 10px;">
+            <div class="nav-item" @click="toggleEditMode" :class="{'edit-mode-active': isEditMode}">
+                <div class="icon-svg" v-html="icons.edit"></div>
+                <span v-if="!isCollapsed">[[ isEditMode ? t('exit_edit') : t('edit_order') ]]</span>
+                <div class="tooltip" v-if="isCollapsed">[[ t('edit_order') ]]</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-wrapper">
+        <div class="edit-banner" v-if="isEditMode"></div>
+        <header>
+            <div class="header-left">
+                <div class="header-title-area">
+                    <div class="header-logo"><img :src="currentLogoPath" alt="Logo"></div>
+                    <h1 v-if="curView === 'servers'">[[ t('app_title') ]]</h1>
+                    <h1 v-if="curView === 'map_sub'">[[ t('sub_menu') ]]</h1>
+                    <h1 v-if="curView === 'stats'">[[ t('stats') ]]</h1>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div class="header-toolbar" v-if="curView === 'servers'">
+                    <button class="toolbar-btn" @click.stop="toggleViewMode" :title="t('switch_view')">
+                        <div class="icon-svg" v-html="viewMode === 'grid' ? icons.list : icons.grid"></div>
+                        <span>[[ viewMode === 'grid' ? t('view_list') : t('view_grid') ]]</span>
+                    </button>
+                    <button class="toolbar-btn" @click.stop="toggleSortByPlayers" :class="{active: sortByPlayers}" :title="t('sort_players')">
+                        <div class="icon-svg" v-html="icons.sort"></div>
+                        <span>[[ t('sort_btn') ]]</span>
+                    </button>
+                </div>
+
+                <div class="top-controls">
+                    <div class="desktop-only-icon" style="position: relative;">
+                        <button class="control-btn" :class="{'menu-active': showSubPopover}" @click.stop="toggleSubPopover" :title="t('my_subs')">
+                            <div class="icon-svg" v-html="icons.bell"></div>
+                        </button>
+                        <div class="dropdown-menu sub-popover" :class="{show: showSubPopover}" @click.stop>
+                            <div v-if="subscriptions.length === 0" class="sub-pop-empty">[[ t('no_subs') ]]</div>
+                            <div v-else>
+                                <div class="sub-pop-item" v-for="sub in subscriptions.slice(0, 5)" :key="sub.map">
+                                    <div class="sub-pop-info">
+                                        <div class="sub-pop-map">[[ sub.map ]]</div>
+                                        <div class="sub-pop-trans" v-if="isChineseLang && getMapTranslation(sub.map)">[[ getMapTranslation(sub.map) ]]</div>
+                                    </div>
+                                    <div class="sub-pop-del" @click.stop="removeSubscriptionByMap(sub.map)" :title="t('unsubscribe')">
+                                        <div class="icon-svg" v-html="icons.trash" style="width:14px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="sub-pop-footer" @click.stop="goToSubPage">[[ t('manage_all') ]]</div>
+                        </div>
+                    </div>
+
+                    <div style="position: relative;">
+                        <button class="control-btn" :class="{'menu-active': showLangMenu}" @click.stop="toggleLangMenu">
+                            <div class="icon-svg" v-html="icons.lang"></div>
+                        </button>
+                        <div class="dropdown-menu" :class="{show: showLangMenu}" @click.stop>
+                            <div class="dropdown-item" :class="{active: curLang==='zh-CN'}" @click="setLang('zh-CN')">简体中文</div>
+                            <div class="dropdown-item" :class="{active: curLang==='zh-TW'}" @click="setLang('zh-TW')">繁體中文</div>
+                            <div class="dropdown-item" :class="{active: curLang==='en'}" @click="setLang('en')">English</div>
+                        </div>
+                    </div>
+                    <button class="control-btn" @click="toggleTheme"><div class="icon-svg" v-html="icons.theme"></div></button>
+                </div>
+            </div>
+        </header>
+
+        <div class="community-nav" v-if="curView === 'servers'">
+            <div class="jump-pill" v-for="comm in filteredCommunities" :key="comm.id" @click="scrollToComm(comm.id)">
+                <img v-if="comm.logo" :src="comm.logo">
+                <span>[[ comm.name ]]</span>
+            </div>
+        </div>
+
+        <div class="server-search-bar" v-if="curView === 'servers'">
+            <input class="server-search-input" type="text" v-model="serverMapQueryInput" :placeholder="t('server_search_ph')">
+        </div>
+
+        <div id="main-content">
+            
+            <div v-if="curView === 'servers'" class="animate-enter">
+                <div v-if="serverSearchNotice" class="server-search-hint">
+                    [[ serverSearchNotice ]]
+                </div>
+                <div v-for="comm in filteredCommunities" :key="comm.id" :id="'comm-' + comm.id" style="margin-bottom: 40px;">
+                    <h3 class="desktop-header" v-if="!isMobile" style="border-left: 4px solid var(--accent); padding-left: 10px; margin: 0 0 16px 0;">[[ comm.name ]]</h3>
+                    <div class="community-title-bar" v-if="isMobile" :id="'comm-mob-' + comm.id">
+                        <img v-if="comm.logo" :src="comm.logo">
+                        [[ comm.name ]]
+                    </div>
+
+                    <div v-if="viewMode === 'grid' && !isMobile" class="grid-container">
+                        <div class="card" :class="{ 'online': s.online, 'has-image': s.image_url }" v-for="s in getServers(comm.id)" :key="s.display_ip">
+                            <div class="status-line"></div>
+                            <div class="card-bg-layer" v-if="s.image_url" :style="{backgroundImage: 'url(' + s.image_url + ')'}"></div>
+                            <div class="card-overlay" v-if="s.image_url"></div>
+                            <div class="card-content">
+                                <div>
+                                    <div class="card-header-row">
+                                        <div class="srv-name" :title="s.name">[[ s.name ]]</div>
+                                    </div>
+                                    <div class="info-block">
+                                        <div class="info-row"><span class="info-label">[[ t('map') ]]</span> <div class="map-info"><span>[[ s.map || '-' ]]</span><div class="map-trans" v-if="isChineseLang"><span v-if="getServerMapTranslation(s)">[[ getServerMapTranslation(s) ]]</span><span v-if="!getServerMapTranslation(s) && s.map!='-'" style="opacity:0.6">[[ t('no_trans') ]]</span></div></div></div>
+                                        <div class="info-row"><span class="info-label">[[ t('players') ]]</span> <span>[[ s.players ]]/[[ s.max_players ]]</span></div>
+                                    </div>
+                                </div>
+                                <div class="actions">
+                                    <a :href="getConnectUrl(s, comm.game)" class="btn btn-primary">[[ t('join') ]]</a>
+                                    <button class="btn btn-sec" @click="copyCmd(s)">[[ t('copy_console') ]] </button>
+                                    <button class="btn btn-sec" @click="copyIp(s)">[[ t('copy_ip') ]]</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="viewMode === 'list' && !isMobile" class="list-container">
+                        <div class="list-row" :class="{ 'online': s.online }" v-for="s in getServers(comm.id)" :key="s.display_ip">
+                            <div class="col-status"></div>
+                            <div class="col-name" :title="s.name">[[ s.name ]]</div>
+                            <div class="col-map"><span class="map-name">[[ s.map || '-' ]]</span><span class="col-map-cn" v-if="isChineseLang">[[ getServerMapTranslation(s) || (s.map!='-' ? t('no_trans') : '') ]]</span></div>
+                            <div class="col-players">[[ s.players ]]/[[ s.max_players ]]</div>
+                            <div class="col-actions"><a :href="getConnectUrl(s, comm.game)" class="btn btn-primary">[[ t('join') ]]</a><button class="btn btn-sec" @click="copyCmd(s)">[[ t('copy_console') ]] </button><button class="btn btn-sec" @click="copyIp(s)">[[ t('copy_ip') ]]</button></div>
+                        </div>
+                    </div>
+
+                    <div class="mobile-list-container" v-if="isMobile">
+                        <div class="mobile-item" v-for="s in getServers(comm.id)" :key="s.display_ip">
+                            <div class="mobile-item-left"><div class="mobile-srv-name">[[ s.name ]]</div><div class="mobile-map-name"><span>[[ s.map || '-' ]]</span><span class="mobile-trans" v-if="isChineseLang"> [[ getServerMapTranslation(s) || (s.map!='-' ? t('no_trans') : '') ]]</span></div></div>
+                            <div class="mobile-item-right"><div :style="{color: s.online ? 'var(--text-primary)' : 'var(--status-offline)'}">[[ s.online ? s.players + '/' + s.max_players : t('offline') ]]</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="curView === 'map_sub'" class="animate-enter">
+                <div class="sub-container">
+                    
+                    <div class="perm-warning" v-if="notificationPermission !== 'granted'" @click="requestPerm">
+                        [[ t('notify_warn') ]]
+                    </div>
+                    <div class="keep-alive-hint" v-if="notificationPermission === 'granted'">
+                        [[ t('keep_open_hint') ]]
+                    </div>
+
+                    <div class="sub-search-area">
+                        <input type="text" class="sub-search-box" v-model="subSearchQuery" :placeholder="t('sub_search_ph')" @input="searchMaps">
+                        
+                        <div class="search-results-panel" v-if="searchResults.length > 0">
+                            <div class="search-res-item" :class="{selected: selectedMap === m.key}" v-for="m in searchResults" @click="selectMapToSub(m)">
+                                <b>[[ m.key ]]</b> <span v-if="m.val" style="opacity:0.8">([[ m.val ]])</span>
+                            </div>
+                        </div>
+
+                        <div class="comm-select-area" v-if="selectedMap">
+                            <div style="font-weight:600; margin-bottom:8px;">[[ t('sub_confirm_title') ]]: <span style="color:var(--accent)">[[ selectedMap ]]</span></div>
+                            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:8px;">[[ t('sub_select_comm') ]]:</div>
+                            
+                            <div class="comm-options">
+                                <div class="comm-pill" :class="{active: newSubComms.includes('all')}" @click="toggleSubComm('all')">
+                                    [[ t('all_comm') ]]
+                                </div>
+                                <div class="comm-pill" :class="{active: newSubComms.includes(c.id)}" v-for="c in communities" @click="toggleSubComm(c.id)">
+                                    [[ c.short_name || c.name ]]
+                                </div>
+                            </div>
+                            
+                            <button class="btn btn-primary" style="margin-top:16px; width:100%" @click="addSubscription">
+                                [[ t('subscribe_confirm') ]]
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="border-top:1px solid var(--card-border); margin: 30px 0;"></div>
+                    
+                    <h3 style="margin-bottom:16px; opacity:0.8">[[ t('my_subs') ]]</h3>
+                    <div class="sub-table" v-if="subscriptions.length > 0">
+                        <div class="sub-row" v-for="(sub, idx) in subscriptions" :key="idx">
+                            <div class="sub-col-info">
+                                <div class="sub-map-key">[[ sub.map ]]</div>
+                                <div class="sub-map-val" v-if="isChineseLang && getMapTranslation(sub.map)">[[ getMapTranslation(sub.map) ]]</div>
+                                <div class="sub-comms">[[ formatSubComms(sub.comms) ]]</div>
+                            </div>
+                            <button class="btn-unsub" @click="removeSubscription(idx)">[[ t('unsubscribe') ]]</button>
+                        </div>
+                    </div>
+                    <div v-else style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        [[ t('no_subs') ]]
+                    </div>
+
+                    <div class="sub-test-btn" @click="testNotification">[[ t('test_notify') ]]</div>
+                </div>
+            </div>
+            
+            <div v-if="curView === 'stats'" class="animate-enter">
+                <div class="stats-dashboard">
+                    <div class="stats-summary-row">
+                        <div class="summary-card">
+                            <div class="summary-label">[[ t('stats_total_label') ]]</div>
+                            <div class="summary-value">[[ totalPlayers ]]</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-label">[[ t('stats_peak_label') ]]</div>
+                            <div class="summary-value">[[ totalPeak48h ]]</div>
+                        </div>
+                        <div class="summary-card" v-if="topCommunity">
+                            <div class="summary-label">[[ t('stats_top_label') ]]</div>
+                            <div class="summary-value">[[ topCommunity.name ]]</div>
+                            <div class="summary-sub">[[ topCommunity.count ]] [[ t('stats_players_label') ]]</div>
+                        </div>
+                    </div>
+
+                    <div class="stats-charts-row">
+                        <div class="chart-wrapper">
+                        <div class="chart-title">[[ t('stats_title') ]]</div>
+                        <div class="chart-subtitle">[[ t('stats_time_note') ]]</div>
+                            <div class="chart-content"><canvas id="statsLineChart"></canvas></div>
+                        </div>
+                        <div class="community-list-card">
+                            <div class="comm-list-header">[[ t('stats_distribution_label') ]]</div>
+                            <div class="pie-container">
+                                <canvas id="statsPieChart"></canvas>
+                            </div>
+                            <div class="comm-list-body">
+                                <div class="comm-stat-row" v-for="item in currentStats" :key="item.id">
+                                    <div class="comm-stat-info">
+                                        <div class="comm-color-dot" :style="{background: item.color}"></div>
+                                        <div class="comm-stat-name">[[ item.name ]]</div>
+                                    </div>
+                                    <div class="comm-stat-val">[[ item.count ]]</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="fixed-logo"><img :src="currentLogoPath" alt="NERV_Logo"></div>
+    </div>
+    <div class="toast" v-if="toastMsg" :class="{show: toastMsg}">[[ toastMsg ]]</div>
+</div>
+
+<script>
+const { createApp, ref, computed, onMounted, onUnmounted, watch } = Vue;
+
+const ICONS = {
+    map: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M8.5 4.358v12.465l-4.32 3.038a.75.75 0 0 1-1.174-.509l-.007-.104V8.615a.75.75 0 0 1 .238-.548l.08-.065L8.5 4.358Zm12.494.29.007.104v10.633a.75.75 0 0 1-.238.548l-.08.065L15.5 19.64V7.174l4.32-3.035a.75.75 0 0 1 1.174.509ZM10 4.359l4 2.812v12.467l-4-2.814V4.359Z" fill="currentColor"/></svg>`,
+    server: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 2a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V5a3 3 0 0 0-3-3H9Zm-.5 4.75A.75.75 0 0 1 9.25 6h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75Zm0 11a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75Zm0-3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75Z" fill="currentColor"/></svg>`,
+    stats: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 5.23a2.25 2.25 0 0 1 2.25-2.25h1.5A2.25 2.25 0 0 1 15 5.23V21H9V5.23ZM7.5 10H5.25A2.25 2.25 0 0 0 3 12.25v8c0 .415.336.75.75.75H7.5V10ZM16.5 21h3.75a.75.75 0 0 0 .75-.75v-11A2.25 2.25 0 0 0 18.75 7H16.5v14Z" fill="currentColor"/></svg>`,
+    lang: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M18 2a1 1 0 1 0-2 0v1h-4a1 1 0 0 0-1 1v1.25a1 1 0 1 0 2 0V5h8v.25a1 1 0 1 0 2 0V4a1 1 0 0 0-1-1h-4V2ZM8.563 7.505l.056.117 5.307 13.005a1 1 0 0 1-1.801.86l-.05-.105L10.692 18H4.407l-1.49 3.407a1 1 0 0 1-1.208.555l-.11-.04a1 1 0 0 1-.555-1.208l.04-.11L6.777 7.6c.337-.77 1.395-.795 1.786-.094Zm-.902 3.062L5.282 16h4.595l-2.216-5.432ZM13.499 7a1 1 0 0 1 1-1h5a1 1 0 0 1 .708 1.707L18.414 9.5H22a1 1 0 1 1 0 2h-4v2.984a2.5 2.5 0 0 1-3.219 2.394l-.569-.17a1 1 0 1 1 .575-1.916l.569.17a.5.5 0 0 0 .643-.478V11.5H12a1 1 0 1 1 0-2h4a1 1 0 0 1 .292-.707L17.085 8H14.5a1 1 0 0 1-1-1Z" fill="currentColor"/></svg>`,
+    theme: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Zm0-2V4a8 8 0 1 1 0 16Z" fill="currentColor"/></svg>`,
+    grid: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6Zm10-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V6ZM4 16a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4Zm10-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-4Z" fill="currentColor"/></svg>`,
+    list: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 6a1 1 0 0 1 1-1h16a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1zm0 6a1 1 0 0 1 1-1h16a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1zm1 5a1 1 0 1 0 0 2h16a1 1 0 1 0 0-2H4z" fill="currentColor"/></svg>`,
+    edit: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/></svg>`,
+    sort: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z" fill="currentColor"/></svg>`,
+    drag: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0-6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0-6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0-6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0-6a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" fill="currentColor"/></svg>`,
+    bell: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z" fill="currentColor"/></svg>`,
+    trash: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/></svg>`,
+    search_sub: `<svg width="24" height="24" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 2.5a7.5 7.5 0 0 1 5.964 12.048l4.743 4.745a1 1 0 0 1-1.32 1.497l-.094-.083-4.745-4.743A7.5 7.5 0 1 1 10 2.5Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z" fill="currentColor"/></svg>`
+};
+
+const LOGO_PATHS = { B: '/static/NERV_Logo.png', W: '/static/NERV_Logo.png' };
+const FAVICON_PATHS = { light: '/static/NERV_Logo.png', dark: '/static/NERV_Logo.png' };
+const VIEW_ROUTES = { servers: '/', map_sub: '/map-sub', stats: '/stats' };
+
+createApp({
+    delimiters: ['[[', ']]'],
+    setup() {
+        const communities = ref([]);
+        const servers = ref({});
+        const serverCache = ref({});
+        const initialView = document.body.dataset.initialView || 'servers';
+        const curView = ref(initialView);
+        const toastMsg = ref('');
+        const isCollapsed = ref(false); 
+        const showLangMenu = ref(false);
+        const showSubPopover = ref(false); 
+        const viewMode = ref('grid');
+        const isDark = ref(window.matchMedia('(prefers-color-scheme: dark)').matches);
+        const isMobile = ref(window.innerWidth <= 768);
+        const isEditMode = ref(false);
+        const sortByPlayers = ref(false);
+        const serverMapQuery = ref('');
+        const serverMapQueryInput = ref('');
+        
+        const currentStats = ref([]);
+        const totalPlayers = ref(0);
+        const totalPeak48h = ref(0);
+        const topCommunity = ref(null);
+        
+        const subSearchQuery = ref('');
+        const mapTranslations = ref({});
+        const searchResults = ref([]);
+        const selectedMap = ref(null);
+        const newSubComms = ref(['all']);
+        const subscriptions = ref([]);
+        const lastNotifiedMaps = ref({});
+        const hasNotification = typeof Notification !== 'undefined';
+        const notificationPermission = ref(hasNotification ? Notification.permission : 'denied');
+
+        const draggedIndex = ref(null);
+        const dragOverIndex = ref(null);
+        
+        const sysLang = navigator.language;
+        let defaultLang = 'en';
+        if (sysLang.includes('CN')) defaultLang = 'zh-CN';
+        else if (sysLang.match(/HK|TW|MO/)) defaultLang = 'zh-TW';
+        const curLang = ref(defaultLang);
+
+        const I18N = {
+            'zh-CN': {
+                app_title: 'NERV CS2僵尸逃跑启动器',
+                servers: '服务器列表',
+                mapcd: '地图冷却',
+                stats: '数据统计',
+                stats_note: '仅ZE',
+                map: '地图',
+                players: '人数',
+                offline: '离线',
+                join: '进入游戏',
+                copy_console: '复制命令',
+                copy_ip: '复制IP',
+                exg_only: '仅限 EXG',
+                stats_title: 'ZE 在线趋势 (48小时)',
+                stats_time_note: '时间为你的本地时间',
+                stats_total_label: '当前ZE社区总人数',
+                stats_peak_label: '近48小时ZE总人数峰值',
+                stats_top_label: '当前热门ZE社区',
+                stats_players_label: '人',
+                stats_distribution_label: '当前ZE玩家分布',
+                copied: '已复制: ',
+                no_trans: '暂无',
+                edit_order: '编辑社区排列顺序',
+                exit_edit: '完成排序',
+                drag_hint: '拖拽社区以排序',
+                sort_btn: '人数排序',
+                switch_view: '切换视图',
+                view_list: '列表模式',
+                view_grid: '卡片模式',
+                sort_players: '按人数排序',
+                sub_menu: '查询/订阅地图',
+                sub_search_ph: '搜索地图 (英文名或中文)...',
+                server_search_ph: '看看现在有没有你想蛆的图（输入地图名称搜索）',
+                server_search_empty: '当前没有服务器运行“{map}”。',
+                sub_notify: '地图变更通知',
+                subscribed: '已订阅',
+                subscribe: '订阅',
+                unsubscribe: '取消订阅',
+                no_map_found: '未找到地图，请尝试其他关键词',
+                test_notify: '测试通知',
+                sub_title: '地图订阅',
+                my_subs: '我的订阅',
+                no_subs: '暂无订阅',
+                sub_confirm_title: '确认订阅地图',
+                sub_select_comm: '选择接收通知的社区',
+                all_comm: '所有社区',
+                subscribe_confirm: '确认订阅',
+                notify_warn: '您尚未开启通知权限，点击此处开启以接收地图推送。',
+                manage_all: '管理所有订阅',
+                keep_open_hint: '请保持此页面在浏览器中开启（可后台运行）以接收通知'
+            },
+            'zh-TW': {
+                app_title: 'NERV CS2殭屍逃跑啟動器',
+                servers: '伺服器列表',
+                mapcd: '地圖冷卻',
+                stats: '數據統計',
+                stats_note: '僅ZE',
+                map: '地圖',
+                players: '人數',
+                offline: '離線',
+                join: '進入遊戲',
+                copy_console: '複製命令',
+                copy_ip: '複製IP',
+                exg_only: '僅限 EXG',
+                stats_title: 'ZE 在線趨勢 (48小時)',
+                stats_time_note: '時間為你的本地時間',
+                stats_total_label: '目前ZE社群總人數',
+                stats_peak_label: '近48小時ZE總人數峰值',
+                stats_top_label: '目前熱門ZE社群',
+                stats_players_label: '人',
+                stats_distribution_label: '目前ZE玩家分布',
+                copied: '已複製: ',
+                no_trans: '暫無',
+                edit_order: '編輯社區排列順序',
+                exit_edit: '完成排序',
+                drag_hint: '拖動社區以排序',
+                sort_btn: '人數排序',
+                switch_view: '切換視圖',
+                view_list: '列表模式',
+                view_grid: '卡片模式',
+                sort_players: '按人數排序',
+                sub_menu: '查詢/訂閱地圖',
+                sub_search_ph: '搜尋地圖 (英文名或中文)...',
+                server_search_ph: '看看現在有沒有你想玩的圖（輸入地圖名稱搜尋）',
+                server_search_empty: '目前沒有伺服器在運行「{map}」。',
+                sub_notify: '地圖變更通知',
+                subscribed: '已訂閱',
+                subscribe: '訂閱',
+                unsubscribe: '取消訂閱',
+                no_map_found: '未找到地圖，請嘗試其他關鍵詞',
+                test_notify: '測試通知',
+                sub_title: '地圖訂閱',
+                my_subs: '我的訂閱',
+                no_subs: '暫無訂閱',
+                sub_confirm_title: '確認訂閱地圖',
+                sub_select_comm: '選擇接收通知的社區',
+                all_comm: '所有社區',
+                subscribe_confirm: '確認訂閱',
+                notify_warn: '您尚未開啟通知權限，點擊此處開啟以接收地圖推送。',
+                manage_all: '管理所有訂閱',
+                keep_open_hint: '請保持此頁面在瀏覽器中開啟（可後臺運行）以接收地圖推送'
+            },
+            'en': {
+                app_title: 'NERV CS2ZE Browser',
+                servers: 'Servers',
+                mapcd: 'Map CD',
+                stats: 'Statistics',
+                stats_note: 'ZE Only',
+                map: 'Map',
+                players: 'Players',
+                offline: 'Offline',
+                join: 'Join',
+                copy_console: 'Console CMD',
+                copy_ip: 'Copy IP',
+                exg_only: 'EXG Only',
+                stats_title: 'ZE Player Trend (48h)',
+                stats_time_note: 'Times shown are your local time.',
+                stats_total_label: 'Total ZE players (all communities)',
+                stats_peak_label: 'Peak total ZE players (48h)',
+                stats_top_label: 'Top ZE community',
+                stats_players_label: 'players',
+                stats_distribution_label: 'Current ZE player distribution',
+                copied: 'Copied: ',
+                no_trans: 'N/A',
+                edit_order: 'Edit Community Order',
+                exit_edit: 'Done',
+                drag_hint: 'Drag to reorder',
+                sort_btn: 'Sort Players',
+                switch_view: 'Switch View',
+                view_list: 'List View',
+                view_grid: 'Grid View',
+                sort_players: 'Sort by Players',
+                sub_menu: 'Map Search/Sub',
+                sub_search_ph: 'Search map (English or Chinese)...',
+                server_search_ph: 'See if any ZE communities are running the map you want to play.',
+                server_search_empty: 'No servers are running “{map}” right now.',
+                sub_notify: 'Map Change Alert',
+                subscribed: 'Subscribed',
+                subscribe: 'Subscribe',
+                unsubscribe: 'Unsubscribe',
+                no_map_found: 'No map found, try other keywords',
+                test_notify: 'Test Notification',
+                sub_title: 'Subscriptions',
+                my_subs: 'My Subscriptions',
+                no_subs: 'No subscriptions',
+                sub_confirm_title: 'Subscribe to Map',
+                sub_select_comm: 'Select Communities for Notification',
+                all_comm: 'All Communities',
+                subscribe_confirm: 'Confirm Subscription',
+                notify_warn: 'Notifications disabled. Click here to enable alerts.',
+                manage_all: 'Manage All Subscriptions',
+                keep_open_hint: 'Please keep this tab open to receive notifications.'
+            }
+        };
+
+        const t = (key) => I18N[curLang.value][key] || I18N['en'][key];
+        const formatTemplate = (template, vars = {}) => template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? '');
+        const langLabel = computed(() => curLang.value === 'zh-CN' ? '简体中文' : (curLang.value === 'zh-TW' ? '繁體中文' : 'English'));
+        const isChineseLang = computed(() => curLang.value.includes('zh'));
+        const currentLogoPath = computed(() => isDark.value ? LOGO_PATHS.W : LOGO_PATHS.B);
+        let searchDebounceTimer = null;
+        watch(serverMapQueryInput, (next) => {
+            if (searchDebounceTimer) {
+                clearTimeout(searchDebounceTimer);
+            }
+            searchDebounceTimer = setTimeout(() => {
+                serverMapQuery.value = next;
+            }, 200);
+        });
+
+        const updateFavicon = () => {
+            const icon = document.getElementById('favicon');
+            if (!icon) return;
+            icon.href = isDark.value ? FAVICON_PATHS.dark : FAVICON_PATHS.light;
+        };
+
+        watch(curLang, () => document.title = t('app_title'), { immediate: true });
+
+        const handleResize = () => isMobile.value = window.innerWidth <= 768;
+        
+        const handleGlobalClick = (e) => {
+            const target = e.target;
+            const inLang = target.closest('.dropdown-menu') || target.closest('.control-btn');
+            if (!inLang) {
+                showLangMenu.value = false;
+                showSubPopover.value = false;
+            }
+        };
+
+        onMounted(async () => {
+            window.addEventListener('resize', handleResize);
+            window.addEventListener('click', handleGlobalClick);
+            
+            if(isDark.value) document.documentElement.setAttribute('data-theme', 'dark');
+            updateFavicon();
+            
+            try {
+                const savedCollapse = localStorage.getItem('sidebar_collapsed');
+                if (savedCollapse !== null) isCollapsed.value = savedCollapse === 'true';
+                else isCollapsed.value = false; 
+            } catch(e) { isCollapsed.value = false; }
+
+            try {
+                const savedView = localStorage.getItem('view_mode');
+                if(savedView) viewMode.value = savedView;
+            } catch(e) {}
+            
+            try {
+                const subs = localStorage.getItem('map_subs');
+                if(subs) subscriptions.value = JSON.parse(subs);
+                if (!Array.isArray(subscriptions.value)) subscriptions.value = [];
+            } catch(e) { localStorage.removeItem('map_subs'); subscriptions.value = []; }
+            
+            if (hasNotification) {
+                try {
+                    if (Notification.permission !== "granted") Notification.requestPermission();
+                } catch(e) {}
+            }
+
+            await loadTranslations();
+            await fetchConfig();
+            if (initialView === 'stats') {
+                await loadStats();
+            }
+        });
+        
+        onUnmounted(() => {
+            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('click', handleGlobalClick);
+        });
+
+        const toggleLangMenu = () => {
+            showSubPopover.value = false;
+            showLangMenu.value = !showLangMenu.value;
+        };
+        const toggleSubPopover = () => {
+            showLangMenu.value = false;
+            showSubPopover.value = !showSubPopover.value;
+        };
+
+        const toggleSidebar = () => {
+            isCollapsed.value = !isCollapsed.value;
+            localStorage.setItem('sidebar_collapsed', isCollapsed.value);
+        };
+        const toggleTheme = () => { isDark.value = !isDark.value; document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light'); updateFavicon(); };
+        const setLang = (l) => { curLang.value = l; showLangMenu.value = false; };
+        
+        const closeDropdowns = () => {
+            showLangMenu.value = false;
+            showSubPopover.value = false;
+        };
+
+        const toggleViewMode = () => {
+            viewMode.value = viewMode.value === 'grid' ? 'list' : 'grid';
+            localStorage.setItem('view_mode', viewMode.value);
+        };
+        const toggleEditMode = () => isEditMode.value = !isEditMode.value;
+        const toggleSortByPlayers = () => sortByPlayers.value = !sortByPlayers.value;
+
+        const hasFeature = (feat) => communities.value.some(c => c.features.includes(feat));
+        const goToView = (view) => {
+            const target = VIEW_ROUTES[view] || '/';
+            if (window.location.pathname !== target) {
+                window.location.href = target;
+            } else {
+                curView.value = view;
+            }
+        };
+
+        const openMapLink = () => {
+             const comm = communities.value.find(c => c.features.includes('map_cd'));
+             window.open((comm && comm.map_url) ? comm.map_url : 'https://list.darkrp.cn:9000/serverlist/cs2maplist', '_blank');
+        };
+
+        const goToSubPage = () => {
+            goToView('map_sub');
+            showSubPopover.value = false;
+        };
+
+        const scrollToComm = (id) => {
+            const isMob = window.innerWidth <= 768;
+            let el = document.getElementById(isMob ? 'comm-mob-' + id : 'comm-' + id);
+            if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+
+        const requestPerm = () => {
+            if (!hasNotification) return;
+            Notification.requestPermission().then(p => notificationPermission.value = p);
+        };
+
+        const saveCommunityOrder = () => {
+            const ids = communities.value.map(c => c.id);
+            localStorage.setItem('comm_order', JSON.stringify(ids));
+        };
+        const onDragStart = (e, index) => { draggedIndex.value = index; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.dropEffect = 'move'; };
+        const onDragEnter = (e, index) => { if (index !== draggedIndex.value) dragOverIndex.value = index; };
+        const onDragLeave = (e) => { };
+        const onDrop = (e, index) => {
+            if (draggedIndex.value !== null && draggedIndex.value !== index) {
+                const item = communities.value[draggedIndex.value];
+                communities.value.splice(draggedIndex.value, 1);
+                communities.value.splice(index, 0, item);
+                saveCommunityOrder();
+            }
+            draggedIndex.value = null; dragOverIndex.value = null;
+        };
+
+        const loadTranslations = async () => {
+            try {
+                const res = await fetch('/api/map_translations');
+                const data = await res.json();
+                const normalized = {};
+                for (const [key, value] of Object.entries(data)) {
+                    if (typeof value === 'string') {
+                        normalized[key] = { zh_cn: value, zh_tw: value };
+                    } else {
+                        normalized[key] = {
+                            zh_cn: (value && (value.zh_cn || value.cn)) || '',
+                            zh_tw: (value && (value.zh_tw || value.tw)) || ''
+                        };
+                    }
+                }
+                mapTranslations.value = normalized;
+            } catch(e) {}
+        };
+
+        const normalizeSearchText = (value) => (value || '').toString().toLowerCase().replace(/\s+/g, '');
+        const normalizeMapKey = (value) => {
+            if (!value) return '';
+            let mapKey = value.toString().trim().toLowerCase();
+            mapKey = mapKey.replace(/\\/g, '/').split('?', 1)[0];
+            if (mapKey.endsWith('.bsp')) mapKey = mapKey.slice(0, -4);
+            if (mapKey.startsWith('workshop/')) {
+                const parts = mapKey.split('/');
+                mapKey = parts[parts.length - 1] || mapKey;
+            } else {
+                mapKey = mapKey.split('/').pop();
+            }
+            return mapKey;
+        };
+
+        const getMapTranslationEntry = (mapName, serverEntry) => {
+            if (!mapName) return { zh_cn: '', zh_tw: '' };
+            if (mapTranslations.value[mapName]) return mapTranslations.value[mapName];
+            const normalizedKey = normalizeMapKey(mapName);
+            if (normalizedKey && mapTranslations.value[normalizedKey]) return mapTranslations.value[normalizedKey];
+            if (serverEntry) {
+                return {
+                    zh_cn: serverEntry.map_cn || '',
+                    zh_tw: serverEntry.map_tw || ''
+                };
+            }
+            return { zh_cn: '', zh_tw: '' };
+        };
+
+        const getMapTranslation = (mapName) => {
+            const entry = getMapTranslationEntry(mapName);
+            if (curLang.value === 'zh-TW') return entry.zh_tw || entry.zh_cn || '';
+            if (curLang.value === 'zh-CN') return entry.zh_cn || '';
+            return '';
+        };
+
+        const getServerMapTranslation = (serverEntry) => {
+            if (!serverEntry) return '';
+            const entry = getMapTranslationEntry(serverEntry.map, serverEntry);
+            if (curLang.value === 'zh-TW') return entry.zh_tw || entry.zh_cn || '';
+            if (curLang.value === 'zh-CN') return entry.zh_cn || '';
+            return '';
+        };
+
+        const searchMaps = () => {
+            if (!subSearchQuery.value) { searchResults.value = []; return; }
+            const q = normalizeSearchText(subSearchQuery.value);
+            const res = [];
+            for (const [k, v] of Object.entries(mapTranslations.value)) {
+                const zhCn = v.zh_cn || '';
+                const zhTw = v.zh_tw || '';
+                if (normalizeSearchText(k).includes(q) || normalizeSearchText(zhCn).includes(q) || normalizeSearchText(zhTw).includes(q)) {
+                    res.push({ key: k, val: curLang.value === 'zh-TW' ? (zhTw || zhCn) : zhCn });
+                    if (res.length > 20) break;
+                }
+            }
+            searchResults.value = res;
+        };
+
+        const selectMapToSub = (m) => {
+            selectedMap.value = m.key;
+            searchResults.value = [];
+        };
+
+        const toggleSubComm = (id) => {
+            if (id === 'all') {
+                if (newSubComms.value.includes('all')) newSubComms.value = [];
+                else newSubComms.value = ['all'];
+            } else {
+                if (newSubComms.value.includes('all')) newSubComms.value = [];
+                if (newSubComms.value.includes(id)) newSubComms.value = newSubComms.value.filter(c => c !== id);
+                else newSubComms.value.push(id);
+            }
+        };
+
+        const addSubscription = () => {
+            if (!selectedMap.value || newSubComms.value.length === 0) return;
+            const existingIdx = subscriptions.value.findIndex(s => s.map === selectedMap.value);
+            if (existingIdx !== -1) {
+                subscriptions.value[existingIdx].comms = [...newSubComms.value];
+            } else {
+                subscriptions.value.push({ map: selectedMap.value, comms: [...newSubComms.value] });
+            }
+            localStorage.setItem('map_subs', JSON.stringify(subscriptions.value));
+            selectedMap.value = null; 
+            newSubComms.value = ['all'];
+            subSearchQuery.value = '';
+            toastMsg.value = t('subscribed'); 
+            setTimeout(()=>toastMsg.value='', 2000);
+        };
+
+        const removeSubscription = (idx) => {
+            subscriptions.value.splice(idx, 1);
+            localStorage.setItem('map_subs', JSON.stringify(subscriptions.value));
+        };
+        const removeSubscriptionByMap = (mapName) => {
+            const idx = subscriptions.value.findIndex((sub) => sub.map === mapName);
+            if (idx >= 0) {
+                removeSubscription(idx);
+            }
+        };
+
+        const isSubscribed = (mapName) => subscriptions.value.some(s => s.map === mapName);
+        const toggleSubscription = (mapName) => {
+            if (isSubscribed(mapName)) {
+                subscriptions.value = subscriptions.value.filter(s => s.map !== mapName);
+            } else {
+                subscriptions.value.push({ map: mapName, comms: ['all'] });
+            }
+            localStorage.setItem('map_subs', JSON.stringify(subscriptions.value));
+        };
+
+        const formatSubComms = (comms) => {
+            if (comms.includes('all')) return t('all_comm');
+            return comms.map(cid => {
+                const c = communities.value.find(cm => cm.id === cid);
+                return c ? (c.short_name || c.name) : cid;
+            }).join(', ');
+        };
+
+        const testNotification = () => {
+            if (!hasNotification) return;
+            if (Notification.permission === "granted") {
+                const cName = communities.value.length > 0 ? communities.value[0].name : "Test Community";
+                new Notification(t('sub_notify'), { 
+                    body: `[${cName}] Changed map to: ze_test_map\nTest Server`, 
+                    icon: "/static/NERV_Logo.png" 
+                });
+            } else {
+                requestPerm();
+            }
+        };
+
+        const getServerKey = (srv) => `${srv.ip}:${srv.port}`;
+
+        const checkSubscriptions = (srvData, commId) => {
+            if (!srvData.map || srvData.map === '-') return;
+            const fullId = `${commId}_${getServerKey(srvData)}`;
+            const normalizedMap = normalizeMapKey(srvData.map);
+            
+            const matchedSub = subscriptions.value.find(sub => {
+                const mapMatch = normalizedMap && normalizedMap === normalizeMapKey(sub.map);
+                const commMatch = sub.comms.includes('all') || sub.comms.includes(commId);
+                return mapMatch && commMatch;
+            });
+
+            if (matchedSub) {
+                if (lastNotifiedMaps.value[fullId] === undefined) {
+                    lastNotifiedMaps.value[fullId] = normalizedMap;
+                    return;
+                }
+                if (lastNotifiedMaps.value[fullId] !== normalizedMap) {
+                    if (hasNotification && Notification.permission === "granted") {
+                        const c = communities.value.find(x => x.id === commId);
+                        const cName = c ? (c.short_name || c.name) : commId;
+                        const n = new Notification(t('sub_notify'), {
+                            body: `[${cName}] Changed map to: ${srvData.map}\n${srvData.name}`,
+                            icon: '/static/NERV_Logo.png'
+                        });
+                        n.onclick = () => { window.focus(); copyCmd(srvData); };
+                    }
+                    lastNotifiedMaps.value[fullId] = normalizedMap;
+                }
+            } else {
+                if (lastNotifiedMaps.value[fullId]) delete lastNotifiedMaps.value[fullId];
+            }
+        };
+
+        const serverStaleMs = 15000;
+        const refreshIntervalMs = 15000;
+        const statsRefreshIntervalMs = 15000;
+
+        const fetchConfig = async () => {
+            try {
+                const res = await fetch('/api/config');
+                const data = await res.json();
+                
+                try {
+                    const savedIds = JSON.parse(localStorage.getItem('comm_order') || '[]');
+                    if (savedIds.length > 0) {
+                        data.sort((a, b) => {
+                            const idxA = savedIds.indexOf(a.id); const idxB = savedIds.indexOf(b.id);
+                            if (idxA === -1 && idxB === -1) return 0; if (idxA === -1) return 1; if (idxB === -1) return -1;
+                            return idxA - idxB;
+                        });
+                    }
+                } catch(e) { localStorage.removeItem('comm_order'); }
+
+                communities.value = data;
+                communities.value.forEach(c => {
+                    servers.value[c.id] = [];
+                    serverCache.value[c.id] = {};
+                    refreshCommunity(c.id);
+                });
+            } catch(e) { console.error("Config fetch failed", e); }
+        };
+
+        const refreshCommunity = async (cid) => {
+            const now = Date.now();
+            try {
+                const res = await fetch(`/api/servers/${cid}`);
+                const data = await res.json();
+                const cache = serverCache.value[cid] || {};
+                data.forEach(s => {
+                    cache[getServerKey(s)] = { ...s, _lastSeen: now };
+                    checkSubscriptions(s, cid);
+                });
+                serverCache.value[cid] = cache;
+            } catch(e) {}
+            const cache = serverCache.value[cid] || {};
+            Object.keys(cache).forEach((key) => {
+                if (now - cache[key]._lastSeen > serverStaleMs) {
+                    delete cache[key];
+                }
+            });
+            serverCache.value[cid] = cache;
+            servers.value[cid] = Object.values(cache);
+        };
+
+        setInterval(() => communities.value.forEach(c => refreshCommunity(c.id)), refreshIntervalMs);
+        setInterval(() => {
+            if (curView.value === 'stats') {
+                loadStats();
+            }
+        }, statsRefreshIntervalMs);
+
+        const getServers = (cid) => {
+            let list = servers.value[cid] ? [...servers.value[cid]] : [];
+            const query = normalizeSearchText(serverMapQuery.value);
+            if (query) {
+                list = list.filter((serverEntry) => {
+                    const mapName = serverEntry.map || '';
+                    const entry = getMapTranslationEntry(mapName, serverEntry);
+                    const candidates = [
+                        mapName,
+                        normalizeMapKey(mapName),
+                        entry.zh_cn || '',
+                        entry.zh_tw || ''
+                    ];
+                    return candidates.some((item) => normalizeSearchText(item).includes(query));
+                });
+            }
+            if (sortByPlayers.value) {
+                list.sort((a, b) => {
+                    if (a.online && !b.online) return -1; if (!a.online && b.online) return 1;
+                    return b.players - a.players;
+                });
+            }
+            return list;
+        };
+        const filteredCommunities = computed(() => {
+            const query = normalizeSearchText(serverMapQuery.value);
+            if (!query) return communities.value;
+            return communities.value.filter((comm) => getServers(comm.id).length > 0);
+        });
+        const serverSearchNotice = computed(() => {
+            const query = serverMapQuery.value.trim();
+            if (!query) return '';
+            let count = 0;
+            filteredCommunities.value.forEach((comm) => {
+                count += getServers(comm.id).length;
+            });
+            if (count === 0) {
+                return formatTemplate(t('server_search_empty'), { map: query });
+            }
+            return '';
+        });
+
+        let lineChartInst = null;
+        let pieChartInst = null;
+        let chartLoader = null;
+
+        const loadChartJs = () => {
+            if (window.Chart) return Promise.resolve();
+            if (chartLoader) return chartLoader;
+            chartLoader = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+                script.async = true;
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error('Chart.js load failed'));
+                document.head.appendChild(script);
+            });
+            return chartLoader;
+        };
+
+        const loadStats = async () => {
+            try {
+                await loadChartJs();
+            } catch (e) {
+                toastMsg.value = 'Chart.js load failed';
+                setTimeout(()=>toastMsg.value='', 3000);
+                return;
+            }
+            const res = await fetch('/api/stats');
+            const data = await res.json();
+            currentStats.value = data.current_stats;
+            
+            let t = 0; let top = null;
+            data.current_stats.forEach(c => {
+                t += c.count;
+                if (!top || c.count > top.count) top = c;
+            });
+            totalPlayers.value = t;
+            topCommunity.value = top;
+            totalPeak48h.value = data.total_peak_48h || 0;
+
+            curView.value = 'stats';
+            if (data.line_chart && Array.isArray(data.line_chart.labels)) {
+                data.line_chart.labels = data.line_chart.labels.map((ts) => {
+                    if (typeof ts !== 'number') return ts;
+                    const date = new Date(ts * 1000);
+                    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                });
+            }
+            
+            setTimeout(() => {
+                const lineCtx = document.getElementById('statsLineChart');
+                const pieCtx = document.getElementById('statsPieChart');
+                
+                Chart.defaults.color = isDark.value ? '#d0d0d0' : '#1b1b1b';
+                Chart.defaults.borderColor = isDark.value ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+
+                if(lineCtx) {
+                    if(lineChartInst) lineChartInst.destroy();
+                    lineChartInst = new Chart(lineCtx, { type: 'line', data: data.line_chart, options: { maintainAspectRatio: false, scales: { x: { grid: { display: false } } } } });
+                }
+                if(pieCtx) {
+                    if(pieChartInst) pieChartInst.destroy();
+                    pieChartInst = new Chart(pieCtx, { type: 'doughnut', data: data.pie_chart, options: { maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false } } } });
+                }
+            }, 100);
+        };
+
+        // --- 修复功能区 (Connection & Clipboard) ---
+        const getConnectAddress = (srv) => {
+            const host = srv.connect_ip || srv.ip;
+            if (host && srv.port) {
+                return `${host}:${srv.port}`;
+            }
+            return srv.display_ip || (srv.ip + ':' + srv.port);
+        };
+        const getConnectUrl = (srv, game) => {
+            // steam://connect/IP:PORT 是通用的，支持 CS2 和 CSS
+            const address = getConnectAddress(srv);
+            return `steam://connect/${address}`;
+        };
+
+        // 兼容 HTTP 的复制函数
+        const fallbackCopy = (text) => {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if(successful) {
+                    toastMsg.value = t('copied') + text;
+                } else {
+                    toastMsg.value = "Copy failed";
+                }
+            } catch (err) {
+                toastMsg.value = "Copy failed";
+            }
+            document.body.removeChild(textArea);
+            setTimeout(()=>toastMsg.value='', 3000);
+        };
+
+        const copyText = (text) => {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    toastMsg.value = t('copied') + text;
+                    setTimeout(()=>toastMsg.value='', 3000);
+                }).catch(() => fallbackCopy(text));
+            } else {
+                fallbackCopy(text);
+            }
+        };
+
+        const copyCmd = (srv) => {
+            const address = getConnectAddress(srv);
+            copyText(`connect ${address}`);
+        };
+        const copyIp = (srv) => {
+            const address = getConnectAddress(srv);
+            copyText(address);
+        };
+        // ------------------------------------------
+
+        return {
+            t, curLang, isDark, curView, communities, servers, toastMsg, icons: ICONS,
+            isCollapsed, toggleSidebar, toggleTheme, showLangMenu, setLang,
+            hasFeature, goToView, loadStats, openMapLink, getConnectUrl, copyCmd, copyIp, langLabel, currentLogoPath, isChineseLang,
+            scrollToComm, viewMode, toggleViewMode, isMobile,
+            isEditMode, toggleEditMode, 
+            sortByPlayers, toggleSortByPlayers, getServers, serverMapQuery, serverMapQueryInput,
+            draggedIndex, dragOverIndex, onDragStart, onDragEnter, onDragLeave, onDrop,
+            subSearchQuery, searchResults, searchMaps, selectedMap, selectMapToSub, newSubComms, toggleSubComm, addSubscription, subscriptions, removeSubscription, removeSubscriptionByMap, formatSubComms,
+            mapTranslations, getMapTranslation, getServerMapTranslation, isSubscribed, toggleSubscription, testNotification,
+            notificationPermission, requestPerm,
+            showSubPopover, toggleSubPopover, toggleLangMenu, goToSubPage, closeDropdowns,
+            currentStats, totalPlayers, totalPeak48h, topCommunity,
+            filteredCommunities, serverSearchNotice
+        };
+    }
+}).mount('#app');
+</script>
+</body>
+</html>
