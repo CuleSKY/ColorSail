@@ -20,11 +20,11 @@
     
     <meta property="og:title" content="{{ seo_info.title }}">
     <meta property="og:description" content="{{ seo_info.desc }}">
-    <meta property="og:image" content="/static/NERV_Logo.png">
+    <meta property="og:image" content="/static/nerv_logo.png">
     <meta property="og:url" content="{{ request.base_url }}{{ '?lang=' + current_lang if current_lang != 'zh-CN' else '' }}">
     <meta property="og:type" content="website">
 
-    <link id="favicon" rel="icon" href="/static/NERV_Logo.png" type="image/png">
+    <link id="favicon" rel="icon" href="/static/favicon.ico" type="image/ico">
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script>
         (function() {
@@ -889,7 +889,7 @@
                 </div>
             </div>
         </div>
-        <div class="fixed-logo"><img :src="currentLogoPath" alt="NERV_Logo"></div>
+        <div class="fixed-logo"><img :src="currentLogoPath" alt="nerv_logo"></div>
     </div>
     <div class="toast" v-if="toastMsg" :class="{show: toastMsg}">[[ toastMsg ]]</div>
 </div>
@@ -918,8 +918,8 @@ const ICONS = {
     search_sub: `<svg width="24" height="24" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 2.5a7.5 7.5 0 0 1 5.964 12.048l4.743 4.745a1 1 0 0 1-1.32 1.497l-.094-.083-4.745-4.743A7.5 7.5 0 1 1 10 2.5Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z" fill="currentColor"/></svg>`
 };
 
-const LOGO_PATHS = { B: '/static/NERV_Logo.png', W: '/static/NERV_Logo.png' };
-const FAVICON_PATHS = { light: '/static/NERV_Logo.png', dark: '/static/NERV_Logo.png' };
+const LOGO_PATHS = { B: '/static/nerv_logo.png', W: '/static/nerv_logo.png' };
+const FAVICON_PATHS = { light: '/static/nerv_logo.png', dark: '/static/nerv_logo.png' };
 const STEAM_LOGO_PATH = '/static/steam_logo.svg';
 const VIEW_ROUTES = { servers: '/', map_sub: '/map-sub', stats: '/stats', feedback: '/feedback' };
 const INITIAL_CONFIG = window.__INITIAL_CONFIG__ || [];
@@ -1551,7 +1551,7 @@ createApp({
                 const cName = communities.value.length > 0 ? communities.value[0].name : "Test Community";
                 new Notification(t('sub_notify'), { 
                     body: `[${cName}] Changed map to: ze_test_map\nTest Server`, 
-                    icon: "/static/NERV_Logo.png" 
+                    icon: "/static/nerv_logo.png" 
                 });
             } else {
                 requestPerm();
@@ -1597,7 +1597,7 @@ createApp({
                         const cName = c ? (c.short_name || c.name) : commId;
                         const n = new Notification(t('sub_notify'), {
                             body: `[${cName}] Changed map to: ${srvData.map}\n${srvData.name}`,
-                            icon: '/static/NERV_Logo.png'
+                            icon: '/static/nerv_logo.png'
                         });
                         n.onclick = () => { window.focus(); copyCmd(srvData); };
                     }
