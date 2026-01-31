@@ -17,6 +17,50 @@ See `docs/autojoin_v2_deploy.md` for AutoJoin v2 deployment requirements and Web
 - Admin routes are intended to be served from `admin.cs2ze.org` behind Cloudflare Access; `/admin` on `www.cs2ze.org` returns 404.
 - The new `client_app/` package contains **scaffolding only** for a future desktop client and is not packaged or wired into the web runtime.
 
+## Local runtime (main + admin split)
+
+Run the main site and admin panel as separate services:
+
+```bash
+gunicorn -w 1 -b 127.0.0.1:5000 wsgi_main:application
+```
+
+```bash
+gunicorn -w 1 -b 127.0.0.1:5001 wsgi_admin:application
+```
+
+### Nginx vhosts (deployment intent)
+
+```nginx
+server {
+    listen 80;
+    server_name www.cs2ze.org cs2ze.org;
+
+    location /admin {
+        return 404;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 80;
+    server_name admin.cs2ze.org;
+
+    location / {
+        proxy_pass http://127.0.0.1:5001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
 ## Required environment variables
 
 - `CS2ZE_BASE_URL` (optional, default `http://localhost:5000`)
