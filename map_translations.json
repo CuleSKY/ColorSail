@@ -1,7 +1,7 @@
 {
     "Fireboy & Watergirl Zombie (ze_fireboy_watergirl)": {
         "zh_cn": "森铃冰火人",
-        "zh_tw": "森铃冰火人"
+        "zh_tw": "森鈴冰火人"
     },
     "ZE_BEAUTIFUL_P": {
         "zh_cn": "",
@@ -9,15 +9,15 @@
     },
     "ZE_OBJECTIVE_OUROBOROS_APOLLYON": {
         "zh_cn": "[衔尾蛇计划]代号：辰宿归墟",
-        "zh_tw": "[衔尾蛇计划]代号：辰宿归墟"
+        "zh_tw": "[銜尾蛇計劃]代號：辰宿歸墟"
     },
     "ZE_OBJ_OUROBOROS_AURORA": {
         "zh_cn": "[衔尾蛇计划]代号：落日余晖",
-        "zh_tw": "[衔尾蛇计划]代号：落日余晖"
+        "zh_tw": "[銜尾蛇計劃]代號：落日餘暉"
     },
     "ZE_OBJ_OUROBOROS_RAGNAROK": {
         "zh_cn": "[衔尾蛇计划]代号：破晓终幕",
-        "zh_tw": "[衔尾蛇计划]代号：破晓终幕"
+        "zh_tw": "[銜尾蛇計劃]代號：破曉終幕"
     },
     "ZE_chenbai_chap12_alpha": {
         "zh_cn": "",
@@ -40,8 +40,8 @@
         "zh_tw": ""
     },
     "rp_downtown": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "EXG小镇",
+        "zh_tw": "EXG小鎮"
     },
     "ze_1_ScHiZo": {
         "zh_cn": "",
@@ -49,7 +49,7 @@
     },
     "ze_1way_tunnel": {
         "zh_cn": "单向隧道",
-        "zh_tw": "单向隧道"
+        "zh_tw": "單向隧道"
     },
     "ze_2012_p": {
         "zh_cn": "2012",
@@ -68,8 +68,8 @@
         "zh_tw": ""
     },
     "ze_30_seconds_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "生死30秒",
+        "zh_tw": "生死30秒"
     },
     "ze_666_crazy_escape": {
         "zh_cn": "",
@@ -185,11 +185,11 @@
     },
     "ze_Cyberspace": {
         "zh_cn": "赛博空间",
-        "zh_tw": "赛博空间"
+        "zh_tw": "賽博空間"
     },
     "ze_DYSTOPIA_p": {
         "zh_cn": "反乌托邦",
-        "zh_tw": "反乌托邦"
+        "zh_tw": "反烏托邦"
     },
     "ze_DaBaDeeDaBaDie": {
         "zh_cn": "",
@@ -221,7 +221,7 @@
     },
     "ze_Dreamin": {
         "zh_cn": "梦想",
-        "zh_tw": "梦想"
+        "zh_tw": "夢想"
     },
     "ze_ELEVATOR_escape_p": {
         "zh_cn": "",
@@ -241,67 +241,67 @@
     },
     "ze_FFVII_Fako_Reactor": {
         "zh_cn": "Fako炉",
-        "zh_tw": "Fako炉"
+        "zh_tw": "Fako爐"
     },
     "ze_FFVII_Mako_Reactor_v5_3": {
         "zh_cn": "最终幻想VII：魔晄炉V53",
-        "zh_tw": "最终幻想VII：魔晄炉V53"
+        "zh_tw": "最終幻想VII：魔晄爐V53"
     },
     "ze_FFVII_Mako_Reactor_v5_p": {
         "zh_cn": "[P组]最终幻想VII：魔晄炉V5",
-        "zh_tw": "[P组]最终幻想VII：魔晄炉V5"
+        "zh_tw": "[P組]最終幻想VII：魔晄爐V5"
     },
     "ze_FFVII_Mako_Reactor_v6_p": {
         "zh_cn": "最终幻想VII：魔晄炉V6",
-        "zh_tw": "最终幻想VII：魔晄炉V6"
+        "zh_tw": "最終幻想VII：魔晄爐V6"
     },
     "ze_FFVII_Malgo_Reactor": {
         "zh_cn": "麻辣狗炉",
-        "zh_tw": "麻辣狗炉"
+        "zh_tw": "麻辣狗爐"
     },
     "ze_FFVII_Snow_Cosmo": {
         "zh_cn": "最终幻想VII：宇宙峡谷(雪地版)",
-        "zh_tw": "最终幻想VII：宇宙峡谷(雪地版)"
+        "zh_tw": "最終幻想VII：宇宙峽谷(雪地版)"
     },
     "ze_FFVII_temple_ancient": {
         "zh_cn": "最终幻想VII：古代种神殿v5",
-        "zh_tw": "最终幻想VII：古代种神殿v5"
+        "zh_tw": "最終幻想VII：古代種神殿v5"
     },
     "ze_FFXII_Bestersand_Beta": {
         "zh_cn": "最终幻想XII：美沙",
-        "zh_tw": "最终幻想XII：美沙"
+        "zh_tw": "最終幻想XII：美沙"
     },
     "ze_FFXII_Feywood_b1": {
         "zh_cn": "最终幻想XII：幻妖之森",
-        "zh_tw": "最终幻想XII：幻妖之森"
+        "zh_tw": "最終幻想XII：幻妖之森"
     },
     "ze_FFXII_Mt_Bur_Omisace_v6": {
         "zh_cn": "最终幻想XII：神都布尔奥米赛斯V6",
-        "zh_tw": "最终幻想XII：神都布尔奥米赛斯V6"
+        "zh_tw": "最終幻想XII：神都布爾奧米賽斯V6"
     },
     "ze_FFXII_Paramina_Rift": {
         "zh_cn": "最终幻想XII：帕拉米纳大峡谷",
-        "zh_tw": "最终幻想XII：帕拉米纳大峡谷"
+        "zh_tw": "最終幻想XII：帕拉米納大峽谷"
     },
     "ze_FFXII_Westersand_v8": {
         "zh_cn": "最终幻想XII：西沙V81",
-        "zh_tw": "最终幻想XII：西沙V81"
+        "zh_tw": "最終幻想XII：西沙V81"
     },
     "ze_FFXIV_Coil_of_Bahamut": {
         "zh_cn": "最终幻想XIV:巴哈姆特大迷宫",
-        "zh_tw": "最终幻想XIV:巴哈姆特大迷宫"
+        "zh_tw": "最終幻想XIV:巴哈姆特大迷宮"
     },
     "ze_FFXIV_Reisen_Temple": {
         "zh_cn": "最终幻想XIV:醴泉神社",
-        "zh_tw": "最终幻想XIV:醴泉神社"
+        "zh_tw": "最終幻想XIV:醴泉神社"
     },
     "ze_FFXIV_Wanderers_Palace": {
         "zh_cn": "最终幻想XIV:放浪古神殿v4",
-        "zh_tw": "最终幻想XIV:放浪古神殿v4"
+        "zh_tw": "最終幻想XIV:放浪古神殿v4"
     },
     "ze_FFXIV_Wanderers_Palace_v6_2": {
         "zh_cn": "最终幻想XIV:放浪古神殿v6_2",
-        "zh_tw": "最终幻想XIV:放浪古神殿v6_2"
+        "zh_tw": "最終幻想XIV:放浪古神殿v6_2"
     },
     "ze_FORiUS_just_RUN_p": {
         "zh_cn": "",
@@ -329,7 +329,7 @@
     },
     "ze_Hydroponic_Garden": {
         "zh_cn": "水培花园",
-        "zh_tw": "水培花园"
+        "zh_tw": "水培花園"
     },
     "ze_IMPERIUM": {
         "zh_cn": "",
@@ -369,7 +369,7 @@
     },
     "ze_Last_Man_Standing_p": {
         "zh_cn": "龙门山",
-        "zh_tw": "龙门山"
+        "zh_tw": "龍門山"
     },
     "ze_MAGA": {
         "zh_cn": "",
@@ -393,7 +393,7 @@
     },
     "ze_Minimal": {
         "zh_cn": "极病",
-        "zh_tw": "极病"
+        "zh_tw": "極病"
     },
     "ze_Mochi_Island": {
         "zh_cn": "",
@@ -425,35 +425,35 @@
     },
     "ze_Obf_Filth": {
         "zh_cn": "代号：怒火中烧",
-        "zh_tw": "代号：怒火中烧"
+        "zh_tw": "代號：怒火中燒"
     },
     "ze_Obf_Insane": {
         "zh_cn": "代号：烈火雄心",
-        "zh_tw": "代号：烈火雄心"
+        "zh_tw": "代號：烈火雄心"
     },
     "ze_Obf_NPST_v2": {
         "zh_cn": "代号：NPST_v2",
-        "zh_tw": "代号：NPST_v2"
+        "zh_tw": "代號：NPST_v2"
     },
     "ze_Obf_Rampage 2.0": {
         "zh_cn": "代号：野火燎原",
-        "zh_tw": "代号：野火燎原"
+        "zh_tw": "代號：野火燎原"
     },
     "ze_Obf_Rampage_v2_Legacy": {
         "zh_cn": "代号：横空出世-火之心",
-        "zh_tw": "代号：横空出世-火之心"
+        "zh_tw": "代號：橫空出世-火之心"
     },
     "ze_Obf_Rescape": {
         "zh_cn": "代号：浴火重生",
-        "zh_tw": "代号：浴火重生"
+        "zh_tw": "代號：浴火重生"
     },
     "ze_Obj_NPST_v1_4": {
         "zh_cn": "代号：NPST_v1_4",
-        "zh_tw": "代号：NPST_v1_4"
+        "zh_tw": "代號：NPST_v1_4"
     },
     "ze_Obj_insane_v1_2": {
         "zh_cn": "代号：烈火雄心_v1_2",
-        "zh_tw": "代号：烈火雄心_v1_2"
+        "zh_tw": "代號：烈火雄心_v1_2"
     },
     "ze_Otakuroom": {
         "zh_cn": "",
@@ -469,7 +469,7 @@
     },
     "ze_Pirates_Port_Royal": {
         "zh_cn": "加勒比海盗：罗亚尔港",
-        "zh_tw": "加勒比海盗：罗亚尔港"
+        "zh_tw": "加勒比海盜：羅亞爾港"
     },
     "ze_PoR_island_p": {
         "zh_cn": "",
@@ -485,11 +485,11 @@
     },
     "ze_Requiem": {
         "zh_cn": "镇魂曲",
-        "zh_tw": "镇魂曲"
+        "zh_tw": "鎮魂曲"
     },
     "ze_SAMOSBOR": {
         "zh_cn": "笼子",
-        "zh_tw": "笼子"
+        "zh_tw": "籠子"
     },
     "ze_SCP_Containment_Breach": {
         "zh_cn": "",
@@ -501,7 +501,7 @@
     },
     "ze_S_A_M": {
         "zh_cn": "刀剑神域",
-        "zh_tw": "刀剑神域"
+        "zh_tw": "刀劍神域"
     },
     "ze_Sekiro": {
         "zh_cn": "",
@@ -529,7 +529,7 @@
     },
     "ze_Squid_Game": {
         "zh_cn": "鱿鱼游戏",
-        "zh_tw": "鱿鱼游戏"
+        "zh_tw": "魷魚遊戲"
     },
     "ze_Stardust": {
         "zh_cn": "",
@@ -573,11 +573,11 @@
     },
     "ze_Uchiha_Legacy": {
         "zh_cn": "宇智波：遗迹",
-        "zh_tw": "宇智波：遗迹"
+        "zh_tw": "宇智波：遺蹟"
     },
     "ze_Visualizer": {
         "zh_cn": "监视者",
-        "zh_tw": "监视者"
+        "zh_tw": "監視者"
     },
     "ze_YuanMengStar": {
         "zh_cn": "",
@@ -585,15 +585,15 @@
     },
     "ze_Zertinan": {
         "zh_cn": "最终幻想XII：泽尔提南",
-        "zh_tw": "最终幻想XII：泽尔提南"
+        "zh_tw": "最終幻想XII：澤爾提南"
     },
     "ze__hell_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "无尽的地狱",
+        "zh_tw": "無盡的地獄"
     },
     "ze_abandoned_industry_p": {
         "zh_cn": "废弃工厂",
-        "zh_tw": "废弃工厂"
+        "zh_tw": "廢棄工廠"
     },
     "ze_abandoned_project_p": {
         "zh_cn": "",
@@ -604,8 +604,8 @@
         "zh_tw": ""
     },
     "ze_aepp_nano_grid2_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "纳米世界",
+        "zh_tw": "納米世界"
     },
     "ze_akala_p": {
         "zh_cn": "",
@@ -617,15 +617,15 @@
     },
     "ze_ancient_wrath_p": {
         "zh_cn": "古代种金字塔",
-        "zh_tw": "古代种金字塔"
+        "zh_tw": "古代種金字塔"
     },
     "ze_angelbeats_guild": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "天使的心跳",
+        "zh_tw": "天使的心跳"
     },
     "ze_angels_of_death": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "杀戮天使",
+        "zh_tw": "殺戮天使"
     },
     "ze_antartika_p": {
         "zh_cn": "",
@@ -636,8 +636,8 @@
         "zh_tw": ""
     },
     "ze_apollo_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "阿波罗登月计划",
+        "zh_tw": "阿波羅登月計劃"
     },
     "ze_apprehended": {
         "zh_cn": "",
@@ -660,8 +660,8 @@
         "zh_tw": ""
     },
     "ze_arknights_caerula_arbor": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "明日方舟：水月与深蓝之树",
+        "zh_tw": "明日方舟：水月與深藍之樹"
     },
     "ze_arknights_caerula_arbor(English_version)": {
         "zh_cn": "",
@@ -672,8 +672,8 @@
         "zh_tw": ""
     },
     "ze_arknights_sows": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "明日方舟：大荒城",
+        "zh_tw": "明日方舟：大荒城"
     },
     "ze_artika_base_p": {
         "zh_cn": "阿提卡基地",
@@ -696,24 +696,24 @@
         "zh_tw": ""
     },
     "ze_azathoth_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "阿撒托斯",
+        "zh_tw": "阿撒託斯"
     },
     "ze_aztecnoob_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "阿兹特克遗迹",
+        "zh_tw": "阿茲特克遺蹟"
     },
     "ze_backrooms_deathbed": {
         "zh_cn": "后室：死眠",
-        "zh_tw": "后室：死眠"
+        "zh_tw": "後室：死眠"
     },
     "ze_bang_dream_mygo": {
         "zh_cn": "爱音の梦",
-        "zh_tw": "爱音の梦"
+        "zh_tw": "愛音の夢"
     },
     "ze_barrage_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "求生之路-大坝",
+        "zh_tw": "求生之路-大壩"
     },
     "ze_barrel_of_death": {
         "zh_cn": "",
@@ -733,39 +733,39 @@
     },
     "ze_best_korea": {
         "zh_cn": "最美曹县",
-        "zh_tw": "最美曹县"
+        "zh_tw": "最美曹縣"
     },
     "ze_beyond_horizon": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "海洋彼岸",
+        "zh_tw": "海洋彼岸"
     },
     "ze_beyond_the_boundary": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "境界彼方",
+        "zh_tw": "境界彼方"
     },
     "ze_bh3rd_babel_z": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "崩坏3:巴比伦塔",
+        "zh_tw": "崩壞3:巴比倫塔"
     },
     "ze_bh3rd_cyberpunk_z": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "崩坏3:天穹市",
+        "zh_tw": "崩壞3:天穹市"
     },
     "ze_bh3rd_nagazoracity_z": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "崩坏3:长空市",
+        "zh_tw": "崩壞3:長空市"
     },
     "ze_biohazard2_rpd_004_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "生化危机：警察局",
+        "zh_tw": "生化危機：警察局"
     },
     "ze_biohazard2_sewer_004": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_biohazard_manor_004_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "生化危机：洋馆",
+        "zh_tw": "生化危機：洋館"
     },
     "ze_bioluminescent": {
         "zh_cn": "",
@@ -780,16 +780,16 @@
         "zh_tw": ""
     },
     "ze_black_lion_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "黑狮",
+        "zh_tw": "黑獅"
     },
     "ze_blackmesa_escape_p": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_blackmesa_remix_cs2": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "黑山基地remix：重装上阵",
+        "zh_tw": "黑山基地remix：重裝上陣"
     },
     "ze_blood_castle": {
         "zh_cn": "",
@@ -800,8 +800,8 @@
         "zh_tw": ""
     },
     "ze_boacceho_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "boacceho逃亡",
+        "zh_tw": "boacceho逃亡"
     },
     "ze_boatescape101_p": {
         "zh_cn": "",
@@ -820,12 +820,12 @@
         "zh_tw": ""
     },
     "ze_bp-infested-prison_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "监狱逃亡",
+        "zh_tw": "監獄逃亡"
     },
     "ze_breakable_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "随处可破坏的箱子",
+        "zh_tw": "隨處可破壞的箱子"
     },
     "ze_breakdream_v1": {
         "zh_cn": "",
@@ -836,8 +836,8 @@
         "zh_tw": ""
     },
     "ze_castle_bridge_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "古堡大桥",
+        "zh_tw": "古堡大橋"
     },
     "ze_celestial_ops": {
         "zh_cn": "",
@@ -860,8 +860,8 @@
         "zh_tw": ""
     },
     "ze_chicken_lords_tower_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "大只因城堡",
+        "zh_tw": "大隻因城堡"
     },
     "ze_chicken_nugget_v1_9": {
         "zh_cn": "",
@@ -869,7 +869,7 @@
     },
     "ze_chip_n_dale": {
         "zh_cn": "FC松鼠大作战",
-        "zh_tw": "FC松鼠大作战"
+        "zh_tw": "FC松鼠大作戰"
     },
     "ze_christmas_escape": {
         "zh_cn": "",
@@ -900,8 +900,8 @@
         "zh_tw": ""
     },
     "ze_chronus_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "克罗诺斯山谷",
+        "zh_tw": "克羅諾斯山谷"
     },
     "ze_church_of_white_ha1jk5fg2": {
         "zh_cn": "",
@@ -912,32 +912,32 @@
         "zh_tw": ""
     },
     "ze_clawfactory": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "蟹老板工厂",
+        "zh_tw": "蟹老闆工廠"
     },
     "ze_clockwork": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_color_levels": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "颜色关卡保卫战",
+        "zh_tw": "顏色關卡保衛戰"
     },
     "ze_colorful": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_colorlicouspilar_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "彩虹塔",
+        "zh_tw": "彩虹塔"
     },
     "ze_colors_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "搞颜色",
+        "zh_tw": "搞顏色"
     },
     "ze_compound_escape": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "逃离化学工厂",
+        "zh_tw": "逃離化學工廠"
     },
     "ze_concrete_defense": {
         "zh_cn": "",
@@ -956,12 +956,12 @@
         "zh_tw": ""
     },
     "ze_coolcoolsnowman_n64": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "超级马里奥之酷冰冰雪山之旅",
+        "zh_tw": "超級馬里奧之酷冰冰雪山之旅"
     },
     "ze_crashbandicoot_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "古惑狼",
+        "zh_tw": "古惑狼"
     },
     "ze_crazy_christmas_p": {
         "zh_cn": "",
@@ -984,8 +984,8 @@
         "zh_tw": ""
     },
     "ze_dangerous_waters_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "危险水域",
+        "zh_tw": "危險水域"
     },
     "ze_dark_cave_remake_m": {
         "zh_cn": "",
@@ -1008,8 +1008,8 @@
         "zh_tw": "恐怖之森"
     },
     "ze_death_star_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "死星逃亡",
+        "zh_tw": "死星逃亡"
     },
     "ze_deathinvain_palace": {
         "zh_cn": "",
@@ -1020,12 +1020,12 @@
         "zh_tw": ""
     },
     "ze_deepice_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "深井冰",
+        "zh_tw": "深井冰"
     },
     "ze_defense3002_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "代号：防守 V300_2",
+        "zh_tw": "代號：防守 V300_2"
     },
     "ze_depths": {
         "zh_cn": "",
@@ -1033,7 +1033,7 @@
     },
     "ze_descent_into_cerberon_p": {
         "zh_cn": "破碎行动",
-        "zh_tw": "破碎行动"
+        "zh_tw": "破碎行動"
     },
     "ze_desert_tour": {
         "zh_cn": "",
@@ -1048,8 +1048,8 @@
         "zh_tw": ""
     },
     "ze_diverted_destiny": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "反抗命运的序曲",
+        "zh_tw": "反抗命運的序曲"
     },
     "ze_dnb_realms": {
         "zh_cn": "",
@@ -1060,8 +1060,8 @@
         "zh_tw": ""
     },
     "ze_doomglaven": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "战锤：末世鼠疫",
+        "zh_tw": "戰錘：末世鼠疫"
     },
     "ze_dorororo": {
         "zh_cn": "",
@@ -1080,16 +1080,16 @@
         "zh_tw": ""
     },
     "ze_easy_escape_v4": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "简单逃亡",
+        "zh_tw": "簡單逃亡"
     },
     "ze_eizures_b1_1": {
         "zh_cn": "核子危机b1",
-        "zh_tw": "核子危机b1"
+        "zh_tw": "核子危機b1"
     },
     "ze_eizures_b2": {
         "zh_cn": "核子危机b2",
-        "zh_tw": "核子危机b2"
+        "zh_tw": "核子危機b2"
     },
     "ze_emerald": {
         "zh_cn": "",
@@ -1097,15 +1097,15 @@
     },
     "ze_endless_dream": {
         "zh_cn": "无尽之梦",
-        "zh_tw": "无尽之梦"
+        "zh_tw": "無盡之夢"
     },
     "ze_endor": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_error": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "错误大逃亡",
+        "zh_tw": "錯誤大逃亡"
     },
     "ze_escape2024": {
         "zh_cn": "",
@@ -1121,11 +1121,11 @@
     },
     "ze_evil_mansion_p": {
         "zh_cn": "邪恶公馆",
-        "zh_tw": "邪恶公馆"
+        "zh_tw": "邪惡公館"
     },
     "ze_exchange_innovation_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "逃离生化大楼",
+        "zh_tw": "逃離生化大樓"
     },
     "ze_eye_factory_escape": {
         "zh_cn": "",
@@ -1141,11 +1141,11 @@
     },
     "ze_fapescape_p": {
         "zh_cn": "老乐高",
-        "zh_tw": "老乐高"
+        "zh_tw": "老樂高"
     },
     "ze_fapescape_rote_p": {
         "zh_cn": "新乐高",
-        "zh_tw": "新乐高"
+        "zh_tw": "新樂高"
     },
     "ze_farmhouse_p": {
         "zh_cn": "",
@@ -1161,23 +1161,23 @@
     },
     "ze_ffvii_cosmo_canyon_t": {
         "zh_cn": "最终幻想VII：宇宙峡谷(天CO)",
-        "zh_tw": "最终幻想VII：宇宙峡谷(天CO)"
+        "zh_tw": "最終幻想VII：宇宙峽谷(天CO)"
     },
     "ze_ffvii_cosmo_canyon_v2": {
         "zh_cn": "最终幻想VII：宇宙峡谷V2",
-        "zh_tw": "最终幻想VII：宇宙峡谷V2"
+        "zh_tw": "最終幻想VII：宇宙峽谷V2"
     },
     "ze_ffxii_feywood_t": {
         "zh_cn": "最终幻想XII：幻妖之森",
-        "zh_tw": "最终幻想XII：幻妖之森"
+        "zh_tw": "最終幻想XII：幻妖之森"
     },
     "ze_ffxii_westersand_v7_t": {
         "zh_cn": "最终幻想XII：西沙V72",
-        "zh_tw": "最终幻想XII：西沙V72"
+        "zh_tw": "最終幻想XII：西沙V72"
     },
     "ze_ffxiv_great_gubal_library": {
         "zh_cn": "最终幻想XIV:迦巴勒幻想图书馆",
-        "zh_tw": "最终幻想XIV:迦巴勒幻想图书馆"
+        "zh_tw": "最終幻想XIV:迦巴勒幻想圖書館"
     },
     "ze_ffxiv_the_orbonne_monastery_demo": {
         "zh_cn": "",
@@ -1185,59 +1185,59 @@
     },
     "ze_ffxiv_wanderers_palace_v5_2": {
         "zh_cn": "最终幻想XIV:放浪古神殿v5_2",
-        "zh_tw": "最终幻想XIV:放浪古神殿v5_2"
+        "zh_tw": "最終幻想XIV:放浪古神殿v5_2"
     },
     "ze_firewall_laboratory_part1_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "紧张刺激防火墙1",
+        "zh_tw": "緊張刺激防火牆1"
     },
     "ze_firewall_laboratory_part2_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "防火墙2",
+        "zh_tw": "防火牆2"
     },
     "ze_floating_rocks_survival": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "浮空岛生存",
+        "zh_tw": "浮空島生存"
     },
     "ze_flower": {
         "zh_cn": "花之声",
-        "zh_tw": "花之声"
+        "zh_tw": "花之聲"
     },
     "ze_flowering": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "月神殿:前传",
+        "zh_tw": "月神殿:前傳"
     },
     "ze_flying_world": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "空岛世界",
+        "zh_tw": "空島世界"
     },
     "ze_fond_dream": {
         "zh_cn": "南柯一梦",
-        "zh_tw": "南柯一梦"
+        "zh_tw": "南柯一夢"
     },
     "ze_forest_remake_m": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_forestbunkers_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "森林地堡",
+        "zh_tw": "森林地堡"
     },
     "ze_forhidden_slicoo": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_forhidden_void": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "禁地：虚空遗迹",
+        "zh_tw": "禁地：虛空遺蹟"
     },
     "ze_fragment_ops_rewind": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_frostdrake_tower_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "寒霜高塔",
+        "zh_tw": "寒霜高塔"
     },
     "ze_frozentemple_cs2": {
         "zh_cn": "",
@@ -1252,16 +1252,16 @@
         "zh_tw": ""
     },
     "ze_games_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "小游戏合集",
+        "zh_tw": "小遊戲合集"
     },
     "ze_gameshow": {
         "zh_cn": "游戏真人秀",
-        "zh_tw": "游戏真人秀"
+        "zh_tw": "遊戲真人秀"
     },
     "ze_gear_palace": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "齿轮宫殿",
+        "zh_tw": "齒輪宮殿"
     },
     "ze_geometric": {
         "zh_cn": "",
@@ -1281,19 +1281,19 @@
     },
     "ze_grace": {
         "zh_cn": "优雅",
-        "zh_tw": "优雅"
+        "zh_tw": "優雅"
     },
     "ze_grau_p": {
         "zh_cn": "格劳",
-        "zh_tw": "格劳"
+        "zh_tw": "格勞"
     },
     "ze_greece_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "希腊逃亡",
+        "zh_tw": "希臘逃亡"
     },
     "ze_greencity_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "绿之城",
+        "zh_tw": "綠之城"
     },
     "ze_gris": {
         "zh_cn": "格里斯",
@@ -1301,7 +1301,7 @@
     },
     "ze_gris_p": {
         "zh_cn": "格里斯(P组)",
-        "zh_tw": "格里斯(P组)"
+        "zh_tw": "格里斯(P組)"
     },
     "ze_gris_re": {
         "zh_cn": "",
@@ -1317,7 +1317,7 @@
     },
     "ze_guye_room": {
         "zh_cn": "电竞房",
-        "zh_tw": "电竞房"
+        "zh_tw": "電競房"
     },
     "ze_halloween_house_p": {
         "zh_cn": "",
@@ -1336,12 +1336,12 @@
         "zh_tw": ""
     },
     "ze_haunted_lab_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "闹鬼实验室",
+        "zh_tw": "鬧鬼實驗室"
     },
     "ze_hazard_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "炸桥传奇2",
+        "zh_tw": "炸橋傳奇2"
     },
     "ze_hell_escape_p": {
         "zh_cn": "",
@@ -1356,8 +1356,8 @@
         "zh_tw": ""
     },
     "ze_highest_to_lowest": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "猛虎下山",
+        "zh_tw": "猛虎下山"
     },
     "ze_hlc_citadel_v1": {
         "zh_cn": "",
@@ -1388,24 +1388,24 @@
         "zh_tw": ""
     },
     "ze_hypernova_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "超新星",
+        "zh_tw": "超新星"
     },
     "ze_hypnotize_me_baby_p": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_iamlegend_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "我是炸桥传奇",
+        "zh_tw": "我是炸橋傳奇"
     },
     "ze_ice_cavern_z": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_ice_hold_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "雪地防守",
+        "zh_tw": "雪地防守"
     },
     "ze_icebreaker": {
         "zh_cn": "",
@@ -1424,8 +1424,8 @@
         "zh_tw": ""
     },
     "ze_iceworld_athletic_cs2": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "冰雪竞技场",
+        "zh_tw": "冰雪競技場"
     },
     "ze_idk_what_to_call_this": {
         "zh_cn": "",
@@ -1433,35 +1433,35 @@
     },
     "ze_illusory_world": {
         "zh_cn": "虚空幻界",
-        "zh_tw": "虚空幻界"
+        "zh_tw": "虛空幻界"
     },
     "ze_immortal_flame": {
         "zh_cn": "永恒烈焰",
-        "zh_tw": "永恒烈焰"
+        "zh_tw": "永恆烈焰"
     },
     "ze_inboxed_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "inbox追击",
+        "zh_tw": "inbox追擊"
     },
     "ze_incident_seasons": {
         "zh_cn": "四季异变",
-        "zh_tw": "四季异变"
+        "zh_tw": "四季異變"
     },
     "ze_indiana_jones_004_p": {
         "zh_cn": "夺宝奇兵",
-        "zh_tw": "夺宝奇兵"
+        "zh_tw": "奪寶奇兵"
     },
     "ze_infected_sewers_v4": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "合金弹头：下水道",
+        "zh_tw": "合金彈頭：下水道"
     },
     "ze_infested-industry_p": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_infiltration_final_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "潜入行动",
+        "zh_tw": "潛入行動"
     },
     "ze_insanitycity_t": {
         "zh_cn": "",
@@ -1480,8 +1480,8 @@
         "zh_tw": ""
     },
     "ze_italy_town_z": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "意大利小镇",
+        "zh_tw": "意大利小鎮"
     },
     "ze_japans_3rd_bombing": {
         "zh_cn": "",
@@ -1500,36 +1500,36 @@
         "zh_tw": ""
     },
     "ze_jurassic_life": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "侏罗纪生存记",
+        "zh_tw": "侏羅紀生存記"
     },
     "ze_jurassic_park_story_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "侏罗纪公园：故事篇",
+        "zh_tw": "侏羅紀公園：故事篇"
     },
     "ze_jurassicpark_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "侏罗纪公园2",
+        "zh_tw": "侏羅紀公園2"
     },
     "ze_jurassicpark_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "侏罗纪公园",
+        "zh_tw": "侏羅紀公園"
     },
     "ze_k19_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "k19逃亡",
+        "zh_tw": "k19逃亡"
     },
     "ze_kaffe_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "咖啡逃亡",
+        "zh_tw": "咖啡逃亡"
     },
     "ze_kage_cs2": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "赤影战士",
+        "zh_tw": "赤影戰士"
     },
     "ze_kebab_immigrant": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "争夺烤肉",
+        "zh_tw": "爭奪烤肉"
     },
     "ze_kenshin_v1": {
         "zh_cn": "",
@@ -1552,20 +1552,20 @@
         "zh_tw": ""
     },
     "ze_kuwei_cs2": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "枯萎",
+        "zh_tw": "枯萎"
     },
     "ze_l0v0l_p": {
         "zh_cn": "颜文字1",
-        "zh_tw": "颜文字1"
+        "zh_tw": "顏文字1"
     },
     "ze_lab": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_laser_island_z": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "跳刀岛",
+        "zh_tw": "跳刀島"
     },
     "ze_lazers_p": {
         "zh_cn": "",
@@ -1581,15 +1581,15 @@
     },
     "ze_lego": {
         "zh_cn": "马乐高",
-        "zh_tw": "马乐高"
+        "zh_tw": "馬樂高"
     },
     "ze_legoland_crackheads": {
         "zh_cn": "乐高游乐场",
-        "zh_tw": "乐高游乐场"
+        "zh_tw": "樂高遊樂場"
     },
     "ze_lemonade": {
         "zh_cn": "[冰鲜柠檬水]csgo不喜欢天天带的地图",
-        "zh_tw": "[冰鲜柠檬水]csgo不喜欢天天带的地图"
+        "zh_tw": "[冰鮮檸檬水]csgo不喜歡天天帶的地圖"
     },
     "ze_lemonysnickets_p": {
         "zh_cn": "",
@@ -1600,8 +1600,8 @@
         "zh_tw": ""
     },
     "ze_licciana_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "里西西亚",
+        "zh_tw": "裏西西亞"
     },
     "ze_light_911": {
         "zh_cn": "",
@@ -1612,12 +1612,12 @@
         "zh_tw": ""
     },
     "ze_little_trip": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "小小旅途",
+        "zh_tw": "小小旅途"
     },
     "ze_loom": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "恐惧隐现",
+        "zh_tw": "恐懼隱現"
     },
     "ze_lootus": {
         "zh_cn": "",
@@ -1644,8 +1644,8 @@
         "zh_tw": ""
     },
     "ze_luigismansion_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "路易基鬼屋",
+        "zh_tw": "路易基鬼屋"
     },
     "ze_luminous_escape": {
         "zh_cn": "",
@@ -1665,31 +1665,31 @@
     },
     "ze_madara_temple": {
         "zh_cn": "马达拉神殿",
-        "zh_tw": "马达拉神殿"
+        "zh_tw": "馬達拉神殿"
     },
     "ze_madness": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "暴力迪吧",
+        "zh_tw": "暴力迪吧"
     },
     "ze_magala_castle_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "玛格拉城堡",
+        "zh_tw": "瑪格拉城堡"
     },
     "ze_magic_carpet_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "魔毯世界",
+        "zh_tw": "魔毯世界"
     },
     "ze_magus_v2_4": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "魔法森林",
+        "zh_tw": "魔法森林"
     },
     "ze_maontain_escape": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "哈基米曼波山",
+        "zh_tw": "哈基米曼波山"
     },
     "ze_mario_tower_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "马里奥之塔",
+        "zh_tw": "馬里奧之塔"
     },
     "ze_mars_escape_p": {
         "zh_cn": "火星逃亡",
@@ -1697,7 +1697,7 @@
     },
     "ze_mars_escape_xmas": {
         "zh_cn": "圣诞mako",
-        "zh_tw": "圣诞mako"
+        "zh_tw": "聖誕mako"
     },
     "ze_maze": {
         "zh_cn": "",
@@ -1708,12 +1708,12 @@
         "zh_tw": ""
     },
     "ze_melong_dow_learjet_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "里尔喷气机惊险逃亡",
+        "zh_tw": "里爾噴氣機驚險逃亡"
     },
     "ze_mgden_z": {
         "zh_cn": "永恒花园",
-        "zh_tw": "永恒花园"
+        "zh_tw": "永恆花園"
     },
     "ze_military_escape_p": {
         "zh_cn": "",
@@ -1728,36 +1728,36 @@
         "zh_tw": ""
     },
     "ze_minecraft_drifts": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "我的世界：漂流",
+        "zh_tw": "我的世界：漂流"
     },
     "ze_minecraft_journey_v1": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_minecraft_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "我的世界",
+        "zh_tw": "我的世界"
     },
     "ze_minecraft_run": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "我的世界：生死时速",
+        "zh_tw": "我的世界：生死時速"
     },
     "ze_minecraft_sakura": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "我的世界：撒库拉岛",
+        "zh_tw": "我的世界：撒庫拉島"
     },
     "ze_minecraft_sakura_test": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_minecratix": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "我的世界：高端防守战",
+        "zh_tw": "我的世界：高端防守戰"
     },
     "ze_mirrors_edge_reborn_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "镜之边缘：跑酷重生",
+        "zh_tw": "鏡之邊緣：跑酷重生"
     },
     "ze_misaka": {
         "zh_cn": "",
@@ -1769,7 +1769,7 @@
     },
     "ze_mist_p": {
         "zh_cn": "雾城龙影",
-        "zh_tw": "雾城龙影"
+        "zh_tw": "霧城龍影"
     },
     "ze_mix": {
         "zh_cn": "",
@@ -1796,32 +1796,32 @@
         "zh_tw": ""
     },
     "ze_mountain_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "高山逃亡(剿匪)",
+        "zh_tw": "高山逃亡(剿匪)"
     },
     "ze_my_first_escape": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_namviet_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "越南踩雷王",
+        "zh_tw": "越南踩雷王"
     },
     "ze_naruto_z": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "火影村",
+        "zh_tw": "火影村"
     },
     "ze_negative_legacy": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_neko_canyon_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "猫猫峡谷（剿匪）",
+        "zh_tw": "貓貓峽谷（剿匪）"
     },
     "ze_neochrome": {
         "zh_cn": "霓铬",
-        "zh_tw": "霓铬"
+        "zh_tw": "霓鉻"
     },
     "ze_neovia": {
         "zh_cn": "",
@@ -1832,8 +1832,8 @@
         "zh_tw": "盈能之境"
     },
     "ze_new_italy_cs2": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "新意大利",
+        "zh_tw": "新意大利"
     },
     "ze_nibui": {
         "zh_cn": "",
@@ -1849,23 +1849,23 @@
     },
     "ze_no_title_cs2_l": {
         "zh_cn": "无题",
-        "zh_tw": "无题"
+        "zh_tw": "無題"
     },
     "ze_noir_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "黑色街道",
+        "zh_tw": "黑色街道"
     },
     "ze_nomada_z": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_notredame_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "巴黎圣母院",
+        "zh_tw": "巴黎聖母院"
     },
     "ze_nuclear_site_survie_by_gm": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "危机时刻",
+        "zh_tw": "危機時刻"
     },
     "ze_nuke_p": {
         "zh_cn": "",
@@ -1873,55 +1873,55 @@
     },
     "ze_obj_Blue_Depth": {
         "zh_cn": "代号：蓝渊计划",
-        "zh_tw": "代号：蓝渊计划"
+        "zh_tw": "代號：藍淵計劃"
     },
     "ze_obj_abyss": {
         "zh_cn": "代号：暗流涌动",
-        "zh_tw": "代号：暗流涌动"
+        "zh_tw": "代號：暗流湧動"
     },
     "ze_obj_annihilate_dd_v1": {
         "zh_cn": "代号：孤注一掷",
-        "zh_tw": "代号：孤注一掷"
+        "zh_tw": "代號：孤注一擲"
     },
     "ze_obj_avulsion_a1": {
         "zh_cn": "代号：分崩离析",
-        "zh_tw": "代号：分崩离析"
+        "zh_tw": "代號：分崩離析"
     },
     "ze_obj_eclipsis_v1": {
         "zh_cn": "代号：日蚀计划",
-        "zh_tw": "代号：日蚀计划"
+        "zh_tw": "代號：日蝕計劃"
     },
     "ze_obj_ember": {
         "zh_cn": "代号：绝境星火",
-        "zh_tw": "代号：绝境星火"
+        "zh_tw": "代號：絕境星火"
     },
     "ze_obj_encounter": {
         "zh_cn": "代号：争锋相对",
-        "zh_tw": "代号：争锋相对"
+        "zh_tw": "代號：爭鋒相對"
     },
     "ze_obj_escalation_v1": {
         "zh_cn": "代号：飞升计划",
-        "zh_tw": "代号：飞升计划"
+        "zh_tw": "代號：飛昇計劃"
     },
     "ze_obj_federation": {
         "zh_cn": "代号：守望莱茵",
-        "zh_tw": "代号：守望莱茵"
+        "zh_tw": "代號：守望萊茵"
     },
     "ze_obj_goosestep_v1": {
         "zh_cn": "代号：缓兵之计",
-        "zh_tw": "代号：缓兵之计"
+        "zh_tw": "代號：緩兵之計"
     },
     "ze_obj_redemption": {
         "zh_cn": "代号：一线生机",
-        "zh_tw": "代号：一线生机"
+        "zh_tw": "代號：一線生機"
     },
     "ze_obj_rove": {
         "zh_cn": "代号：永夜行疆",
-        "zh_tw": "代号：永夜行疆"
+        "zh_tw": "代號：永夜行疆"
     },
     "ze_obj_void": {
         "zh_cn": "代号：至死不渝",
-        "zh_tw": "代号：至死不渝"
+        "zh_tw": "代號：至死不渝"
     },
     "ze_obscura_tower": {
         "zh_cn": "",
@@ -1932,20 +1932,20 @@
         "zh_tw": ""
     },
     "ze_ocean_base_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "海底基地",
+        "zh_tw": "海底基地"
     },
     "ze_ocean_heart_cs2": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "海洋之心",
+        "zh_tw": "海洋之心"
     },
     "ze_offliner": {
         "zh_cn": "单机者",
-        "zh_tw": "单机者"
+        "zh_tw": "單機者"
     },
     "ze_omen": {
         "zh_cn": "启示：命运预兆",
-        "zh_tw": "启示：命运预兆"
+        "zh_tw": "啓示：命運預兆"
     },
     "ze_onahole_p": {
         "zh_cn": "",
@@ -1988,8 +1988,8 @@
         "zh_tw": ""
     },
     "ze_outpost_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "前哨基地逃亡",
+        "zh_tw": "前哨基地逃亡"
     },
     "ze_overlord": {
         "zh_cn": "骨王",
@@ -2008,24 +2008,24 @@
         "zh_tw": ""
     },
     "ze_panic_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "跳刀仓库",
+        "zh_tw": "跳刀倉庫"
     },
     "ze_paradise_t": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "天堂岛",
+        "zh_tw": "天堂島"
     },
     "ze_paranoia_cs2": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_parkers_pit_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "帕克矿坑",
+        "zh_tw": "帕克礦坑"
     },
     "ze_parking_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "逃离停车场大楼",
+        "zh_tw": "逃離停車場大樓"
     },
     "ze_pausechamp_escape": {
         "zh_cn": "",
@@ -2040,8 +2040,8 @@
         "zh_tw": ""
     },
     "ze_pd2_crime_art": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "收获日2：美术馆",
+        "zh_tw": "收穫日2：美術館"
     },
     "ze_peach_castle_n64": {
         "zh_cn": "",
@@ -2080,12 +2080,12 @@
         "zh_tw": ""
     },
     "ze_pokemon_kanto_v1": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "宝可梦道馆",
+        "zh_tw": "寶可夢道館"
     },
     "ze_pools_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "后室level130：荒谬泳池",
+        "zh_tw": "後室level130：荒謬泳池"
     },
     "ze_pools_part2": {
         "zh_cn": "",
@@ -2105,19 +2105,19 @@
     },
     "ze_predator_ultimate_p": {
         "zh_cn": "铁血战士",
-        "zh_tw": "铁血战士"
+        "zh_tw": "鐵血戰士"
     },
     "ze_predator_ultimate_v3": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_prisonbreak_escape": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "越狱：逃脱",
+        "zh_tw": "越獄：逃脫"
     },
     "ze_prisonbreak_rescue": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "越狱：拯救",
+        "zh_tw": "越獄：拯救"
     },
     "ze_project_alcaria": {
         "zh_cn": "",
@@ -2132,8 +2132,8 @@
         "zh_tw": ""
     },
     "ze_prototype": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "虐杀原形",
+        "zh_tw": "虐殺原形"
     },
     "ze_psycho_pass": {
         "zh_cn": "",
@@ -2141,7 +2141,7 @@
     },
     "ze_purification_a1": {
         "zh_cn": "净化",
-        "zh_tw": "净化"
+        "zh_tw": "淨化"
     },
     "ze_puritytest": {
         "zh_cn": "",
@@ -2164,12 +2164,12 @@
         "zh_tw": ""
     },
     "ze_raccoon_facility_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "生化危机：蜂巢",
+        "zh_tw": "生化危機：蜂巢"
     },
     "ze_radio_building": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "猛虎上山(电台大楼)",
+        "zh_tw": "猛虎上山(電臺大樓)"
     },
     "ze_raid_ffxiv_eorzea": {
         "zh_cn": "",
@@ -2196,8 +2196,8 @@
         "zh_tw": ""
     },
     "ze_ratatouille": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "美食总动员",
+        "zh_tw": "美食總動員"
     },
     "ze_re_abydos": {
         "zh_cn": "",
@@ -2209,7 +2209,7 @@
     },
     "ze_realm": {
         "zh_cn": "领域",
-        "zh_tw": "领域"
+        "zh_tw": "領域"
     },
     "ze_red_planet": {
         "zh_cn": "",
@@ -2240,12 +2240,12 @@
         "zh_tw": ""
     },
     "ze_rooftop_runaway1_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "屋顶逃亡1",
+        "zh_tw": "屋頂逃亡1"
     },
     "ze_rooftop_runaway2_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "屋顶逃亡2",
+        "zh_tw": "屋頂逃亡2"
     },
     "ze_rt0_genesis": {
         "zh_cn": "",
@@ -2256,20 +2256,20 @@
         "zh_tw": ""
     },
     "ze_rt4_hessel_valley": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "时雨4：希赛尔山谷",
+        "zh_tw": "時雨4：希賽爾山谷"
     },
     "ze_rtcw_ominous_rumors_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "重返企鹅总部",
+        "zh_tw": "重返企鵝總部"
     },
     "ze_rtcw_ominous_rumors_p Localized Edition (CN)": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_rtv_one_more_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "RTV再来一票",
+        "zh_tw": "RTV再來一票"
     },
     "ze_rtx_code0_cs2": {
         "zh_cn": "",
@@ -2284,8 +2284,8 @@
         "zh_tw": "RUSH B"
     },
     "ze_s_s_a_df": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "闪刀姬前传-续篇",
+        "zh_tw": "閃刀姬前傳-續篇"
     },
     "ze_sa2_pumpkin_hill": {
         "zh_cn": "",
@@ -2301,31 +2301,31 @@
     },
     "ze_sandstorm": {
         "zh_cn": "沙尘暴",
-        "zh_tw": "沙尘暴"
+        "zh_tw": "沙塵暴"
     },
     "ze_santassination_p": {
         "zh_cn": "狮子王",
-        "zh_tw": "狮子王"
+        "zh_tw": "獅子王"
     },
     "ze_save_nato_bunker_rn": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_saw_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "锯与魔法",
+        "zh_tw": "鋸與魔法"
     },
     "ze_sc_turtles": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "乌龟岛之旅",
+        "zh_tw": "烏龜島之旅"
     },
     "ze_scourge_p": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_secret_garden": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "goobers的秘密花園",
+        "zh_tw": "goobers的祕密花園"
     },
     "ze_sele": {
         "zh_cn": "",
@@ -2344,8 +2344,8 @@
         "zh_tw": ""
     },
     "ze_showdown_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "巅峰对决",
+        "zh_tw": "巔峯對決"
     },
     "ze_shroomforest3_z": {
         "zh_cn": "",
@@ -2364,8 +2364,8 @@
         "zh_tw": ""
     },
     "ze_silent_hill_3_dawn_full": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "寂静岭3:黎明完全版",
+        "zh_tw": "寂靜嶺3:黎明完全版"
     },
     "ze_silent_hill_3_flee": {
         "zh_cn": "",
@@ -2376,12 +2376,12 @@
         "zh_tw": ""
     },
     "ze_silenthill_pt": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "寂静岭：pt",
+        "zh_tw": "寂靜嶺：pt"
     },
     "ze_simple_teamplay_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "非常简单的团队游戏",
+        "zh_tw": "非常簡單的團隊遊戲"
     },
     "ze_sisyphus": {
         "zh_cn": "",
@@ -2392,8 +2392,8 @@
         "zh_tw": ""
     },
     "ze_skill_escape_xmas": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "身法大考验(圣诞版)",
+        "zh_tw": "身法大考驗(聖誕版)"
     },
     "ze_sky_bridge": {
         "zh_cn": "",
@@ -2412,16 +2412,16 @@
         "zh_tw": ""
     },
     "ze_skyline": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "逃出生天",
+        "zh_tw": "逃出生天"
     },
     "ze_skyscraper_city_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "镜之边缘：大厦飞驰",
+        "zh_tw": "鏡之邊緣：大廈飛馳"
     },
     "ze_slender_escape_p": {
         "zh_cn": "面条人",
-        "zh_tw": "面条人"
+        "zh_tw": "麪條人"
     },
     "ze_solidarity_paper_cs2_l": {
         "zh_cn": "",
@@ -2448,8 +2448,8 @@
         "zh_tw": ""
     },
     "ze_sst2_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "星河舰队2",
+        "zh_tw": "星河艦隊2"
     },
     "ze_stab_town_p": {
         "zh_cn": "",
@@ -2464,16 +2464,16 @@
         "zh_tw": ""
     },
     "ze_stalkermonolith": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "潜行者：黑石",
+        "zh_tw": "潛行者：黑石"
     },
     "ze_stark_escape": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "史塔克逃亡",
+        "zh_tw": "史塔克逃亡"
     },
     "ze_starlight_revue_cs2": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "少女歌剧:命运舞台",
+        "zh_tw": "少女歌劇:命運舞臺"
     },
     "ze_stilshrine_of_miriam": {
         "zh_cn": "",
@@ -2484,8 +2484,8 @@
         "zh_tw": ""
     },
     "ze_summer_house": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "绚夏别墅",
+        "zh_tw": "絢夏別墅"
     },
     "ze_sunkentemple": {
         "zh_cn": "",
@@ -2592,8 +2592,8 @@
         "zh_tw": ""
     },
     "ze_temple_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "神庙逃亡",
+        "zh_tw": "神廟逃亡"
     },
     "ze_temple_of_phantom_cs2": {
         "zh_cn": "",
@@ -2608,8 +2608,8 @@
         "zh_tw": ""
     },
     "ze_texturescape_cs2_l": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "坑爹逃亡",
+        "zh_tw": "坑爹逃亡"
     },
     "ze_the_curse_of_blackwater": {
         "zh_cn": "",
@@ -2628,8 +2628,8 @@
         "zh_tw": ""
     },
     "ze_thelostworld_redux_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "侏罗纪公园：失落之岛",
+        "zh_tw": "侏羅紀公園：失落之島"
     },
     "ze_thorn_final_song": {
         "zh_cn": "",
@@ -2648,52 +2648,52 @@
         "zh_tw": ""
     },
     "ze_thriller_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "逃离惊悚电影院",
+        "zh_tw": "逃離驚悚電影院"
     },
     "ze_tilex_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "列车逃亡",
+        "zh_tw": "列車逃亡"
     },
     "ze_tilex_ultimate_p": {
         "zh_cn": "跳刀列车",
-        "zh_tw": "跳刀列车"
+        "zh_tw": "跳刀列車"
     },
     "ze_timesink": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_timesplitters_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "时空撕裂者",
+        "zh_tw": "時空撕裂者"
     },
     "ze_titanic_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "泰坦尼克号",
+        "zh_tw": "泰坦尼克號"
     },
     "ze_tkara_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "塔卡拉基地",
+        "zh_tw": "塔卡拉基地"
     },
     "ze_toaster_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "面包机",
+        "zh_tw": "麪包機"
     },
     "ze_toggle_theory": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "绯蓝节奏",
+        "zh_tw": "緋藍節奏"
     },
     "ze_townscapes": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "小镇逃亡",
+        "zh_tw": "小鎮逃亡"
     },
     "ze_toy_world_final": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_traak_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "逃命游轮",
+        "zh_tw": "逃命遊輪"
     },
     "ze_trainescape_p": {
         "zh_cn": "",
@@ -2716,20 +2716,20 @@
         "zh_tw": ""
     },
     "ze_ultra_ungent_a2_cs2": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "超级跳绳王",
+        "zh_tw": "超級跳繩王"
     },
     "ze_umbrella_zombie": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_umbrellazombie_v1_p3_final": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "保护伞公司3",
+        "zh_tw": "保護傘公司3"
     },
     "ze_umbrellazombie_v1_part2_1": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "保护伞公司2",
+        "zh_tw": "保護傘公司2"
     },
     "ze_umbrellazombiezmtr_v1": {
         "zh_cn": "",
@@ -2748,20 +2748,20 @@
         "zh_tw": ""
     },
     "ze_undertale_sans_final": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "传说之下：san战",
+        "zh_tw": "傳說之下：san戰"
     },
     "ze_untitled_touhou": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_upwards_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "步步高升",
+        "zh_tw": "步步高昇"
     },
     "ze_urban_laby_of_death_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "城市迷宫",
+        "zh_tw": "城市迷宮"
     },
     "ze_urbanstone": {
         "zh_cn": "",
@@ -2780,76 +2780,76 @@
         "zh_tw": ""
     },
     "ze_venice_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "威尼斯老家",
+        "zh_tw": "威尼斯老家"
     },
     "ze_verdant": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_vietnam_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "越南雨林",
+        "zh_tw": "越南雨林"
     },
     "ze_virtual_insanity_v1": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "错乱疯狂",
+        "zh_tw": "錯亂瘋狂"
     },
     "ze_void_tree(unfinisheddropped project)": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_voodoo_islands_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "巫毒岛",
+        "zh_tw": "巫毒島"
     },
     "ze_voodoo_xtrem_islands": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_watagi_sanatorium": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "渡木疗养所",
+        "zh_tw": "渡木療養所"
     },
     "ze_watagi_tunnel_rewind": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "渡木隧道探险",
+        "zh_tw": "渡木隧道探險"
     },
     "ze_waterpark": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_wicked_organization": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "邪惡组织",
+        "zh_tw": "邪惡組織"
     },
     "ze_winter_warehouse_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "冰雪牢缘",
+        "zh_tw": "冰雪牢緣"
     },
     "ze_world_escapes": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "世界逃亡",
+        "zh_tw": "世界逃亡"
     },
     "ze_xenovation": {
         "zh_cn": "异界终章",
-        "zh_tw": "异界终章"
+        "zh_tw": "異界終章"
     },
     "ze_xiii_winslow_bank": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_xuyanzhiting_jiushu": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "虚掩之庭：救赎",
+        "zh_tw": "虛掩之庭：救贖"
     },
     "ze_xuyanzhiting_qy": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "代号：虚掩之庭",
+        "zh_tw": "代號：虛掩之庭"
     },
     "ze_yueyingchuanshuo": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "月影传说",
+        "zh_tw": "月影傳說"
     },
     "ze_yurilnier": {
         "zh_cn": "",
@@ -2864,20 +2864,20 @@
         "zh_tw": ""
     },
     "ze_zk_fapescape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "小乐高逃亡",
+        "zh_tw": "小樂高逃亡"
     },
     "ze_zk_mall_of_zombies_p": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_zombiemod_corporation_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "扛水塔",
+        "zh_tw": "扛水塔"
     },
     "ze_zombierig_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "钻井平台",
+        "zh_tw": "鑽井平臺"
     },
     "龙鸣山之一夫当关（ze_last_man_standing_recompile）": {
         "zh_cn": "",
@@ -2896,8 +2896,8 @@
         "zh_tw": ""
     },
     "ze_box_defend_v1_4": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "代号：盒子防守v1.4",
+        "zh_tw": "代號：盒子防守v1.4"
     },
     "zm_zone13_p": {
         "zh_cn": "",
@@ -2908,8 +2908,8 @@
         "zh_tw": ""
     },
     "ze_obf_rampage_v2_legacy": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "代号：横空出世-火之心",
+        "zh_tw": "代號：橫空出世-火之心"
     },
     "cs_italy": {
         "zh_cn": "",
@@ -2928,8 +2928,8 @@
         "zh_tw": ""
     },
     "surf_simpsons_cs2": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "[t2关卡]surf_simpsons_cs2",
+        "zh_tw": "[t2關卡]surf_simpsons_cs2"
     },
     "mg_blanc": {
         "zh_cn": "",
@@ -2940,8 +2940,8 @@
         "zh_tw": ""
     },
     "ze_miside": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "米塔 Miside",
+        "zh_tw": "米塔 Miside"
     },
     "ze_shroomforest_v4_5": {
         "zh_cn": "",
@@ -2956,8 +2956,8 @@
         "zh_tw": ""
     },
     "surf_whiteout": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "[t1关卡]surf_whiteout",
+        "zh_tw": "[t1關卡]surf_whiteout"
     },
     "zm_bakabahe": {
         "zh_cn": "",
@@ -2988,12 +2988,12 @@
         "zh_tw": ""
     },
     "ze_atix_apocalypse_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "黑鹰坠落:归来",
+        "zh_tw": "黑鷹墜落:歸來"
     },
     "ze_squid_game": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "[娱乐]鱿鱼游戏",
+        "zh_tw": "[娛樂]魷魚遊戲"
     },
     "ze_lotr_mount_doom_v4_2": {
         "zh_cn": "",
@@ -3012,8 +3012,8 @@
         "zh_tw": ""
     },
     "surf_cyberwave": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "[t2关卡]赛博滑翔",
+        "zh_tw": "[t2關卡]賽博滑翔"
     },
     "ze_serious_sam_tfe_v1_4s": {
         "zh_cn": "",
@@ -3048,8 +3048,8 @@
         "zh_tw": ""
     },
     "ze_pirates_port_royal": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "加勒比海盗：罗亚尔港",
+        "zh_tw": "加勒比海盜：羅亞爾港"
     },
     "ze_volcano_escape_v4": {
         "zh_cn": "",
@@ -3064,8 +3064,8 @@
         "zh_tw": ""
     },
     "ze_boatescape777": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "开心快乐坐船跑777",
+        "zh_tw": "開心快樂坐船跑777"
     },
     "ze_hypernova_v2fix": {
         "zh_cn": "",
@@ -3084,8 +3084,8 @@
         "zh_tw": ""
     },
     "ze_aooka": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "龙之殿",
+        "zh_tw": "龍之殿"
     },
     "ze_fapescape_v1_2": {
         "zh_cn": "",
@@ -3100,8 +3100,8 @@
         "zh_tw": ""
     },
     "ze_dark_souls": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "黑暗之魂1",
+        "zh_tw": "黑暗之魂1"
     },
     "ze_random_escape_b7_3": {
         "zh_cn": "",
@@ -3120,8 +3120,8 @@
         "zh_tw": ""
     },
     "ze_aot_trost_v6r": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "进击的巨人",
+        "zh_tw": "進擊的巨人"
     },
     "zm_13haodiqu": {
         "zh_cn": "",
@@ -3144,8 +3144,8 @@
         "zh_tw": ""
     },
     "ze_chicken_nugget": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "豪大的只因块",
+        "zh_tw": "豪大的只因塊"
     },
     "zm_miao_v7_1_p": {
         "zh_cn": "",
@@ -3172,8 +3172,8 @@
         "zh_tw": ""
     },
     "ze_obf_filth_v1": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "代号：怒火中烧",
+        "zh_tw": "代號：怒火中燒"
     },
     "ze_arctic_escape_c1_fix3": {
         "zh_cn": "",
@@ -3208,12 +3208,12 @@
         "zh_tw": ""
     },
     "ze_obf_insane": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "代号：烈火雄心",
+        "zh_tw": "代號：烈火雄心"
     },
     "ze_mabinogi_f4_1_cs2": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "洛奇",
+        "zh_tw": "洛奇"
     },
     "zm_deathcoffin": {
         "zh_cn": "",
@@ -3228,12 +3228,12 @@
         "zh_tw": ""
     },
     "ze_mountain_ultimate": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "终极爬山",
+        "zh_tw": "終極爬山"
     },
     "ze_dystopia_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "敌托邦",
+        "zh_tw": "敵託邦"
     },
     "ze_knife_fun_fix_v1": {
         "zh_cn": "",
@@ -3292,12 +3292,12 @@
         "zh_tw": ""
     },
     "ze_obf_npst_v2": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "代号：牛批神图v2",
+        "zh_tw": "代號：牛批神圖v2"
     },
     "ze_evernight": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "永夜",
+        "zh_tw": "永夜"
     },
     "ze_zulu_css": {
         "zh_cn": "",
@@ -3308,8 +3308,8 @@
         "zh_tw": ""
     },
     "ze_atix_panic_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "牢大逃亡",
+        "zh_tw": "牢大逃亡"
     },
     "ze_random_v9": {
         "zh_cn": "",
@@ -3321,7 +3321,7 @@
     },
     "ze_lotr_mines_of_moria_p": {
         "zh_cn": "魔戒：摩瑞亚矿坑",
-        "zh_tw": "魔戒：摩瑞亚矿坑"
+        "zh_tw": "魔戒：摩瑞亞礦坑"
     },
     "ze_silent_hill_2_illusion_kn1": {
         "zh_cn": "",
@@ -3332,28 +3332,28 @@
         "zh_tw": ""
     },
     "ze_boatescape999": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "开心快乐坐船跑999",
+        "zh_tw": "開心快樂坐船跑999"
     },
     "ze_tesv_skyrim_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "上古卷轴：天际",
+        "zh_tw": "上古卷軸：天際"
     },
     "zm_mansion": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "ze_backrooms_deathbed_v1": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "后室：死眠",
+        "zh_tw": "後室：死眠"
     },
     "ze_ffvii_mako_reactor_v5_3": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "最终幻想7：魔光炉V53",
+        "zh_tw": "最終幻想7：魔光爐V53"
     },
     "ze_elevator_escape_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "电梯逃亡",
+        "zh_tw": "電梯逃亡"
     },
     "ze_rooftop_rogue_v1_5": {
         "zh_cn": "",
@@ -3380,8 +3380,8 @@
         "zh_tw": ""
     },
     "ze_bigboo_n64": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "超级马里奥之闹鬼小屋",
+        "zh_tw": "超級馬里奧之鬧鬼小屋"
     },
     "ze_sky_athletic_adv_v9_12s": {
         "zh_cn": "",
@@ -3404,12 +3404,12 @@
         "zh_tw": ""
     },
     "ze_otakuroom_pt": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "御宅房",
+        "zh_tw": "御宅房"
     },
     "mg_beebeeee_naipi_cs2": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "[简单]奶皮!极简沙雕!",
+        "zh_tw": "[簡單]奶皮!極簡沙雕!"
     },
     "ze_sky_athletic_v5_final": {
         "zh_cn": "",
@@ -3444,12 +3444,12 @@
         "zh_tw": ""
     },
     "ze_forius_just_run_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "不要害怕只管跑",
+        "zh_tw": "不要害怕只管跑"
     },
     "ze_ez_run": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "娱乐主义时代",
+        "zh_tw": "娛樂主義時代"
     },
     "mg_ruinztrap_course": {
         "zh_cn": "",
@@ -3460,16 +3460,16 @@
         "zh_tw": ""
     },
     "ze_empirecity_p": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "帝国都市",
+        "zh_tw": "帝國都市"
     },
     "ze_vermintide_a2": {
         "zh_cn": "",
         "zh_tw": ""
     },
     "cr_crazyhouse": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "[困难]疯狂之家",
+        "zh_tw": "[困難]瘋狂之家"
     },
     "ze_raintime2_stormwindkeep_v3": {
         "zh_cn": "",
@@ -3504,8 +3504,8 @@
         "zh_tw": ""
     },
     "mg_escape_prison_cs2": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "[中等]越狱 ~",
+        "zh_tw": "[中等]越獄 ~"
     },
     "ze_dabadeedabadie": {
         "zh_cn": "",
@@ -3532,27 +3532,539 @@
         "zh_tw": ""
     },
     "mg_mood_naipi_cs2": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "[高难]奶皮!心境!",
+        "zh_tw": "[高難]奶皮!心境!"
     },
     "ze_box_cloaca_b1": {
-        "zh_cn": "",
-        "zh_tw": ""
+        "zh_cn": "盒子：地下室",
+        "zh_tw": "盒子：地下室"
+    },
+    "ze_obf_rampage_v2": {
+        "zh_cn": "代号：野火燎原",
+        "zh_tw": "代號：野火燎原"
     },
     "ze_forhidden_slicoo_cs2": {
         "zh_cn": "禁地斯狄科",
         "zh_tw": "禁地斯狄科"
     },
-    "surf_greek": {
-        "zh_cn": "[t2关卡]surf_greek",
-        "zh_tw": "[t2关卡]surf_greek"
+    "ze_boatescape_ultimate": {
+        "zh_cn": "终极坐船跑：明星大乱斗",
+        "zh_tw": "終極坐船跑：明星大亂鬥"
+    },
+    "mg_minecraft_adventure": {
+        "zh_cn": "[中等]MC冒险",
+        "zh_tw": "[中等]MC冒險"
+    },
+    "surf_rookie": {
+        "zh_cn": "[t2关卡]surf_菜鸟练习图",
+        "zh_tw": "[t2關卡]surf_菜鳥練習圖"
+    },
+    "surf_easy1": {
+        "zh_cn": "[t1关卡]surf_easy1",
+        "zh_tw": "[t1關卡]surf_easy1"
+    },
+    "ze_obf_rescape": {
+        "zh_cn": "代号：浴火重生",
+        "zh_tw": "代號：浴火重生"
+    },
+    "bhop_sandtrap": {
+        "zh_cn": "[简单]sandtrap",
+        "zh_tw": "[簡單]sandtrap"
+    },
+    "surf_ethereal": {
+        "zh_cn": "[t2关卡]surf_ethereal",
+        "zh_tw": "[t2關卡]surf_ethereal"
+    },
+    "surf_slobs": {
+        "zh_cn": "[t3关卡]surf_slobs",
+        "zh_tw": "[t3關卡]surf_slobs"
+    },
+    "mg_room_naipi_cs2": {
+        "zh_cn": "[困难]奶皮!心室!",
+        "zh_tw": "[困難]奶皮!心室!"
+    },
+    "ze_dreamin": {
+        "zh_cn": "梦想",
+        "zh_tw": "夢想"
+    },
+    "mg_draw_course_v3": {
+        "zh_cn": "[简单]涂鸦",
+        "zh_tw": "[簡單]塗鴉"
+    },
+    "mg_xiazuo_t": {
+        "zh_cn": "[困难]瞎做!",
+        "zh_tw": "[困難]瞎做!"
+    },
+    "mg_g2_course_t": {
+        "zh_cn": "[困难]G2",
+        "zh_tw": "[困難]G2"
     },
     "ze_atix_panic_2017_p": {
         "zh_cn": "牢大逃亡2017",
         "zh_tw": "牢大逃亡2017"
     },
+    "mg_alley_course_reskin": {
+        "zh_cn": "[简单]小巷",
+        "zh_tw": "[簡單]小巷"
+    },
+    "ze_potc_p": {
+        "zh_cn": "小加勒比",
+        "zh_tw": "小加勒比"
+    },
+    "surf_animals": {
+        "zh_cn": "[t3关卡]surf_animals",
+        "zh_tw": "[t3關卡]surf_animals"
+    },
+    "ze_minecraft_dreamland": {
+        "zh_cn": "我的世界：梦境",
+        "zh_tw": "我的世界：夢境"
+    },
+    "ze_backrooms_insomnia": {
+        "zh_cn": "后室：失眠症",
+        "zh_tw": "後室：失眠症"
+    },
+    "ze_obj_rove_v1": {
+        "zh_cn": "代号：永夜行疆",
+        "zh_tw": "代號：永夜行疆"
+    },
+    "ze_obf_npst_v2_legacy": {
+        "zh_cn": "代号：牛批神图v2经典版",
+        "zh_tw": "代號：牛批神圖v2經典版"
+    },
+    "bhop_gigaheish": {
+        "zh_cn": "[史诗]gigaheish",
+        "zh_tw": "[史詩]gigaheish"
+    },
+    "ze_por_island_p": {
+        "zh_cn": "刷分岛",
+        "zh_tw": "刷分島"
+    },
+    "ze_uchiha_legacy": {
+        "zh_cn": "宇智波：遗响",
+        "zh_tw": "宇智波：遺響"
+    },
+    "ze_stalker_ultimate_v23": {
+        "zh_cn": "潜行者:切尔诺贝利(V23)",
+        "zh_tw": "潛行者:切爾諾貝利(V23)"
+    },
+    "ze_obj_blue_depth": {
+        "zh_cn": "代号：蓝渊计划",
+        "zh_tw": "代號：藍淵計劃"
+    },
+    "surf_neutralize": {
+        "zh_cn": "[t3关卡]surf_neutralize",
+        "zh_tw": "[t3關卡]surf_neutralize"
+    },
+    "mg_hilarious_naipi_cs2": {
+        "zh_cn": "[简单]奶皮!热情!",
+        "zh_tw": "[簡單]奶皮!熱情!"
+    },
+    "ze_dnb_realms_a1": {
+        "zh_cn": "鼓与贝斯的领域之境",
+        "zh_tw": "鼓與貝斯的領域之境"
+    },
+    "ze_r_w_b_ulti": {
+        "zh_cn": "红黑白的乐章",
+        "zh_tw": "紅黑白的樂章"
+    },
+    "ze_bathroom": {
+        "zh_cn": "浴室逃亡",
+        "zh_tw": "浴室逃亡"
+    },
+    "ze_cyberspace_v2": {
+        "zh_cn": "赛博空间",
+        "zh_tw": "賽博空間"
+    },
+    "ze_obj_rampage_v1_2": {
+        "zh_cn": "代号：横空出世",
+        "zh_tw": "代號：橫空出世"
+    },
+    "mg_space_course_cs2": {
+        "zh_cn": "[中等]死核宇宙",
+        "zh_tw": "[中等]死核宇宙"
+    },
+    "ze_obj_eclipsis": {
+        "zh_cn": "代号：日蚀计划",
+        "zh_tw": "代號：日蝕計劃"
+    },
+    "ze_aoraitsu_reloaded": {
+        "zh_cn": "流光幻境",
+        "zh_tw": "流光幻境"
+    },
+    "mg_gumobstacle_t": {
+        "zh_cn": "[梦魇]GUM!",
+        "zh_tw": "[夢魘]GUM!"
+    },
+    "ze_last_man_standing_p": {
+        "zh_cn": "一人之巅",
+        "zh_tw": "一人之巔"
+    },
+    "surf_kitsune2": {
+        "zh_cn": "[t3关卡]surf_彩虹2",
+        "zh_tw": "[t3關卡]surf_彩虹2"
+    },
+    "ze_mountain_escape_snow": {
+        "zh_cn": "雪山大逃亡",
+        "zh_tw": "雪山大逃亡"
+    },
+    "ze_arcana_heart": {
+        "zh_cn": "阿卡纳之心",
+        "zh_tw": "阿卡納之心"
+    },
+    "ze_alien_mountain_escape_p": {
+        "zh_cn": "阿里山",
+        "zh_tw": "阿里山"
+    },
+    "ze_industrial_dejavu": {
+        "zh_cn": "工业循环",
+        "zh_tw": "工業循環"
+    },
+    "ze_minimal": {
+        "zh_cn": "极病",
+        "zh_tw": "極病"
+    },
+    "ze_minecraft_universe": {
+        "zh_cn": "我的世界：宇宙前传",
+        "zh_tw": "我的世界：宇宙前傳"
+    },
+    "ze_lotr_minas_tiret_p": {
+        "zh_cn": "魔戒：米纳斯议会",
+        "zh_tw": "魔戒：米納斯議會"
+    },
+    "ze_hammer_bunker_part1": {
+        "zh_cn": "锤子地堡",
+        "zh_tw": "錘子地堡"
+    },
+    "mg_saw_128": {
+        "zh_cn": "[中等]电锯惊魂128",
+        "zh_tw": "[中等]電鋸驚魂128"
+    },
+    "ze_ffxiv_pharos_sirius": {
+        "zh_cn": "最终幻想14：领航明灯天狼星灯塔",
+        "zh_tw": "最終幻想14：領航明燈天狼星燈塔"
+    },
+    "ze_obj_ouroboros_apollyon": {
+        "zh_cn": "【衔尾蛇计划】代号：辰宿归墟",
+        "zh_tw": "【銜尾蛇計劃】代號：辰宿歸墟"
+    },
+    "surf_temple": {
+        "zh_cn": "[t1关卡]surf_temple",
+        "zh_tw": "[t1關卡]surf_temple"
+    },
+    "surf_beverages_remix_go": {
+        "zh_cn": "[t2关卡]surf_beverages_remix_go",
+        "zh_tw": "[t2關卡]surf_beverages_remix_go"
+    },
+    "surf_frey_remake": {
+        "zh_cn": "[t2关卡]surf_frey_remake",
+        "zh_tw": "[t2關卡]surf_frey_remake"
+    },
+    "ze_jiangnan_town_v3_1": {
+        "zh_cn": "江南水乡",
+        "zh_tw": "江南水鄉"
+    },
+    "surf_road_to_hell": {
+        "zh_cn": "[t1关卡]surf_road_to_hell",
+        "zh_tw": "[t1關卡]surf_road_to_hell"
+    },
+    "cr_devisland_p1_v1": {
+        "zh_cn": "[简单]绿色小岛",
+        "zh_tw": "[簡單]綠色小島"
+    },
+    "surf_aura": {
+        "zh_cn": "[t1关卡]surf_aura",
+        "zh_tw": "[t1關卡]surf_aura"
+    },
+    "ze_sky_bridge_a01_fix3": {
+        "zh_cn": "天空之桥",
+        "zh_tw": "天空之橋"
+    },
+    "mg_iceq_course": {
+        "zh_cn": "[简单]机关重重(怀旧)",
+        "zh_tw": "[簡單]機關重重(懷舊)"
+    },
+    "mg_simpson_road_course_fixed_v2": {
+        "zh_cn": "[中等]辛普森公路 ~",
+        "zh_tw": "[中等]辛普森公路 ~"
+    },
+    "ze_postal_p": {
+        "zh_cn": "夺命邮差",
+        "zh_tw": "奪命郵差"
+    },
+    "surf_greece": {
+        "zh_cn": "[t2关卡]surf_greece",
+        "zh_tw": "[t2關卡]surf_greece"
+    },
+    "mg_adventure_course": {
+        "zh_cn": "[困难]失明大冒险",
+        "zh_tw": "[困難]失明大冒險"
+    },
+    "mg_bob2_t": {
+        "zh_cn": "[高难]BOB2",
+        "zh_tw": "[高難]BOB2"
+    },
+    "mg_mario_galaxy": {
+        "zh_cn": "[中等]银河马里奥",
+        "zh_tw": "[中等]銀河馬里奧"
+    },
+    "mg_sonic_islands_v4": {
+        "zh_cn": "[中等]索尼克小岛 ~",
+        "zh_tw": "[中等]索尼克小島 ~"
+    },
+    "mg_wipeout_course_v1": {
+        "zh_cn": "[中等]男生女生向前冲",
+        "zh_tw": "[中等]男生女生向前衝"
+    },
+    "mg_yourstory_t": {
+        "zh_cn": "[高难]你的故事!",
+        "zh_tw": "[高難]你的故事!"
+    },
+    "mg_tomorrow_never_comes_cs2": {
+        "zh_cn": "[中等]明日已死",
+        "zh_tw": "[中等]明日已死"
+    },
+    "mg_sky_islands_v1": {
+        "zh_cn": "[中等]天空岛",
+        "zh_tw": "[中等]天空島"
+    },
+    "mg_metro_course_v2": {
+        "zh_cn": "[简单]地铁",
+        "zh_tw": "[簡單]地鐵"
+    },
+    "mg_nothing": {
+        "zh_cn": "[中等]妄想症!",
+        "zh_tw": "[中等]妄想症!"
+    },
+    "mg_iceq_course_remake_dwz": {
+        "zh_cn": "[简单]机关重重",
+        "zh_tw": "[簡單]機關重重"
+    },
+    "ze_popkart_r": {
+        "zh_cn": "卡卡跑车丁重置版",
+        "zh_tw": "卡卡跑車丁重置版"
+    },
+    "mg_ifionly_t": {
+        "zh_cn": "[困难]躺分之旅",
+        "zh_tw": "[困難]躺分之旅"
+    },
+    "mg_sketchy_course": {
+        "zh_cn": "[困难]ske涂鸦!",
+        "zh_tw": "[困難]ske塗鴉!"
+    },
+    "mg_cyber_course_v6": {
+        "zh_cn": "[简单]电子蜂巢",
+        "zh_tw": "[簡單]電子蜂巢"
+    },
+    "mg_sonic_course_v2": {
+        "zh_cn": "[简单]索尼克闯关",
+        "zh_tw": "[簡單]索尼克闖關"
+    },
+    "mg_mimas": {
+        "zh_cn": "[中等]米麻薯",
+        "zh_tw": "[中等]米麻薯"
+    },
+    "mg_airmap_run": {
+        "zh_cn": "[中等]咸鱼天空图",
+        "zh_tw": "[中等]鹹魚天空圖"
+    },
+    "mg_100traps_r": {
+        "zh_cn": "[高难]100关_r",
+        "zh_tw": "[高難]100關_r"
+    },
+    "mg_savetheisland_course": {
+        "zh_cn": "[中等]拯救小岛 ~",
+        "zh_tw": "[中等]拯救小島 ~"
+    },
+    "mg_beach_course": {
+        "zh_cn": "[中等]沙滩",
+        "zh_tw": "[中等]沙灘"
+    },
+    "ze_desert_tour_cs2": {
+        "zh_cn": "游历沙漠之旅",
+        "zh_tw": "遊歷沙漠之旅"
+    },
+    "mg_minecraft_home1_red": {
+        "zh_cn": "回家1",
+        "zh_tw": "回家1"
+    },
+    "surf_bombix_v2": {
+        "zh_cn": "[t1关卡]surf_bombix_v2",
+        "zh_tw": "[t1關卡]surf_bombix_v2"
+    },
+    "mg_acrophobia_run_v2": {
+        "zh_cn": "[中等]大峡谷 ~",
+        "zh_tw": "[中等]大峽谷 ~"
+    },
+    "bhop_arcane": {
+        "zh_cn": "[中等]arcane",
+        "zh_tw": "[中等]arcane"
+    },
+    "surf_concreteideas": {
+        "zh_cn": "[t2关卡]surf_concreteideas",
+        "zh_tw": "[t2關卡]surf_concreteideas"
+    },
+    "ze_lotr_helms_deep_p": {
+        "zh_cn": "魔戒：圣盔谷之战",
+        "zh_tw": "魔戒：聖盔谷之戰"
+    },
+    "ze_escapetheworld": {
+        "zh_cn": "逃离异世界",
+        "zh_tw": "逃離異世界"
+    },
+    "ze_silent_hill_blackblood": {
+        "zh_cn": "寂静岭：黑血",
+        "zh_tw": "寂靜嶺：黑血"
+    },
+    "ze_samosbor": {
+        "zh_cn": "笼子",
+        "zh_tw": "籠子"
+    },
+    "mg_first_qy": {
+        "zh_cn": "[中等]qy的第一张图",
+        "zh_tw": "[中等]qy的第一張圖"
+    },
+    "surf_velocity": {
+        "zh_cn": "[t3关卡]surf_velocity",
+        "zh_tw": "[t3關卡]surf_velocity"
+    },
+    "ze_djinn": {
+        "zh_cn": "法老陵墓",
+        "zh_tw": "法老陵墓"
+    },
+    "ze_strange_escape_p": {
+        "zh_cn": "绝境逃亡",
+        "zh_tw": "絕境逃亡"
+    },
+    "bhop_fly_ninja_fix_css": {
+        "zh_cn": "[高难]fly_ninja",
+        "zh_tw": "[高難]fly_ninja"
+    },
+    "mg_minecraft_home2_red": {
+        "zh_cn": "回家2",
+        "zh_tw": "回家2"
+    },
+    "ze_deadcore": {
+        "zh_cn": "死亡核心",
+        "zh_tw": "死亡核心"
+    },
+    "ze_obj_redheart": {
+        "zh_cn": "代号：灼日烛心",
+        "zh_tw": "代號：灼日燭心"
+    },
+    "surf_lessons": {
+        "zh_cn": "[t1关卡]surf_lessons",
+        "zh_tw": "[t1關卡]surf_lessons"
+    },
+    "ze_silent_hill_2_illusion": {
+        "zh_cn": "寂静岭2:幻境",
+        "zh_tw": "寂靜嶺2:幻境"
+    },
+    "ze_puta_p": {
+        "zh_cn": "PUTA工厂",
+        "zh_tw": "PUTA工廠"
+    },
+    "surf_fruits": {
+        "zh_cn": "[t3关卡]surf_fruits",
+        "zh_tw": "[t3關卡]surf_fruits"
+    },
+    "ze_p_v_z": {
+        "zh_cn": "植物大战僵尸",
+        "zh_tw": "植物大戰殭屍"
+    },
+    "mg_supernatural_course": {
+        "zh_cn": "[困难]超自然~",
+        "zh_tw": "[困難]超自然~"
+    },
+    "mg_htz_box_world": {
+        "zh_cn": "盒子世界",
+        "zh_tw": "盒子世界"
+    },
+    "ze_obj_ouroboros_ragnarok": {
+        "zh_cn": "【衔尾蛇计划】代号：破晓终幕",
+        "zh_tw": "【銜尾蛇計劃】代號：破曉終幕"
+    },
+    "ze_ffxii_mt_bur_omisace_v6": {
+        "zh_cn": "最终幻想12：神都布尔奥米赛斯V6",
+        "zh_tw": "最終幻想12：神都布爾奧米賽斯V6"
+    },
+    "ze_mkzk_scarab_v4_remake": {
+        "zh_cn": "重生之我在ZE倒斗-究极无敌折磨之圣甲虫法老王金字塔V4魔改版",
+        "zh_tw": "重生之我在ZE倒鬥-究極無敵折磨之聖甲蟲法老王金字塔V4魔改版"
+    },
+    "surf_hat": {
+        "zh_cn": "[t1关卡]surf_hat",
+        "zh_tw": "[t1關卡]surf_hat"
+    },
+    "surf_garden": {
+        "zh_cn": "[t1关卡]surf_garden",
+        "zh_tw": "[t1關卡]surf_garden"
+    },
+    "mg_bukaixin_awa": {
+        "zh_cn": "不开心awa",
+        "zh_tw": "不開心awa"
+    },
+    "surf_outside": {
+        "zh_cn": "[t3关卡]surf_outside",
+        "zh_tw": "[t3關卡]surf_outside"
+    },
+    "ze_1_schizo": {
+        "zh_cn": "思觉失调(已修复)",
+        "zh_tw": "思覺失調(已修復)"
+    },
+    "mg_bobiii_reborn_2016": {
+        "zh_cn": "[中等]BOB3：REBORN 2016",
+        "zh_tw": "[中等]BOB3：REBORN 2016"
+    },
+    "surf_kitsune": {
+        "zh_cn": "[t1关卡]surf_彩虹1",
+        "zh_tw": "[t1關卡]surf_彩虹1"
+    },
+    "mg_basement_course": {
+        "zh_cn": "[简单]地下室",
+        "zh_tw": "[簡單]地下室"
+    },
+    "surf_bob": {
+        "zh_cn": "[t3关卡]surf_bob",
+        "zh_tw": "[t3關卡]surf_bob"
+    },
+    "mg_memoir_naipi_cs2": {
+        "zh_cn": "[中等]奶皮!少女2!",
+        "zh_tw": "[中等]奶皮!少女2!"
+    },
+    "mg_dobaba_t": {
+        "zh_cn": "[困难]dobaba !",
+        "zh_tw": "[困難]dobaba !"
+    },
+    "surf_ace": {
+        "zh_cn": "[t2关卡]surf_ace",
+        "zh_tw": "[t2關卡]surf_ace"
+    },
+    "ze_obj_encounter_a2": {
+        "zh_cn": "代号：针锋相对",
+        "zh_tw": "代號：針鋒相對"
+    },
+    "surf_greek": {
+        "zh_cn": "[t2关卡]surf_greek",
+        "zh_tw": "[t2關卡]surf_greek"
+    },
     "mg_alone_naipi_cs2": {
         "zh_cn": "[简单]奶皮!孤独!",
-        "zh_tw": "[简单]奶皮!孤独!"
+        "zh_tw": "[簡單]奶皮!孤獨!"
+    },
+    "surf_impact": {
+        "zh_cn": "[t3关卡]surf_impact",
+        "zh_tw": "[t3關卡]surf_impact"
+    },
+    "ze_happiness_factory": {
+        "zh_cn": "幸福工厂：前传",
+        "zh_tw": "幸福工廠：前傳"
+    },
+    "ze_omen_cs2": {
+        "zh_cn": "启示：命运预兆",
+        "zh_tw": "啓示：命運預兆"
+    },
+    "ze_croc2_sailor_village": {
+        "zh_cn": "超级克拉鳄2：水手村",
+        "zh_tw": "超級克拉鱷2：水手村"
     }
 }
