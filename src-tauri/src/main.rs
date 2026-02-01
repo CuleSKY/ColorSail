@@ -8,7 +8,7 @@ use std::{
 use chrono::{DateTime, Utc};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_shell::ShellExt;
 use tokio::sync::{Mutex, Notify};
@@ -33,6 +33,7 @@ struct ServerItem {
 }
 
 type Snapshot = HashMap<String, Vec<ServerItem>>;
+type CmdResult<T> = Result<T, String>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct DiffSummary {
@@ -427,10 +428,12 @@ fn update_autojoin_on_snapshot(
             runtime.autojoin.granted_until = None;
             runtime.autojoin.cooldown_until =
                 Some(Utc::now() + chrono::Duration::seconds(AUTOJOIN_COOLDOWN as i64));
+            let attempts = runtime.autojoin.attempts;
+            let server_name = server.name.clone();
             push_history(
                 &mut runtime.autojoin,
                 "Cooldown",
-                format!("AutoJoin attempt {} for {}", runtime.autojoin.attempts, server.name),
+                format!("AutoJoin attempt {} for {}", attempts, server_name),
             );
             notify_autojoin(app, &runtime.autojoin);
 
@@ -441,9 +444,8 @@ fn update_autojoin_on_snapshot(
 
 fn attempt_autojoin(app: &AppHandle, server: &ServerItem) {
     let connect_addr = format!("{}:{}", server.connect_ip, server.port);
-    if let Ok(clipboard) = app.clipboard() {
-        let _ = clipboard.write_text(connect_addr.clone());
-    }
+    let clipboard = app.clipboard();
+    let _ = clipboard.write_text(connect_addr.clone());
     let steam_uri = format!("steam://rungameid/730/+connect {}", connect_addr);
     if let Err(err) = app.shell().open(&steam_uri, None) {
         eprintln!("Failed to open Steam URI {}: {}", steam_uri, err);
@@ -614,42 +616,47 @@ fn next_backoff(current: Option<u64>) -> u64 {
 }
 
 #[tauri::command]
-async fn refresh_now(state: State<'_, AppState>) {
+async fn refresh_now(state: State<'_, AppState>) -> CmdResult<()> {
     state.poll.notify.notify_one();
+    Ok(())
 }
 
 #[tauri::command]
-async fn get_snapshot(state: State<'_, AppState>) -> Option<Snapshot> {
+async fn get_snapshot(state: State<'_, AppState>) -> CmdResult<Option<Snapshot>> {
     let runtime = state.runtime.lock().await;
-    runtime.snapshot.clone()
+    Ok(runtime.snapshot.clone())
 }
 
 #[tauri::command]
-async fn get_diagnostics(state: State<'_, AppState>) -> Diagnostics {
+async fn get_diagnostics(state: State<'_, AppState>) -> CmdResult<Diagnostics> {
     let runtime = state.runtime.lock().await;
-    runtime.diagnostics.clone()
+    Ok(runtime.diagnostics.clone())
 }
 
 #[tauri::command]
-async fn get_settings(state: State<'_, AppState>) -> Settings {
+async fn get_settings(state: State<'_, AppState>) -> CmdResult<Settings> {
     let runtime = state.runtime.lock().await;
-    runtime.settings.clone()
+    Ok(runtime.settings.clone())
 }
 
 #[tauri::command]
-async fn get_subscriptions(state: State<'_, AppState>) -> SubscriptionsState {
+async fn get_subscriptions(state: State<'_, AppState>) -> CmdResult<SubscriptionsState> {
     let runtime = state.runtime.lock().await;
-    runtime.subscriptions.clone()
+    Ok(runtime.subscriptions.clone())
 }
 
 #[tauri::command]
-async fn get_autojoin(state: State<'_, AppState>) -> AutoJoinState {
+async fn get_autojoin(state: State<'_, AppState>) -> CmdResult<AutoJoinState> {
     let runtime = state.runtime.lock().await;
-    runtime.autojoin.clone()
+    Ok(runtime.autojoin.clone())
 }
 
 #[tauri::command]
-async fn update_servers_url(state: State<'_, AppState>, app: AppHandle, servers_url: String) {
+async fn update_servers_url(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    servers_url: String,
+) -> CmdResult<()> {
     let mut runtime = state.runtime.lock().await;
     runtime.settings.servers_url = servers_url.clone();
     runtime.diagnostics.servers_url = servers_url;
@@ -658,20 +665,31 @@ async fn update_servers_url(state: State<'_, AppState>, app: AppHandle, servers_
     save_state(&app, &runtime);
     notify_diagnostics(&app, &runtime.diagnostics);
     state.poll.notify.notify_one();
+    Ok(())
 }
 
 #[tauri::command]
-async fn update_theme(state: State<'_, AppState>, app: AppHandle, theme: String) {
+async fn update_theme(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    theme: String,
+) -> CmdResult<()> {
     let mut runtime = state.runtime.lock().await;
     runtime.settings.theme = theme;
     save_state(&app, &runtime);
+    Ok(())
 }
 
 #[tauri::command]
-async fn update_notifications(state: State<'_, AppState>, app: AppHandle, enabled: bool) {
+async fn update_notifications(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    enabled: bool,
+) -> CmdResult<()> {
     let mut runtime = state.runtime.lock().await;
     runtime.settings.notifications_enabled = enabled;
     save_state(&app, &runtime);
+    Ok(())
 }
 
 #[tauri::command]
@@ -680,7 +698,7 @@ async fn set_subscriptions(
     app: AppHandle,
     server_key: String,
     maps: Vec<String>,
-) {
+) -> CmdResult<()> {
     let mut runtime = state.runtime.lock().await;
     if maps.is_empty() {
         runtime.subscriptions.subscriptions.remove(&server_key);
@@ -688,10 +706,15 @@ async fn set_subscriptions(
         runtime.subscriptions.subscriptions.insert(server_key, maps);
     }
     save_state(&app, &runtime);
+    Ok(())
 }
 
 #[tauri::command]
-async fn arm_autojoin(state: State<'_, AppState>, app: AppHandle, server_key: String) {
+async fn arm_autojoin(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    server_key: String,
+) -> CmdResult<()> {
     let mut runtime = state.runtime.lock().await;
     runtime.autojoin.state = "Armed".to_string();
     runtime.autojoin.target_server_key = Some(server_key.clone());
@@ -705,10 +728,11 @@ async fn arm_autojoin(state: State<'_, AppState>, app: AppHandle, server_key: St
     );
     notify_autojoin(&app, &runtime.autojoin);
     save_state(&app, &runtime);
+    Ok(())
 }
 
 #[tauri::command]
-async fn stop_autojoin(state: State<'_, AppState>, app: AppHandle) {
+async fn stop_autojoin(state: State<'_, AppState>, app: AppHandle) -> CmdResult<()> {
     let mut runtime = state.runtime.lock().await;
     runtime.autojoin.state = "Stopped".to_string();
     runtime.autojoin.target_server_key = None;
@@ -718,14 +742,19 @@ async fn stop_autojoin(state: State<'_, AppState>, app: AppHandle) {
     push_history(&mut runtime.autojoin, "Stopped", "AutoJoin stopped");
     notify_autojoin(&app, &runtime.autojoin);
     save_state(&app, &runtime);
+    Ok(())
 }
 
 #[tauri::command]
-async fn join_now(state: State<'_, AppState>, app: AppHandle, connect_addr: String) {
+async fn join_now(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    connect_addr: String,
+) -> CmdResult<()> {
     {
         let mut runtime = state.runtime.lock().await;
         if runtime.autojoin.state != "Granted" {
-            return;
+            return Ok(());
         }
         runtime.autojoin.state = "Joining".to_string();
         push_history(
@@ -737,9 +766,8 @@ async fn join_now(state: State<'_, AppState>, app: AppHandle, connect_addr: Stri
         save_state(&app, &runtime);
     }
 
-    if let Ok(clipboard) = app.clipboard() {
-        let _ = clipboard.write_text(connect_addr.clone());
-    }
+    let clipboard = app.clipboard();
+    let _ = clipboard.write_text(connect_addr.clone());
 
     let steam_uri = format!("steam://rungameid/730/+connect {}", connect_addr);
     if let Err(err) = app.shell().open(&steam_uri, None) {
@@ -754,10 +782,11 @@ async fn join_now(state: State<'_, AppState>, app: AppHandle, connect_addr: Stri
     push_history(&mut runtime.autojoin, "Cooldown", "Join attempt triggered");
     notify_autojoin(&app, &runtime.autojoin);
     save_state(&app, &runtime);
+    Ok(())
 }
 
 #[tauri::command]
-async fn copy_diagnostics(state: State<'_, AppState>, app: AppHandle) {
+async fn copy_diagnostics(state: State<'_, AppState>, app: AppHandle) -> CmdResult<()> {
     let runtime = state.runtime.lock().await;
     let diagnostics = &runtime.diagnostics;
     let report = format!(
@@ -776,9 +805,9 @@ async fn copy_diagnostics(state: State<'_, AppState>, app: AppHandle) {
         diagnostics.diff_summary.map_changed,
         diagnostics.diff_summary.online_changed,
     );
-    if let Ok(clipboard) = app.clipboard() {
-        let _ = clipboard.write_text(report);
-    }
+    let clipboard = app.clipboard();
+    let _ = clipboard.write_text(report);
+    Ok(())
 }
 
 fn setup_runtime(app: &AppHandle) -> RuntimeState {
