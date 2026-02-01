@@ -445,7 +445,9 @@ fn update_autojoin_on_snapshot(
 fn attempt_autojoin(app: &AppHandle, server: &ServerItem) {
     let connect_addr = format!("{}:{}", server.connect_ip, server.port);
     let clipboard = app.clipboard();
-    let _ = clipboard.write_text(connect_addr.clone());
+    if let Err(err) = clipboard.write_text(connect_addr.clone()) {
+        eprintln!("Failed to copy AutoJoin address to clipboard: {}", err);
+    }
     let steam_uri = format!("steam://rungameid/730/+connect {}", connect_addr);
     if let Err(err) = app.shell().open(&steam_uri, None) {
         eprintln!("Failed to open Steam URI {}: {}", steam_uri, err);
