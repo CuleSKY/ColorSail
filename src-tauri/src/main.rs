@@ -767,7 +767,9 @@ async fn join_now(
     }
 
     let clipboard = app.clipboard();
-    let _ = clipboard.write_text(connect_addr.clone());
+    clipboard
+        .write_text(connect_addr.clone())
+        .map_err(|e| e.to_string())?;
 
     let steam_uri = format!("steam://rungameid/730/+connect {}", connect_addr);
     if let Err(err) = app.shell().open(&steam_uri, None) {
@@ -806,7 +808,7 @@ async fn copy_diagnostics(state: State<'_, AppState>, app: AppHandle) -> CmdResu
         diagnostics.diff_summary.online_changed,
     );
     let clipboard = app.clipboard();
-    let _ = clipboard.write_text(report);
+    clipboard.write_text(report).map_err(|e| e.to_string())?;
     Ok(())
 }
 
