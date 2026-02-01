@@ -1,463 +1,564 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import {
-    getSnapshot,
-    getDiagnostics,
-    getSettings,
-    getSubscriptions,
-    getAutoJoin,
-    refreshNow,
-    updateServersUrl,
-    updateTheme,
-    updateNotifications,
-    setSubscriptions,
-    armAutoJoin,
-    stopAutoJoin,
-    copyDiagnostics
-  } from "./lib/api";
-  import { snapshot, diagnostics, settings, subscriptions, autojoin, activePage } from "./lib/stores";
-  import type { AutoJoinState, ServerRow } from "./lib/types";
-  import { flattenSnapshot } from "./lib/utils";
-  import { derived, get } from "svelte/store";
 
-  let appWindow: null | {
-    minimize: () => Promise<void>;
-    toggleMaximize: () => Promise<void>;
-    close: () => Promise<void>;
-  } = null;
-  let initError: string | null = null;
+  type Community = {
+    id: string;
+    name: string;
+    short_name?: string;
+    logo?: string;
+  };
 
-  let selectedKey: string | null = null;
-  let selectedRow: ServerRow | undefined;
-  let searchTerm = "";
-  let mapInput = "";
-  let sortMode = "players";
-  let scrollTop = 0;
-  let now = Date.now();
-  let showOverflow = false;
-  const rowHeight = 56;
+  type Server = {
+    display_ip?: string;
+    name: string;
+    map?: string;
+    map_display?: string;
+    players: number;
+    max_players: number;
+    online: boolean;
+  };
 
-  const rowsStore = derived(snapshot, ($snapshot) => {
-    const rows = flattenSnapshot($snapshot);
-    return rows;
-  });
+  const ICONS = {
+    server:
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 2a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V5a3 3 0 0 0-3-3H9Zm-.5 4.75A.75.75 0 0 1 9.25 6h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75Zm0 11a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75Zm0-3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75Z" fill="currentColor"/></svg>',
+    search_sub:
+      '<svg width="24" height="24" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 2.5a7.5 7.5 0 0 1 5.964 12.048l4.743 4.745a1 1 0 0 1-1.32 1.497l-.094-.083-4.745-4.743A7.5 7.5 0 1 1 10 2.5Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z" fill="currentColor"/></svg>',
+    stats:
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 5.23a2.25 2.25 0 0 1 2.25-2.25h1.5A2.25 2.25 0 0 1 15 5.23V21H9V5.23ZM7.5 10H5.25A2.25 2.25 0 0 0 3 12.25v8c0 .415.336.75.75.75H7.5V10ZM16.5 21h3.75a.75.75 0 0 0 .75-.75v-11A2.25 2.25 0 0 0 18.75 7H16.5v14Z" fill="currentColor"/></svg>',
+    feedback:
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4l3.2 3.2a.75.75 0 0 0 1.28-.53V17H19a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5Zm2.5 5.75a.75.75 0 0 1 .75-.75h7a.75.75 0 0 1 0 1.5h-7a.75.75 0 0 1-.75-.75Zm.75 3.25a.75.75 0 0 0 0 1.5H13a.75.75 0 0 0 0-1.5H8.25Z" fill="currentColor"/></svg>',
+    map:
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M8.5 4.358v12.465l-4.32 3.038a.75.75 0 0 1-1.174-.509l-.007-.104V8.615a.75.75 0 0 1 .238-.548l.08-.065L8.5 4.358Zm12.494.29.007.104v10.633a.75.75 0 0 1-.238.548l-.08.065L15.5 19.64V7.174l4.32-3.035a.75.75 0 0 1 1.174.509ZM10 4.359l4 2.812v12.467l-4-2.814V4.359Z" fill="currentColor"/></svg>',
+    edit:
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/></svg>',
+    list:
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 6a1 1 0 0 1 1-1h16a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1zm0 6a1 1 0 0 1 1-1h16a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1zm1 5a1 1 0 1 0 0 2h16a1 1 0 1 0 0-2H4z" fill="currentColor"/></svg>',
+    grid:
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6Zm10-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V6ZM4 16a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4Zm10-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-4Z" fill="currentColor"/></svg>',
+    sort:
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z" fill="currentColor"/></svg>',
+    lang:
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M18 2a1 1 0 1 0-2 0v1h-4a1 1 0 0 0-1 1v1.25a1 1 0 1 0 2 0V5h8v.25a1 1 0 1 0 2 0V4a1 1 0 0 0-1-1h-4V2ZM8.563 7.505l.056.117 5.307 13.005a1 1 0 0 1-1.801.86l-.05-.105L10.692 18H4.407l-1.49 3.407a1 1 0 0 1-1.208.555l-.11-.04a1 1 0 0 1-.555-1.208l.04-.11L6.777 7.6c.337-.77 1.395-.795 1.786-.094Zm-.902 3.062L5.282 16h4.595l-2.216-5.432ZM13.499 7a1 1 0 0 1 1-1h5a1 1 0 0 1 .708 1.707L18.414 9.5H22a1 1 0 1 1 0 2h-4v2.984a2.5 2.5 0 0 1-3.219 2.394l-.569-.17a1 1 0 1 1 .575-1.916l.569.17a.5.5 0 0 0 .643-.478V11.5H12a1 1 0 1 1 0-2h4a1 1 0 0 1 .292-.707L17.085 8H14.5a1 1 0 0 1-1-1Z" fill="currentColor"/></svg>',
+    theme:
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Zm0-2V4a8 8 0 1 1 0 16Z" fill="currentColor"/></svg>'
+  };
 
-  let rows: ServerRow[] = [];
-  let filteredRows: ServerRow[] = [];
-  let visibleRows = { rows: [] as ServerRow[], offset: 0, totalHeight: 0 };
+  const LOGO_PATH = "/static/nerv_logo.png";
 
-  $: rows = $rowsStore;
-  $: {
-    const term = searchTerm.trim().toLowerCase();
-    filteredRows = term
-      ? rows.filter(
-          (row) =>
-            row.name.toLowerCase().includes(term) || row.map_display.toLowerCase().includes(term)
+  const translations = {
+    "zh-CN": {
+      app_title: "NERV CS2僵尸逃跑启动器",
+      servers: "服务器列表",
+      sub_menu: "订阅地图",
+      stats: "数据统计",
+      stats_note: "仅ZE",
+      feedback: "反馈中心",
+      login_required_short: "需登录",
+      view_list: "列表视图",
+      view_grid: "卡片视图",
+      sort_players: "按人数排序",
+      map: "地图",
+      players: "人数",
+      join_server: "加入服务器",
+      copy_console_cmd: "复制控制台命令",
+      server_search_ph: "搜索服务器或地图",
+      server_search_empty: "没有找到包含 {map} 的服务器",
+      server_load_error: "服务器列表加载失败",
+      server_empty: "暂无可用服务器",
+      no_trans: "无译名",
+      offline: "离线",
+      edit_order: "编辑排序",
+      exit_edit: "退出编辑",
+      drag_hint: "拖拽调整服务器顺序",
+      mapcd: "地图CD",
+      exg_only: "仅EXG"
+    },
+    en: {
+      app_title: "NERV CS2ZE Browser",
+      servers: "Servers",
+      sub_menu: "Map Subscriptions",
+      stats: "Statistics",
+      stats_note: "ZE Only",
+      feedback: "Feedback",
+      login_required_short: "Login",
+      view_list: "List View",
+      view_grid: "Grid View",
+      sort_players: "Sort by Players",
+      map: "Map",
+      players: "Players",
+      join_server: "Join Server",
+      copy_console_cmd: "Copy Console Cmd",
+      server_search_ph: "Search servers or maps",
+      server_search_empty: "No servers found for {map}",
+      server_load_error: "Failed to load servers",
+      server_empty: "No servers available",
+      no_trans: "No translation",
+      offline: "Offline",
+      edit_order: "Edit Order",
+      exit_edit: "Exit Edit",
+      drag_hint: "Drag to reorder",
+      mapcd: "Map CD",
+      exg_only: "EXG Only"
+    }
+  } as const;
+
+  let curLang: keyof typeof translations = "zh-CN";
+  let isCollapsed = false;
+  let isDark = false;
+  let viewMode: "grid" | "list" = "list";
+  let showLangMenu = false;
+  let isMobile = false;
+  let sortByPlayers = false;
+  let curView: "servers" | "map_sub" | "stats" | "feedback" = "servers";
+  let isEditMode = false;
+
+  let serverMapQueryInput = "";
+  let serverMapQuery = "";
+
+  let communities: Community[] = [];
+  let serversByCommunity: Record<string, Server[]> = {};
+  let filteredCommunities: Community[] = [];
+  let serverSearchNotice = "";
+  let loadError = "";
+  let emptyNotice = "";
+
+  const t = (key: keyof (typeof translations)["zh-CN"]) => {
+    return translations[curLang]?.[key] ?? translations["en"][key] ?? String(key);
+  };
+
+  const getServers = (communityId: string) => {
+    const list = serversByCommunity[communityId] ?? [];
+    const query = serverMapQuery.trim().toLowerCase();
+    let filtered = query
+      ? list.filter(
+          (server) =>
+            server.name.toLowerCase().includes(query) ||
+            (server.map ?? "").toLowerCase().includes(query) ||
+            (server.map_display ?? "").toLowerCase().includes(query)
         )
-      : [...rows];
-    if (sortMode === "ping") {
-      filteredRows.sort((a, b) => (a.ping === -1 ? 9999 : a.ping) - (b.ping === -1 ? 9999 : b.ping));
-    } else {
-      filteredRows.sort((a, b) => b.players - a.players);
-    }
-  }
-  $: {
-    const containerHeight = 520;
-    const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - 6);
-    const endIndex = Math.min(
-      filteredRows.length,
-      Math.ceil((scrollTop + containerHeight) / rowHeight) + 6
-    );
-    visibleRows = {
-      rows: filteredRows.slice(startIndex, endIndex),
-      offset: startIndex * rowHeight,
-      totalHeight: filteredRows.length * rowHeight
-    };
-  }
+      : list;
 
-  let notificationLog: string[] = [];
-
-  const updateNotification = (message: string) => {
-    notificationLog = [message, ...notificationLog].slice(0, 6);
-    const currentSettings = get(settings);
-    if (currentSettings?.notifications_enabled && "Notification" in window) {
-      if (Notification.permission === "granted") {
-        new Notification(message);
-      } else if (Notification.permission !== "denied") {
-        Notification.requestPermission().then((permission) => {
-          if (permission === "granted") {
-            new Notification(message);
-          }
-        });
+    filtered = [...filtered].sort((a, b) => {
+      if (sortByPlayers) {
+        return b.players - a.players;
       }
+      return a.name.localeCompare(b.name);
+    });
+
+    return filtered;
+  };
+
+  $: serverMapQuery = serverMapQueryInput;
+
+  $: filteredCommunities = serverMapQuery.trim()
+    ? communities.filter((comm) => getServers(comm.id).length > 0)
+    : communities;
+
+  $: serverSearchNotice = (() => {
+    const query = serverMapQuery.trim();
+    if (!query) return "";
+    let count = 0;
+    filteredCommunities.forEach((comm) => {
+      count += getServers(comm.id).length;
+    });
+    if (count === 0) {
+      return t("server_search_empty").replace("{map}", query);
+    }
+    return "";
+  })();
+
+  const toggleSidebar = () => {
+    isCollapsed = !isCollapsed;
+    document.documentElement.classList.toggle("sidebar-is-collapsed", isCollapsed);
+    localStorage.setItem("sidebar_collapsed", String(isCollapsed));
+  };
+
+  const toggleTheme = () => {
+    isDark = !isDark;
+    if (isDark) {
+      document.documentElement.setAttribute("data-theme", "dark");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
     }
   };
 
-  const getCooldownRemaining = (autojoinState: AutoJoinState | null) => {
-    if (!autojoinState?.cooldown_until) return null;
-    const remainingMs = new Date(autojoinState.cooldown_until).getTime() - now;
-    if (remainingMs <= 0) return null;
-    return Math.ceil(remainingMs / 1000);
+  const toggleViewMode = () => {
+    viewMode = viewMode === "grid" ? "list" : "grid";
+    localStorage.setItem("view_mode", viewMode);
   };
 
-  const handleScroll = (event: Event) => {
-    scrollTop = (event.currentTarget as HTMLDivElement).scrollTop;
+  const toggleSortByPlayers = () => {
+    sortByPlayers = !sortByPlayers;
   };
 
-  const onThemeChange = (event: Event) => {
-    updateTheme((event.currentTarget as HTMLSelectElement).value);
+  const scrollToComm = (id: string) => {
+    const el = document.getElementById(`comm-${id}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
-  const onNotificationsChange = (event: Event) => {
-    updateNotifications((event.currentTarget as HTMLSelectElement).value === "on");
+  const setLang = (lang: keyof typeof translations) => {
+    curLang = lang;
+    showLangMenu = false;
   };
 
-  const onServersUrlChange = (event: Event) => {
-    updateServersUrl((event.currentTarget as HTMLInputElement).value);
+  const handleResize = () => {
+    isMobile = window.innerWidth <= 768;
   };
+
+  const fetchServers = async () => {
+    try {
+      const response = await fetch("/servers.json", { cache: "no-store" });
+      if (!response.ok) throw new Error("Failed to load servers.json");
+      const payload = await response.json();
+      let normalized: Record<string, Server[]> | null = null;
+      if (Array.isArray(payload)) {
+        normalized = { all: payload };
+      } else if (payload && typeof payload === "object") {
+        if (Array.isArray(payload.data)) {
+          normalized = { all: payload.data };
+        } else if (Array.isArray(payload.servers)) {
+          normalized = { all: payload.servers };
+        } else if (
+          Object.values(payload).every((value) => Array.isArray(value))
+        ) {
+          normalized = payload as Record<string, Server[]>;
+        }
+      }
+
+      if (!normalized) {
+        throw new Error("Unexpected servers.json shape");
+      }
+
+      loadError = "";
+      serversByCommunity = normalized;
+      if (!communities.length) {
+        communities = Object.keys(normalized).map((id) => ({
+          id,
+          name: id.toUpperCase(),
+          short_name: id.toUpperCase()
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to fetch servers.json", error);
+      loadError = t("server_load_error");
+    }
+  };
+
+  $: {
+    const totalServers = Object.values(serversByCommunity).reduce(
+      (sum, list) => sum + list.length,
+      0
+    );
+    emptyNotice = !loadError && totalServers === 0 ? t("server_empty") : "";
+  }
 
   onMount(() => {
-    const handleGlobalError = (event: ErrorEvent) => {
-      console.error("Unhandled error in UI:", event.error ?? event.message);
-      if (!initError) {
-        initError = event.message || "Unexpected error";
-      }
-    };
+    const storedCollapsed = localStorage.getItem("sidebar_collapsed") === "true";
+    isCollapsed = storedCollapsed;
+    document.documentElement.classList.toggle("sidebar-is-collapsed", storedCollapsed);
 
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.error("Unhandled promise rejection in UI:", event.reason);
-      if (!initError) {
-        initError = "Unexpected async error";
-      }
-    };
+    const storedView = localStorage.getItem("view_mode") as "grid" | "list" | null;
+    if (storedView === "grid" || storedView === "list") {
+      viewMode = storedView;
+    }
 
-    window.addEventListener("error", handleGlobalError);
-    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+    isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    if (isDark) {
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
 
-    (async () => {
-      try {
-        let tauriReady = false;
-        try {
-          const { getCurrentWindow } = await import("@tauri-apps/api/window");
-          appWindow = getCurrentWindow();
-          tauriReady = true;
-        } catch (error) {
-          console.info("Tauri window API not available in this runtime.", error);
-        }
+    handleResize();
+    window.addEventListener("resize", handleResize);
 
-        let listen: null | ((event: string, handler: (event: any) => void) => Promise<any>) = null;
-        try {
-          const eventModule = await import("@tauri-apps/api/event");
-          listen = eventModule.listen;
-        } catch (error) {
-          console.info("Tauri event API not available in this runtime.", error);
-        }
-
-        if (!tauriReady) {
-          return;
-        }
-
-        snapshot.set(await getSnapshot());
-        diagnostics.set(await getDiagnostics());
-        settings.set(await getSettings());
-        subscriptions.set(await getSubscriptions());
-        autojoin.set(await getAutoJoin());
-
-        if (listen) {
-          await listen("snapshot-updated", (event) => {
-            snapshot.set(event.payload as any);
-          });
-
-          await listen("diagnostics-updated", (event) => {
-            diagnostics.set(event.payload as any);
-          });
-
-          await listen("autojoin-updated", (event) => {
-            autojoin.set(event.payload as any);
-          });
-
-          await listen("subscription-notification", (event) => {
-            const payload = event.payload as { message: string };
-            updateNotification(payload.message);
-          });
-        }
-      } catch (error) {
-        console.error("Failed to initialize UI data:", error);
-        initError = "Failed to load initial data. Check console for details.";
-      }
-    })();
-
-    const timer = setInterval(() => {
-      now = Date.now();
-    }, 500);
+    fetchServers();
+    const timer = setInterval(fetchServers, 15000);
 
     return () => {
+      window.removeEventListener("resize", handleResize);
       clearInterval(timer);
-      window.removeEventListener("error", handleGlobalError);
-      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
     };
   });
-
-  const selectServer = (row: ServerRow) => {
-    selectedKey = row.server_key;
-  };
-
-  const updateSubscriptionList = async (maps: string[]) => {
-    if (!selectedKey) return;
-    await setSubscriptions(selectedKey, maps);
-    subscriptions.set(await getSubscriptions());
-    mapInput = "";
-  };
-
-  $: selectedRow = $rowsStore.find((row) => row.server_key === selectedKey);
 </script>
 
-<div class="app-shell">
-  <header class="titlebar" data-tauri-drag-region>
-    <div class="drag-region">
-      <div class="app-icon" aria-hidden="true"></div>
-      <strong>CS2ZE</strong>
-      <span>{$activePage}</span>
+<div
+  id="app"
+  on:click={() => (showLangMenu = false)}
+  style={isMobile ? "" : "display: flex; width: 100%; height: 100%;"}
+>
+  <div id="sidebar" class:collapsed={isCollapsed} on:click|stopPropagation>
+    <button class="hamburger-btn" type="button" on:click={toggleSidebar}>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    </button>
+    <div class="sidebar-logo"><img src={LOGO_PATH} alt="Logo" decoding="async" /></div>
+
+    <div class="nav-item" class:active={curView === "servers"} on:click={() => (curView = "servers")}>
+      <div class="icon-svg">{@html ICONS.server}</div>
+      {#if !isCollapsed}
+        <span>{t("servers")}</span>
+      {/if}
+      {#if isCollapsed}
+        <div class="tooltip">{t("servers")}</div>
+      {/if}
     </div>
-    <div class="drag-region" style="justify-self: stretch;">
-      <input
-        placeholder="Search servers or maps"
-        bind:value={searchTerm}
-        style="width: 100%;"
-      />
-    </div>
-    <div style="display: flex; gap: 8px; align-items: center;">
-      <button on:click={() => refreshNow()}>Refresh</button>
-      <div class="overflow">
-        <button type="button" on:click={() => (showOverflow = !showOverflow)}>⋯</button>
-        {#if showOverflow}
-          <div class="overflow-menu">
-            <button type="button" on:click={() => (activePage.set("Diagnostics"), (showOverflow = false))}>
-              Diagnostics
-            </button>
-            <button type="button" on:click={() => (activePage.set("Settings"), (showOverflow = false))}>
-              Settings
-            </button>
-            <button type="button" on:click={() => (copyDiagnostics(), (showOverflow = false))}>
-              Copy report
-            </button>
-          </div>
+
+    <div style="margin-top: auto; padding: 10px;">
+      <div
+        class="nav-item"
+        class:edit-mode-active={isEditMode}
+        on:click={() => (isEditMode = !isEditMode)}
+      >
+        <div class="icon-svg">{@html ICONS.edit}</div>
+        {#if !isCollapsed}
+          <span>{isEditMode ? t("exit_edit") : t("edit_order")}</span>
+        {/if}
+        {#if isCollapsed}
+          <div class="tooltip">{t("edit_order")}</div>
         {/if}
       </div>
-      <button on:click={() => appWindow?.minimize()} disabled={!appWindow}>—</button>
-      <button on:click={() => appWindow?.toggleMaximize()} disabled={!appWindow}>⬜</button>
-      <button on:click={() => appWindow?.close()} disabled={!appWindow}>✕</button>
     </div>
-  </header>
+  </div>
 
-  <div class="content">
-    {#if initError}
-      <div class="panel" role="alert">
-        <strong>Startup error:</strong> {initError}
-      </div>
+  <div class="content-wrapper">
+    {#if isEditMode}
+      <div class="edit-banner"></div>
     {/if}
-    <nav class="nav">
-      {#each ["Servers", "Subscriptions", "AutoJoin", "Diagnostics", "Settings"] as page}
-        <button class:active={$activePage === page} on:click={() => activePage.set(page)}>{page}</button>
-      {/each}
-    </nav>
-
-    <main class="page">
-      {#if $activePage === "Servers"}
-        <div class="panel" style="display: flex; gap: 12px;">
-          <span class="tag">All</span>
-          <span class="tag">Online</span>
-          <span class="tag">Empty</span>
-          <select bind:value={sortMode}>
-            <option value="players">Sort: Players</option>
-            <option value="ping">Sort: Ping</option>
-          </select>
+    <header>
+      <div class="header-left">
+        <div class="header-title-area">
+          <div class="header-logo"><img src={LOGO_PATH} alt="Logo" /></div>
+          {#if curView === "servers"}
+            <h1>{t("app_title")}</h1>
+          {/if}
+          {#if curView === "map_sub"}
+            <h1>{t("sub_menu")}</h1>
+          {/if}
+          {#if curView === "stats"}
+            <h1>{t("stats")}</h1>
+          {/if}
+          {#if curView === "feedback"}
+            <h1>{t("feedback")}</h1>
+          {/if}
         </div>
+      </div>
 
-        <div class="split">
-          <div class="panel server-list" on:scroll={handleScroll}>
-            <div style={`height: ${visibleRows.totalHeight}px; position: relative;`}>
-              <div style={`transform: translateY(${visibleRows.offset}px);`}>
-                {#each visibleRows.rows as row (row.server_key)}
-                  <button
-                    type="button"
-                    class={`server-row ${row.server_key === selectedKey ? "active" : ""}`}
-                    on:click={() => selectServer(row)}
-                    style={`height: ${rowHeight}px;`}
-                  >
-                    <div>
-                      <strong>{row.name}</strong>
-                      <div class="tag">{row.community_id}</div>
-                    </div>
-                    <div>{row.players}/{row.max_players}</div>
-                    <div>{row.online ? "Online" : "Offline"}</div>
-                    <div>{row.map_display}</div>
-                    <div>{row.ping === -1 ? "—" : `${row.ping} ms`}</div>
-                  </button>
-                {/each}
+      <div class="header-toolbar" aria-hidden={curView !== "servers"}>
+        {#if curView === "servers"}
+          <button class="toolbar-btn" type="button" on:click={toggleViewMode}>
+            <div class="icon-svg">{@html viewMode === "grid" ? ICONS.list : ICONS.grid}</div>
+            <span>{viewMode === "grid" ? t("view_list") : t("view_grid")}</span>
+          </button>
+          <button
+            class="toolbar-btn"
+            type="button"
+            class:active={sortByPlayers}
+            on:click={toggleSortByPlayers}
+          >
+            <div class="icon-svg">{@html ICONS.sort}</div>
+            <span>{t("sort_players")}</span>
+          </button>
+        {/if}
+      </div>
+
+      <div class="header-right">
+        <div class="top-controls">
+          <div style="position: relative;">
+            <button
+              class="control-btn"
+              class:menu-active={showLangMenu}
+              type="button"
+              on:click|stopPropagation={() => (showLangMenu = !showLangMenu)}
+            >
+              <div class="icon-svg">{@html ICONS.lang}</div>
+            </button>
+            <div class="dropdown-menu" class:show={showLangMenu} on:click|stopPropagation>
+              <div
+                class="dropdown-item"
+                class:active={curLang.startsWith("zh")}
+                on:click={() => setLang("zh-CN")}
+              >
+                中文
+              </div>
+              <div class="dropdown-item" class:active={curLang === "en"} on:click={() => setLang("en")}>
+                English
               </div>
             </div>
           </div>
+          <button class="control-btn" type="button" on:click={toggleTheme}>
+            <div class="icon-svg">{@html ICONS.theme}</div>
+          </button>
+        </div>
+      </div>
+    </header>
 
-          <div class="panel" style="position: sticky; top: 0; align-self: start;">
-            {#if selectedRow}
-              <h3>{selectedRow.name}</h3>
-              <div class="actions">
-                <button
-                  on:click={() => armAutoJoin(selectedRow.server_key)}
-                  class="primary"
+    {#if curView === "servers"}
+      <div class="community-nav">
+        {#each filteredCommunities as comm}
+          <div class="jump-pill" on:click={() => scrollToComm(comm.id)}>
+            {#if comm.logo}
+              <img src={comm.logo} alt={comm.name} loading="lazy" decoding="async" />
+            {/if}
+            <span>{comm.name}</span>
+          </div>
+        {/each}
+      </div>
+
+      <div class="server-search-bar">
+        <input
+          class="server-search-input"
+          type="text"
+          bind:value={serverMapQueryInput}
+          placeholder={t("server_search_ph")}
+        />
+      </div>
+    {/if}
+
+    <div id="main-content">
+      {#if curView === "servers"}
+        <div class="animate-enter">
+          {#if serverSearchNotice}
+            <div class="server-search-hint">{serverSearchNotice}</div>
+          {/if}
+          {#if loadError}
+            <div class="server-search-hint">{loadError}</div>
+          {/if}
+          {#if emptyNotice}
+            <div class="server-search-hint">{emptyNotice}</div>
+          {/if}
+
+          {#each filteredCommunities as comm}
+            <div id={`comm-${comm.id}`} style="margin-bottom: 40px;">
+              {#if !isMobile}
+                <h3
+                  class="desktop-header"
+                  style="border-left: 4px solid var(--accent); padding-left: 10px; margin: 0 0 16px 0;"
                 >
-                  AutoJoin
-                </button>
-                <button on:click={() => stopAutoJoin()}>Stop</button>
-                <button on:click={() => navigator.clipboard.writeText(selectedRow.connect_addr)}>
-                  Copy connect
-                </button>
-              </div>
+                  {comm.name}
+                </h3>
+              {/if}
+              {#if isMobile}
+                <div class="community-title-bar" id={`comm-mob-${comm.id}`}>
+                  {#if comm.logo}
+                    <img src={comm.logo} alt={comm.name} />
+                  {/if}
+                  {comm.name}
+                </div>
+              {/if}
 
-              {#if $autojoin?.state === "Cooldown" && $autojoin?.target_server_key === selectedRow.server_key}
-                {#if getCooldownRemaining($autojoin) !== null}
-                  <div>Cooldown remaining: {getCooldownRemaining($autojoin)}s</div>
+              {#if getServers(comm.id).length === 0}
+                {#if viewMode === "list" || isMobile}
+                  <div class="skeleton-list">
+                    {#each Array.from({ length: 5 }) as _, i}
+                      <div class="skeleton-row" data-index={i}></div>
+                    {/each}
+                  </div>
+                {:else}
+                  <div class="skeleton-grid">
+                    {#each Array.from({ length: 3 }) as _, i}
+                      <div class="skeleton-card" data-index={i}></div>
+                    {/each}
+                  </div>
                 {/if}
               {/if}
 
-              <h4>Subscriptions</h4>
-              <div class="actions">
-                {#if $subscriptions?.subscriptions[selectedRow.server_key]?.length}
-                  {#each $subscriptions.subscriptions[selectedRow.server_key] as map}
-                    <span class="tag">{map}</span>
+              {#if viewMode === "grid" && !isMobile}
+                <div class="grid-container">
+                  {#each getServers(comm.id) as server (server.display_ip || server.name)}
+                    <div class={`card ${server.online ? "online" : ""}`}>
+                      <div class="status-line"></div>
+                      <div class="card-content">
+                        <div>
+                          <div class="card-header-row">
+                            <div class="srv-name" title={server.name}>{server.name}</div>
+                          </div>
+                          <div class="info-block">
+                            <div class="info-row">
+                              <span class="info-label">{t("map")}</span>
+                              <div class="map-info">
+                                <span>{server.map ?? "-"}</span>
+                                <div class="map-trans">
+                                  <span>{server.map_display ?? ""}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="info-row">
+                              <span class="info-label">{t("players")}</span>
+                              <span>{server.players}/{server.max_players}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="actions">
+                          <button class="btn btn-primary" type="button">{t("join_server")}</button>
+                          <button class="btn btn-sec" type="button">{t("copy_console_cmd")}</button>
+                        </div>
+                      </div>
+                    </div>
                   {/each}
-                {:else}
-                  <span class="tag">None</span>
-                {/if}
-              </div>
-              <div style="margin-top: 8px; display: flex; gap: 8px;">
-                <input
-                  placeholder="Add map name"
-                  bind:value={mapInput}
-                />
-                <button
-                  on:click={() =>
-                    updateSubscriptionList([
-                      ...($subscriptions?.subscriptions[selectedRow.server_key] ?? []),
-                      mapInput
-                    ])
-                  }
-                >
-                  Add
-                </button>
-              </div>
+                </div>
+              {/if}
 
-              <h4>Details</h4>
-              <div>Server Key: {selectedRow.server_key}</div>
-              <div>Display IP: {selectedRow.display_ip}</div>
-              <div>Connect Addr: {selectedRow.connect_addr}</div>
-              <div>Game Type: {selectedRow.game_type}</div>
-              <div>Query Source: {selectedRow.query_source ?? ""}</div>
-              <div>Ping: {selectedRow.ping}</div>
-              <div>AutoJoin state: {$autojoin?.state}</div>
-            {:else}
-              <p>Select a server to see details.</p>
-            {/if}
-          </div>
-        </div>
-      {:else if $activePage === "Subscriptions"}
-        <div class="panel">
-          <h3>Subscriptions</h3>
-          {#if $subscriptions}
-            {#each Object.entries($subscriptions.subscriptions) as [key, maps]}
-              <div class="notification">
-                <strong>{key}</strong>
-                <div>{maps.join(", ")}</div>
-              </div>
-            {/each}
-          {:else}
-            <p>No subscriptions yet.</p>
-          {/if}
-          <h4>Recent notifications</h4>
-          {#each notificationLog as note}
-            <div class="notification">{note}</div>
+              {#if viewMode === "list" && !isMobile}
+                <div class="list-container">
+                  {#each getServers(comm.id) as server (server.display_ip || server.name)}
+                    <div class={`list-row ${server.online ? "online" : ""}`}>
+                      <div class="col-status"></div>
+                      <div class="col-name" title={server.name}>{server.name}</div>
+                      <div class="col-map">
+                        <span class="map-name">{server.map ?? "-"}</span>
+                        <span class="col-map-cn">{server.map_display ?? ""}</span>
+                      </div>
+                      <div class="col-players">{server.players}/{server.max_players}</div>
+                      <div class="col-actions">
+                        <button class="btn btn-primary" type="button">{t("join_server")}</button>
+                        <button class="btn btn-sec" type="button">{t("copy_console_cmd")}</button>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+
+              {#if isMobile}
+                <div class="mobile-list-container">
+                  {#each getServers(comm.id) as server (server.display_ip || server.name)}
+                    <div class="mobile-item">
+                      <div class="mobile-item-left">
+                        <div class="mobile-srv-name">{server.name}</div>
+                        <div class="mobile-map-name">
+                          <span>{server.map ?? "-"}</span>
+                          <span class="mobile-trans">{server.map_display ?? ""}</span>
+                        </div>
+                      </div>
+                      <div class="mobile-item-right">
+                        <div style={`color: ${server.online ? "var(--text-primary)" : "var(--status-offline)"}`}>
+                          {server.online ? `${server.players}/${server.max_players}` : t("offline")}
+                        </div>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+            </div>
           {/each}
         </div>
-      {:else if $activePage === "AutoJoin"}
-        <div class="panel">
-          <h3>AutoJoin</h3>
-          <p>Target: {$autojoin?.target_server_key ?? "None"}</p>
-          <p>State: {$autojoin?.state ?? "Idle"}</p>
-          {#if $autojoin?.state === "Cooldown"}
-            {#if getCooldownRemaining($autojoin) !== null}
-              <p>Cooldown remaining: {getCooldownRemaining($autojoin)}s</p>
-            {/if}
-          {/if}
-          <p>Next poll: {$diagnostics?.next_poll_time ?? ""}</p>
-          <p>Last snapshot: {$diagnostics?.last_snapshot_time ?? ""}</p>
-          <div>
-            <h4>History</h4>
-            {#each $autojoin?.history ?? [] as entry}
-              <div class="notification">
-                {entry.timestamp}: {entry.state} - {entry.detail}
-              </div>
-            {/each}
-          </div>
+      {:else if curView === "stats"}
+        <div class="login-required">
+          <strong>{t("stats")}</strong>
+          <div>{t("login_required_short")}</div>
         </div>
-      {:else if $activePage === "Diagnostics"}
-        <div class="panel">
-          <h3>Diagnostics</h3>
-          <p>Servers URL: {$diagnostics?.servers_url}</p>
-          <p>Last fetch: {$diagnostics?.last_fetch_time}</p>
-          <p>Status: {$diagnostics?.last_status}</p>
-          <p>Error: {$diagnostics?.last_error}</p>
-          <p>ETag: {$diagnostics?.etag}</p>
-          <p>304 hits: {$diagnostics?.hits_304}</p>
-          <p>Jitter: {$diagnostics?.jitter_min_seconds}-{$diagnostics?.jitter_max_seconds}s</p>
-          <p>Backoff: {$diagnostics?.current_backoff_seconds ?? "None"}s</p>
-          <p>Diff changed servers: {$diagnostics?.diff_summary.changed_servers}</p>
-          <p>Diff map changed: {$diagnostics?.diff_summary.map_changed}</p>
-          <p>Diff online changed: {$diagnostics?.diff_summary.online_changed}</p>
-          <button on:click={() => copyDiagnostics()}>Copy report</button>
+      {:else if curView === "feedback"}
+        <div class="login-required">
+          <strong>{t("feedback")}</strong>
+          <div>{t("login_required_short")}</div>
         </div>
-      {:else if $activePage === "Settings"}
-        <div class="panel">
-          <h3>Settings</h3>
-          <label>
-            Theme
-            <select
-              value={$settings?.theme ?? "system"}
-              on:change={onThemeChange}
-            >
-              <option value="system">System</option>
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-            </select>
-          </label>
-          <label>
-            Notifications
-            <select
-              value={$settings?.notifications_enabled ? "on" : "off"}
-              on:change={onNotificationsChange}
-            >
-              <option value="on">On</option>
-              <option value="off">Off</option>
-            </select>
-          </label>
-          <label>
-            servers.json URL
-            <input
-              value={$settings?.servers_url}
-              on:change={onServersUrlChange}
-              style="width: 100%;"
-            />
-          </label>
-          <p>About: CS2ZE Desktop v0.1</p>
+      {:else if curView === "map_sub"}
+        <div class="login-required">
+          <strong>{t("sub_menu")}</strong>
+          <div>{t("login_required_short")}</div>
         </div>
       {/if}
-    </main>
+    </div>
   </div>
-
-  <footer class="status-bar">
-    <div>Snapshot: {$diagnostics?.last_snapshot_time ?? "-"}</div>
-    <div>Status: {$diagnostics?.last_status ?? "-"}</div>
-    <div>304 hits: {$diagnostics?.hits_304 ?? 0}</div>
-    <div>Backoff: {$diagnostics?.current_backoff_seconds ?? "None"}</div>
-  </footer>
 </div>
