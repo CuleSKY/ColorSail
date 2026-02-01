@@ -1,0 +1,210 @@
+:root {
+  color-scheme: light dark;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  --mica: rgba(20, 20, 20, 0.3);
+  --surface: rgba(32, 32, 36, 0.85);
+  --card: rgba(42, 42, 46, 0.9);
+  --stroke: rgba(255, 255, 255, 0.08);
+  --text: #f5f5f5;
+  --muted: #b7b7b7;
+  --accent: #4cc2ff;
+  --accent-soft: rgba(76, 194, 255, 0.15);
+  --radius: 12px;
+}
+
+body {
+  margin: 0;
+  background: transparent;
+  color: var(--text);
+}
+
+#app {
+  min-height: 100vh;
+  background: radial-gradient(circle at top, rgba(76, 194, 255, 0.12), transparent 55%),
+    var(--mica);
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  border: 1px solid var(--stroke);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  color: #00121c;
+}
+
+input, select {
+  background: rgba(20, 20, 20, 0.6);
+  border: 1px solid var(--stroke);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+}
+
+.titlebar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  background: rgba(20, 20, 20, 0.6);
+  border-bottom: 1px solid var(--stroke);
+}
+
+.titlebar .drag-region {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(76, 194, 255, 0.9), rgba(76, 194, 255, 0.3));
+  border: 1px solid var(--stroke);
+}
+
+.overflow {
+  position: relative;
+}
+
+.overflow-menu {
+  position: absolute;
+  right: 0;
+  top: 32px;
+  background: var(--surface);
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+  z-index: 10;
+}
+
+.overflow-menu button {
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 6px 8px;
+}
+
+.nav {
+  background: var(--surface);
+  border-right: 1px solid var(--stroke);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav button {
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.nav button.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.content {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 0;
+}
+
+.page {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 16px;
+  min-height: 0;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  padding: 12px;
+  overflow: hidden;
+}
+
+.panel h3 {
+  margin-top: 0;
+}
+
+.server-list {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.server-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  gap: 10px;
+  padding: 10px;
+  border-bottom: 1px solid var(--stroke);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+
+.server-row.active {
+  background: var(--accent-soft);
+}
+
+.status-bar {
+  border-top: 1px solid var(--stroke);
+  background: rgba(20, 20, 20, 0.6);
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tag {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.notification {
+  background: var(--card);
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  padding: 10px;
+}

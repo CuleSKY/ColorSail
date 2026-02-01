@@ -1,0 +1,29 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "CS2ZE",
+  "version": "0.1.0",
+  "identifier": "org.cs2ze.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../frontend/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "CS2ZE",
+        "width": 1200,
+        "height": 800,
+        "resizable": true,
+        "decorations": false,
+        "transparent": true,
+        "titleBarStyle": "overlay",
+        "windowEffects": ["mica"]
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}
