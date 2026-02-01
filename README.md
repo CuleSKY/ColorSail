@@ -10,36 +10,28 @@
 - Rust (stable)
 - Tauri v2 system dependencies (see https://tauri.app)
 
-**Install**
+**Run on Windows (PowerShell)**
 
-```bash
-cd frontend
-npm install
-cd ../src-tauri
-cargo build
-```
+```powershell
+# From repo root: F:\NERV_CS2ZE\NERV_CS2ZE
+node -v
+cargo -V
+cargo tauri -V
 
-**Dev run**
+# Install frontend deps
+npm --prefix .\frontend install
 
-```bash
-cd frontend
-npm run dev
-```
-
-```bash
-cd src-tauri
+# Dev (launch from src-tauri)
+cd .\src-tauri
 cargo tauri dev
 ```
 
 **Build**
 
-```bash
-cd frontend
-npm run build
-```
-
-```bash
-cd src-tauri
+```powershell
+# From repo root
+npm --prefix .\frontend run build
+cd .\src-tauri
 cargo tauri build
 ```
 
