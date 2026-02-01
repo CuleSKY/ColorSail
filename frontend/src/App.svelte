@@ -1,7 +1,5 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { getCurrent } from "@tauri-apps/api/window";
-  import { listen } from "@tauri-apps/api/event";
   import {
     getSnapshot,
     getDiagnostics,
@@ -22,7 +20,12 @@
   import { flattenSnapshot } from "./lib/utils";
   import { derived, get } from "svelte/store";
 
-  const appWindow = getCurrent();
+  let appWindow: null | {
+    minimize: () => Promise<void>;
+    toggleMaximize: () => Promise<void>;
+    close: () => Promise<void>;
+  } = null;
+  let initError: string | null = null;
 
   let selectedKey: string | null = null;
   let selectedRow: ServerRow | undefined;
@@ -114,36 +117,85 @@
   };
 
   onMount(() => {
+    const handleGlobalError = (event: ErrorEvent) => {
+      console.error("Unhandled error in UI:", event.error ?? event.message);
+      if (!initError) {
+        initError = event.message || "Unexpected error";
+      }
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error("Unhandled promise rejection in UI:", event.reason);
+      if (!initError) {
+        initError = "Unexpected async error";
+      }
+    };
+
+    window.addEventListener("error", handleGlobalError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+
     (async () => {
-      snapshot.set(await getSnapshot());
-      diagnostics.set(await getDiagnostics());
-      settings.set(await getSettings());
-      subscriptions.set(await getSubscriptions());
-      autojoin.set(await getAutoJoin());
+      try {
+        let tauriReady = false;
+        try {
+          const { getCurrentWindow } = await import("@tauri-apps/api/window");
+          appWindow = getCurrentWindow();
+          tauriReady = true;
+        } catch (error) {
+          console.info("Tauri window API not available in this runtime.", error);
+        }
 
-      await listen("snapshot-updated", (event) => {
-        snapshot.set(event.payload as any);
-      });
+        let listen: null | ((event: string, handler: (event: any) => void) => Promise<any>) = null;
+        try {
+          const eventModule = await import("@tauri-apps/api/event");
+          listen = eventModule.listen;
+        } catch (error) {
+          console.info("Tauri event API not available in this runtime.", error);
+        }
 
-      await listen("diagnostics-updated", (event) => {
-        diagnostics.set(event.payload as any);
-      });
+        if (!tauriReady) {
+          return;
+        }
 
-      await listen("autojoin-updated", (event) => {
-        autojoin.set(event.payload as any);
-      });
+        snapshot.set(await getSnapshot());
+        diagnostics.set(await getDiagnostics());
+        settings.set(await getSettings());
+        subscriptions.set(await getSubscriptions());
+        autojoin.set(await getAutoJoin());
 
-      await listen("subscription-notification", (event) => {
-        const payload = event.payload as { message: string };
-        updateNotification(payload.message);
-      });
+        if (listen) {
+          await listen("snapshot-updated", (event) => {
+            snapshot.set(event.payload as any);
+          });
+
+          await listen("diagnostics-updated", (event) => {
+            diagnostics.set(event.payload as any);
+          });
+
+          await listen("autojoin-updated", (event) => {
+            autojoin.set(event.payload as any);
+          });
+
+          await listen("subscription-notification", (event) => {
+            const payload = event.payload as { message: string };
+            updateNotification(payload.message);
+          });
+        }
+      } catch (error) {
+        console.error("Failed to initialize UI data:", error);
+        initError = "Failed to load initial data. Check console for details.";
+      }
     })();
 
     const timer = setInterval(() => {
       now = Date.now();
     }, 500);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("error", handleGlobalError);
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+    };
   });
 
   const selectServer = (row: ServerRow) => {
@@ -192,13 +244,18 @@
           </div>
         {/if}
       </div>
-      <button on:click={() => appWindow.minimize()}>—</button>
-      <button on:click={() => appWindow.toggleMaximize()}>⬜</button>
-      <button on:click={() => appWindow.close()}>✕</button>
+      <button on:click={() => appWindow?.minimize()} disabled={!appWindow}>—</button>
+      <button on:click={() => appWindow?.toggleMaximize()} disabled={!appWindow}>⬜</button>
+      <button on:click={() => appWindow?.close()} disabled={!appWindow}>✕</button>
     </div>
   </header>
 
   <div class="content">
+    {#if initError}
+      <div class="panel" role="alert">
+        <strong>Startup error:</strong> {initError}
+      </div>
+    {/if}
     <nav class="nav">
       {#each ["Servers", "Subscriptions", "AutoJoin", "Diagnostics", "Settings"] as page}
         <button class:active={$activePage === page} on:click={() => activePage.set(page)}>{page}</button>
