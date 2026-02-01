@@ -1,5 +1,22 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { loadStaticResources } from "./lib/resources";
+  import { startServersPoller, stopServersPoller } from "./lib/servers";
+  import {
+    filterCommunitiesBySearch,
+    getMapTranslationEntry,
+    matchesServerSearch,
+    sortServers
+  } from "./lib/selectors";
+  import type { ServerItem } from "./lib/types";
+  import {
+    communities as communitiesStore,
+    languagePack,
+    mapTranslations as mapTranslationsStore,
+    resourceOffline,
+    serverLoadError,
+    serversByCommunity
+  } from "./lib/stores";
 
   type Community = {
     id: string;
@@ -8,15 +25,7 @@
     logo?: string;
   };
 
-  type Server = {
-    display_ip?: string;
-    name: string;
-    map?: string;
-    map_display?: string;
-    players: number;
-    max_players: number;
-    online: boolean;
-  };
+  type Server = ServerItem & { map_display?: string };
 
   const ICONS = {
     server:
@@ -67,6 +76,7 @@
       server_empty: "暂无可用服务器",
       no_trans: "无译名",
       offline: "离线",
+      not_implemented: "暂未开放",
       edit_order: "编辑排序",
       exit_edit: "退出编辑",
       drag_hint: "拖拽调整服务器顺序",
@@ -94,6 +104,7 @@
       server_empty: "No servers available",
       no_trans: "No translation",
       offline: "Offline",
+      not_implemented: "Not implemented",
       edit_order: "Edit Order",
       exit_edit: "Exit Edit",
       drag_hint: "Drag to reorder",
@@ -116,43 +127,57 @@
   let serverMapQuery = "";
 
   let communities: Community[] = [];
-  let serversByCommunity: Record<string, Server[]> = {};
   let filteredCommunities: Community[] = [];
   let serverSearchNotice = "";
-  let loadError = "";
   let emptyNotice = "";
 
   const t = (key: keyof (typeof translations)["zh-CN"]) => {
-    return translations[curLang]?.[key] ?? translations["en"][key] ?? String(key);
+    const pack = $languagePack ?? translations;
+    return (
+      pack[curLang]?.[key] ??
+      pack["en"]?.[key] ??
+      translations[curLang]?.[key] ??
+      translations["en"]?.[key] ??
+      String(key)
+    );
   };
 
+  $: if ($communitiesStore.length) {
+    communities = $communitiesStore as Community[];
+  }
+
+  $: {
+    document.title = t("app_title");
+  }
+
   const getServers = (communityId: string) => {
-    const list = serversByCommunity[communityId] ?? [];
-    const query = serverMapQuery.trim().toLowerCase();
-    let filtered = query
-      ? list.filter(
-          (server) =>
-            server.name.toLowerCase().includes(query) ||
-            (server.map ?? "").toLowerCase().includes(query) ||
-            (server.map_display ?? "").toLowerCase().includes(query)
-        )
-      : list;
-
-    filtered = [...filtered].sort((a, b) => {
-      if (sortByPlayers) {
-        return b.players - a.players;
-      }
-      return a.name.localeCompare(b.name);
+    const list = ($serversByCommunity[communityId] ?? []).map((server) => {
+      const entry = getMapTranslationEntry(server.map, server, $mapTranslationsStore);
+      let mapDisplay = "";
+      if (curLang === "zh-TW") mapDisplay = entry.zh_tw || entry.zh_cn || "";
+      if (curLang === "zh-CN") mapDisplay = entry.zh_cn || "";
+      return { ...server, map_display: mapDisplay };
     });
-
+    const query = serverMapQuery.trim();
+    let filtered = list;
+    if (query) {
+      filtered = list.filter((server) =>
+        matchesServerSearch(server, query, $mapTranslationsStore, true)
+      );
+    }
+    if (sortByPlayers) {
+      filtered = sortServers(filtered);
+    }
     return filtered;
   };
 
   $: serverMapQuery = serverMapQueryInput;
 
-  $: filteredCommunities = serverMapQuery.trim()
-    ? communities.filter((comm) => getServers(comm.id).length > 0)
-    : communities;
+  $: filteredCommunities = filterCommunitiesBySearch(
+    communities,
+    (comm) => getServers(comm.id).length > 0,
+    serverMapQuery
+  );
 
   $: serverSearchNotice = (() => {
     const query = serverMapQuery.trim();
@@ -177,8 +202,10 @@
     isDark = !isDark;
     if (isDark) {
       document.documentElement.setAttribute("data-theme", "dark");
+      localStorage.setItem("theme", "dark");
     } else {
       document.documentElement.removeAttribute("data-theme");
+      localStorage.setItem("theme", "light");
     }
   };
 
@@ -201,57 +228,26 @@
   const setLang = (lang: keyof typeof translations) => {
     curLang = lang;
     showLangMenu = false;
+    localStorage.setItem("lang", lang);
+    const url = new URL(window.location.href);
+    if (lang === "zh-CN") {
+      url.searchParams.delete("lang");
+    } else {
+      url.searchParams.set("lang", lang);
+    }
+    window.history.replaceState({}, "", url.toString());
   };
 
   const handleResize = () => {
     isMobile = window.innerWidth <= 768;
   };
 
-  const fetchServers = async () => {
-    try {
-      const response = await fetch("/servers.json", { cache: "no-store" });
-      if (!response.ok) throw new Error("Failed to load servers.json");
-      const payload = await response.json();
-      let normalized: Record<string, Server[]> | null = null;
-      if (Array.isArray(payload)) {
-        normalized = { all: payload };
-      } else if (payload && typeof payload === "object") {
-        if (Array.isArray(payload.data)) {
-          normalized = { all: payload.data };
-        } else if (Array.isArray(payload.servers)) {
-          normalized = { all: payload.servers };
-        } else if (
-          Object.values(payload).every((value) => Array.isArray(value))
-        ) {
-          normalized = payload as Record<string, Server[]>;
-        }
-      }
-
-      if (!normalized) {
-        throw new Error("Unexpected servers.json shape");
-      }
-
-      loadError = "";
-      serversByCommunity = normalized;
-      if (!communities.length) {
-        communities = Object.keys(normalized).map((id) => ({
-          id,
-          name: id.toUpperCase(),
-          short_name: id.toUpperCase()
-        }));
-      }
-    } catch (error) {
-      console.error("Failed to fetch servers.json", error);
-      loadError = t("server_load_error");
-    }
-  };
-
   $: {
-    const totalServers = Object.values(serversByCommunity).reduce(
+    const totalServers = Object.values($serversByCommunity).reduce(
       (sum, list) => sum + list.length,
       0
     );
-    emptyNotice = !loadError && totalServers === 0 ? t("server_empty") : "";
+    emptyNotice = !$serverLoadError && totalServers === 0 ? t("server_empty") : "";
   }
 
   onMount(() => {
@@ -264,20 +260,32 @@
       viewMode = storedView;
     }
 
-    isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    if (isDark) {
-      document.documentElement.setAttribute("data-theme", "dark");
+    const storedTheme = localStorage.getItem("theme");
+    if (storedTheme === "dark") {
+      isDark = true;
+    } else if (storedTheme === "light") {
+      isDark = false;
+    } else {
+      isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    if (isDark) document.documentElement.setAttribute("data-theme", "dark");
+
+    const queryLang = new URLSearchParams(window.location.search).get("lang");
+    const storedLang = localStorage.getItem("lang");
+    const candidateLang = queryLang || storedLang;
+    if (candidateLang && candidateLang in translations) {
+      curLang = candidateLang as keyof typeof translations;
     }
 
     handleResize();
     window.addEventListener("resize", handleResize);
 
-    fetchServers();
-    const timer = setInterval(fetchServers, 15000);
+    loadStaticResources();
+    startServersPoller();
 
     return () => {
       window.removeEventListener("resize", handleResize);
-      clearInterval(timer);
+      stopServersPoller();
     };
   });
 </script>
@@ -302,6 +310,36 @@
       {/if}
       {#if isCollapsed}
         <div class="tooltip">{t("servers")}</div>
+      {/if}
+    </div>
+
+    <div class="nav-item" class:active={curView === "map_sub"} on:click={() => (curView = "map_sub")}>
+      <div class="icon-svg">{@html ICONS.map}</div>
+      {#if !isCollapsed}
+        <span>{t("sub_menu")}</span>
+      {/if}
+      {#if isCollapsed}
+        <div class="tooltip">{t("sub_menu")}</div>
+      {/if}
+    </div>
+
+    <div class="nav-item" class:active={curView === "stats"} on:click={() => (curView = "stats")}>
+      <div class="icon-svg">{@html ICONS.stats}</div>
+      {#if !isCollapsed}
+        <span>{t("stats")}</span>
+      {/if}
+      {#if isCollapsed}
+        <div class="tooltip">{t("stats")}</div>
+      {/if}
+    </div>
+
+    <div class="nav-item" class:active={curView === "feedback"} on:click={() => (curView = "feedback")}>
+      <div class="icon-svg">{@html ICONS.feedback}</div>
+      {#if !isCollapsed}
+        <span>{t("feedback")}</span>
+      {/if}
+      {#if isCollapsed}
+        <div class="tooltip">{t("feedback")}</div>
       {/if}
     </div>
 
@@ -422,8 +460,11 @@
           {#if serverSearchNotice}
             <div class="server-search-hint">{serverSearchNotice}</div>
           {/if}
-          {#if loadError}
-            <div class="server-search-hint">{loadError}</div>
+          {#if $resourceOffline}
+            <div class="server-search-hint">{t("offline")}</div>
+          {/if}
+          {#if $serverLoadError}
+            <div class="server-search-hint">{t("server_load_error")}</div>
           {/if}
           {#if emptyNotice}
             <div class="server-search-hint">{emptyNotice}</div>
@@ -546,17 +587,17 @@
       {:else if curView === "stats"}
         <div class="login-required">
           <strong>{t("stats")}</strong>
-          <div>{t("login_required_short")}</div>
+          <div>{t("not_implemented")}</div>
         </div>
       {:else if curView === "feedback"}
         <div class="login-required">
           <strong>{t("feedback")}</strong>
-          <div>{t("login_required_short")}</div>
+          <div>{t("not_implemented")}</div>
         </div>
       {:else if curView === "map_sub"}
         <div class="login-required">
           <strong>{t("sub_menu")}</strong>
-          <div>{t("login_required_short")}</div>
+          <div>{t("not_implemented")}</div>
         </div>
       {/if}
     </div>
