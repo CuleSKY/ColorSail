@@ -10,6 +10,7 @@ export const autojoin = writable<AutoJoinState | null>(null);
 
 export const activePage = writable("Servers");
 
+export const configMeta = writable<{ languageUrl?: string | null } | null>(null);
 export const communities = writable<CommunityMeta[]>([]);
 export const languagePack = writable<LanguagePack | null>(null);
 export const mapTranslations = writable<MapTranslations>({});
