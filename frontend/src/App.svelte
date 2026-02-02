@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { loadStaticResources } from "./lib/resources";
-  import { startServersPoller, stopServersPoller } from "./lib/servers";
+  import { normalizeServersSource, refreshServersNow, startServersPoller, stopServersPoller } from "./lib/servers";
   import {
     filterCommunitiesBySearch,
     getMapTranslationEntry,
@@ -17,6 +17,15 @@
     serverLoadError,
     serversByCommunity
   } from "./lib/stores";
+  import {
+    appSettings,
+    DEFAULT_UI_LANGUAGE,
+    setServersSource,
+    setSidebarCollapsed,
+    setTheme,
+    setUiLanguage,
+    setViewMode
+  } from "./lib/settingsStore";
 
   type Community = {
     id: string;
@@ -48,79 +57,22 @@
       '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z" fill="currentColor"/></svg>',
     lang:
       '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M18 2a1 1 0 1 0-2 0v1h-4a1 1 0 0 0-1 1v1.25a1 1 0 1 0 2 0V5h8v.25a1 1 0 1 0 2 0V4a1 1 0 0 0-1-1h-4V2ZM8.563 7.505l.056.117 5.307 13.005a1 1 0 0 1-1.801.86l-.05-.105L10.692 18H4.407l-1.49 3.407a1 1 0 0 1-1.208.555l-.11-.04a1 1 0 0 1-.555-1.208l.04-.11L6.777 7.6c.337-.77 1.395-.795 1.786-.094Zm-.902 3.062L5.282 16h4.595l-2.216-5.432ZM13.499 7a1 1 0 0 1 1-1h5a1 1 0 0 1 .708 1.707L18.414 9.5H22a1 1 0 1 1 0 2h-4v2.984a2.5 2.5 0 0 1-3.219 2.394l-.569-.17a1 1 0 1 1 .575-1.916l.569.17a.5.5 0 0 0 .643-.478V11.5H12a1 1 0 1 1 0-2h4a1 1 0 0 1 .292-.707L17.085 8H14.5a1 1 0 0 1-1-1Z" fill="currentColor"/></svg>',
+    settings:
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8ZM4 13.5l-1.5 1.1 1.6 2.8 1.8-.5c.3.3.7.6 1.1.8l.3 1.9h3.2l.3-1.9c.4-.2.8-.5 1.1-.8l1.8.5 1.6-2.8-1.5-1.1c.1-.5.1-1 0-1.5l1.5-1.1-1.6-2.8-1.8.5c-.3-.3-.7-.6-1.1-.8l-.3-1.9h-3.2l-.3 1.9c-.4.2-.8.5-1.1.8l-1.8-.5-1.6 2.8L4 12c-.1.5-.1 1 0 1.5Z" fill="currentColor"/></svg>',
     theme:
       '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Zm0-2V4a8 8 0 1 1 0 16Z" fill="currentColor"/></svg>'
   };
 
   const LOGO_PATH = "/static/nerv_logo.png";
 
-  const translations = {
-    "zh-CN": {
-      app_title: "NERV CS2僵尸逃跑启动器",
-      servers: "服务器列表",
-      sub_menu: "订阅地图",
-      stats: "数据统计",
-      stats_note: "仅ZE",
-      feedback: "反馈中心",
-      login_required_short: "需登录",
-      view_list: "列表视图",
-      view_grid: "卡片视图",
-      sort_players: "按人数排序",
-      map: "地图",
-      players: "人数",
-      join_server: "加入服务器",
-      copy_console_cmd: "复制控制台命令",
-      server_search_ph: "搜索服务器或地图",
-      server_search_empty: "没有找到包含 {map} 的服务器",
-      server_load_error: "服务器列表加载失败",
-      server_empty: "暂无可用服务器",
-      no_trans: "无译名",
-      offline: "离线",
-      not_implemented: "暂未开放",
-      edit_order: "编辑排序",
-      exit_edit: "退出编辑",
-      drag_hint: "拖拽调整服务器顺序",
-      mapcd: "地图CD",
-      exg_only: "仅EXG"
-    },
-    en: {
-      app_title: "NERV CS2ZE Browser",
-      servers: "Servers",
-      sub_menu: "Map Subscriptions",
-      stats: "Statistics",
-      stats_note: "ZE Only",
-      feedback: "Feedback",
-      login_required_short: "Login",
-      view_list: "List View",
-      view_grid: "Grid View",
-      sort_players: "Sort by Players",
-      map: "Map",
-      players: "Players",
-      join_server: "Join Server",
-      copy_console_cmd: "Copy Console Cmd",
-      server_search_ph: "Search servers or maps",
-      server_search_empty: "No servers found for {map}",
-      server_load_error: "Failed to load servers",
-      server_empty: "No servers available",
-      no_trans: "No translation",
-      offline: "Offline",
-      not_implemented: "Not implemented",
-      edit_order: "Edit Order",
-      exit_edit: "Exit Edit",
-      drag_hint: "Drag to reorder",
-      mapcd: "Map CD",
-      exg_only: "EXG Only"
-    }
-  } as const;
-
-  let curLang: keyof typeof translations = "zh-CN";
+  let curLang = DEFAULT_UI_LANGUAGE;
   let isCollapsed = false;
   let isDark = false;
   let viewMode: "grid" | "list" = "list";
   let showLangMenu = false;
   let isMobile = false;
   let sortByPlayers = false;
-  let curView: "servers" | "map_sub" | "stats" | "feedback" = "servers";
+  let curView: "servers" | "map_sub" | "stats" | "feedback" | "settings" = "servers";
   let isEditMode = false;
 
   let serverMapQueryInput = "";
@@ -131,19 +83,49 @@
   let serverSearchNotice = "";
   let emptyNotice = "";
 
-  const t = (key: keyof (typeof translations)["zh-CN"]) => {
-    const pack = $languagePack ?? translations;
-    return (
-      pack[curLang]?.[key] ??
-      pack["en"]?.[key] ??
-      translations[curLang]?.[key] ??
-      translations["en"]?.[key] ??
-      String(key)
-    );
+  const getFallbackLanguage = (pack: Record<string, Record<string, string>>) => {
+    if (pack["zh_cn"]) return "zh_cn";
+    if (pack["zh-CN"]) return "zh-CN";
+    const fallback = Object.keys(pack).find((lang) => lang.toLowerCase().startsWith("zh"));
+    return fallback ?? DEFAULT_UI_LANGUAGE;
+  };
+
+  const t = (key: string) => {
+    const pack = $languagePack ?? {};
+    const fallbackLang = getFallbackLanguage(pack);
+    return pack[curLang]?.[key] ?? pack[fallbackLang]?.[key] ?? String(key);
+  };
+
+  const getLanguageLabel = (code: string) => {
+    const lower = code.toLowerCase();
+    if (lower.startsWith("zh") && (lower.includes("tw") || lower.includes("hk") || lower.includes("hant"))) {
+      return "繁體中文";
+    }
+    if (lower.startsWith("zh")) return "中文";
+    if (lower.startsWith("en")) return "English";
+    return code;
+  };
+
+  const getAvailableLanguages = () => {
+    const pack = $languagePack ?? {};
+    const keys = Object.keys(pack);
+    return keys.length ? keys : [curLang];
+  };
+
+  const isTraditionalLanguage = (lang: string) => {
+    const lower = lang.toLowerCase();
+    return lower.includes("tw") || lower.includes("hk") || lower.includes("hant");
   };
 
   $: if ($communitiesStore.length) {
     communities = $communitiesStore as Community[];
+  }
+
+  $: {
+    curLang = $appSettings.ui_language;
+    isCollapsed = $appSettings.sidebar_collapsed;
+    viewMode = $appSettings.view_mode;
+    isDark = $appSettings.theme === "dark";
   }
 
   $: {
@@ -154,8 +136,8 @@
     const list = ($serversByCommunity[communityId] ?? []).map((server) => {
       const entry = getMapTranslationEntry(server.map, server, $mapTranslationsStore);
       let mapDisplay = "";
-      if (curLang === "zh-TW") mapDisplay = entry.zh_tw || entry.zh_cn || "";
-      if (curLang === "zh-CN") mapDisplay = entry.zh_cn || "";
+      if (isTraditionalLanguage(curLang)) mapDisplay = entry.zh_tw || entry.zh_cn || "";
+      if (!mapDisplay) mapDisplay = entry.zh_cn || "";
       return { ...server, map_display: mapDisplay };
     });
     const query = serverMapQuery.trim();
@@ -193,25 +175,15 @@
   })();
 
   const toggleSidebar = () => {
-    isCollapsed = !isCollapsed;
-    document.documentElement.classList.toggle("sidebar-is-collapsed", isCollapsed);
-    localStorage.setItem("sidebar_collapsed", String(isCollapsed));
+    setSidebarCollapsed(!isCollapsed);
   };
 
   const toggleTheme = () => {
-    isDark = !isDark;
-    if (isDark) {
-      document.documentElement.setAttribute("data-theme", "dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.removeAttribute("data-theme");
-      localStorage.setItem("theme", "light");
-    }
+    setTheme(isDark ? "light" : "dark");
   };
 
   const toggleViewMode = () => {
-    viewMode = viewMode === "grid" ? "list" : "grid";
-    localStorage.setItem("view_mode", viewMode);
+    setViewMode(viewMode === "grid" ? "list" : "grid");
   };
 
   const toggleSortByPlayers = () => {
@@ -225,12 +197,11 @@
     }
   };
 
-  const setLang = (lang: keyof typeof translations) => {
-    curLang = lang;
+  const setLang = (lang: string) => {
+    setUiLanguage(lang);
     showLangMenu = false;
-    localStorage.setItem("lang", lang);
     const url = new URL(window.location.href);
-    if (lang === "zh-CN") {
+    if (lang === DEFAULT_UI_LANGUAGE) {
       url.searchParams.delete("lang");
     } else {
       url.searchParams.set("lang", lang);
@@ -251,30 +222,9 @@
   }
 
   onMount(() => {
-    const storedCollapsed = localStorage.getItem("sidebar_collapsed") === "true";
-    isCollapsed = storedCollapsed;
-    document.documentElement.classList.toggle("sidebar-is-collapsed", storedCollapsed);
-
-    const storedView = localStorage.getItem("view_mode") as "grid" | "list" | null;
-    if (storedView === "grid" || storedView === "list") {
-      viewMode = storedView;
-    }
-
-    const storedTheme = localStorage.getItem("theme");
-    if (storedTheme === "dark") {
-      isDark = true;
-    } else if (storedTheme === "light") {
-      isDark = false;
-    } else {
-      isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    }
-    if (isDark) document.documentElement.setAttribute("data-theme", "dark");
-
     const queryLang = new URLSearchParams(window.location.search).get("lang");
-    const storedLang = localStorage.getItem("lang");
-    const candidateLang = queryLang || storedLang;
-    if (candidateLang && candidateLang in translations) {
-      curLang = candidateLang as keyof typeof translations;
+    if (queryLang) {
+      setUiLanguage(queryLang);
     }
 
     handleResize();
@@ -288,6 +238,41 @@
       stopServersPoller();
     };
   });
+
+  $: {
+    if (isCollapsed) {
+      document.documentElement.classList.add("sidebar-is-collapsed");
+    } else {
+      document.documentElement.classList.remove("sidebar-is-collapsed");
+    }
+  }
+
+  $: {
+    if (isDark) {
+      document.documentElement.setAttribute("data-theme", "dark");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+  }
+
+  let serversSourceInput = "";
+  let serversSourceDirty = false;
+  let normalizedServersSource = normalizeServersSource($appSettings.servers_source);
+  $: if (!serversSourceDirty) {
+    serversSourceInput = $appSettings.servers_source;
+  }
+  $: normalizedServersSource = normalizeServersSource(serversSourceInput);
+
+  const saveServersSource = async () => {
+    setServersSource(serversSourceInput);
+    serversSourceDirty = false;
+    await refreshServersNow();
+  };
+
+  const handleLanguageChange = (event: Event) => {
+    const target = event.currentTarget as HTMLSelectElement;
+    setLang(target.value);
+  };
 </script>
 
 <div
@@ -357,6 +342,19 @@
           <div class="tooltip">{t("edit_order")}</div>
         {/if}
       </div>
+      <div
+        class="nav-item"
+        class:active={curView === "settings"}
+        on:click={() => (curView = "settings")}
+      >
+        <div class="icon-svg">{@html ICONS.settings}</div>
+        {#if !isCollapsed}
+          <span>{t("settings")}</span>
+        {/if}
+        {#if isCollapsed}
+          <div class="tooltip">{t("settings")}</div>
+        {/if}
+      </div>
     </div>
   </div>
 
@@ -379,6 +377,9 @@
           {/if}
           {#if curView === "feedback"}
             <h1>{t("feedback")}</h1>
+          {/if}
+          {#if curView === "settings"}
+            <h1>{t("settings")}</h1>
           {/if}
         </div>
       </div>
@@ -413,16 +414,15 @@
               <div class="icon-svg">{@html ICONS.lang}</div>
             </button>
             <div class="dropdown-menu" class:show={showLangMenu} on:click|stopPropagation>
-              <div
-                class="dropdown-item"
-                class:active={curLang.startsWith("zh")}
-                on:click={() => setLang("zh-CN")}
-              >
-                中文
-              </div>
-              <div class="dropdown-item" class:active={curLang === "en"} on:click={() => setLang("en")}>
-                English
-              </div>
+              {#each getAvailableLanguages() as langKey}
+                <div
+                  class="dropdown-item"
+                  class:active={curLang === langKey}
+                  on:click={() => setLang(langKey)}
+                >
+                  {getLanguageLabel(langKey)}
+                </div>
+              {/each}
             </div>
           </div>
           <button class="control-btn" type="button" on:click={toggleTheme}>
@@ -593,6 +593,46 @@
         <div class="login-required">
           <strong>{t("feedback")}</strong>
           <div>{t("not_implemented")}</div>
+        </div>
+      {:else if curView === "settings"}
+        <div class="settings-panel animate-enter">
+          <div class="settings-card">
+            <div class="settings-field">
+              <label class="settings-label" for="servers-source">{t("settings_server_source")}</label>
+              <input
+                id="servers-source"
+                class="settings-input"
+                type="text"
+                bind:value={serversSourceInput}
+                on:input={() => (serversSourceDirty = true)}
+                placeholder={t("settings_server_source_ph")}
+              />
+              <div class="settings-hint">
+                {t("settings_normalized")} {normalizedServersSource}
+              </div>
+              <div class="settings-actions">
+                <button class="btn btn-primary" type="button" on:click={saveServersSource}>
+                  {t("settings_save")}
+                </button>
+              </div>
+            </div>
+
+            <div class="settings-field">
+              <label class="settings-label" for="ui-language">{t("settings_ui_language")}</label>
+              <select
+                id="ui-language"
+                class="settings-select"
+                value={curLang}
+                on:change={handleLanguageChange}
+              >
+                {#each getAvailableLanguages() as langKey}
+                  <option value={langKey}>{getLanguageLabel(langKey)}</option>
+                {/each}
+              </select>
+            </div>
+
+            <div class="settings-note">{t("feedback")} {t("not_implemented")}</div>
+          </div>
         </div>
       {:else if curView === "map_sub"}
         <div class="login-required">
