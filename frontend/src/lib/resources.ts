@@ -1,5 +1,5 @@
 import { get } from "svelte/store";
-import { communities, languagePack, mapTranslations, resourceOffline } from "./stores";
+import { communities, configMeta, languagePack, mapTranslations, resourceOffline } from "./stores";
 
 export type CommunityMeta = {
   id: string;
@@ -14,7 +14,7 @@ export type LanguagePack = Record<string, Record<string, string>>;
 export type MapTranslationEntry = { zh_cn: string; zh_tw: string };
 export type MapTranslations = Record<string, MapTranslationEntry>;
 
-type ResourceName = "config" | "language" | "map_translations";
+type ResourceName = "config" | "map_translations";
 
 type CacheEntry<T> = {
   etag: string | null;
@@ -25,6 +25,15 @@ type StorageDriver = {
   read: <T>(key: string) => Promise<CacheEntry<T> | null>;
   write: <T>(key: string, entry: CacheEntry<T>) => Promise<void>;
 };
+
+type ConfigPayload = {
+  communities: CommunityMeta[];
+  languageUrl?: string | null;
+};
+
+const DEFAULT_LANGUAGE_URL = "https://www.cs2ze.org/language.json";
+const LANGUAGE_CACHE_KEY = "language_json_cache";
+const LANGUAGE_ETAG_KEY = "language_json_etag";
 
 const RESOURCE_SPECS: Record<
   ResourceName,
@@ -37,24 +46,30 @@ const RESOURCE_SPECS: Record<
   config: {
     url: "/config.json",
     normalize: (data) => {
-      if (Array.isArray(data)) return data;
-      if (data && typeof data === "object" && Array.isArray((data as { communities?: unknown }).communities)) {
-        return (data as { communities: unknown[] }).communities;
+      if (Array.isArray(data)) {
+        return { communities: data as CommunityMeta[], languageUrl: null } satisfies ConfigPayload;
       }
-      return [];
+      if (data && typeof data === "object") {
+        const raw = data as {
+          communities?: unknown;
+          language_url?: unknown;
+          languageUrl?: unknown;
+        };
+        const communities = Array.isArray(raw.communities) ? (raw.communities as CommunityMeta[]) : [];
+        const languageUrl =
+          typeof raw.language_url === "string"
+            ? raw.language_url
+            : typeof raw.languageUrl === "string"
+              ? raw.languageUrl
+              : null;
+        return { communities, languageUrl } satisfies ConfigPayload;
+      }
+      return { communities: [], languageUrl: null } satisfies ConfigPayload;
     },
     apply: (data) => {
-      communities.set((data as CommunityMeta[]) ?? []);
-    }
-  },
-  language: {
-    url: "/language.json",
-    normalize: (data) => {
-      if (data && typeof data === "object") return data;
-      return {};
-    },
-    apply: (data) => {
-      languagePack.set((data as LanguagePack) ?? {});
+      const payload = data as ConfigPayload;
+      communities.set(payload.communities ?? []);
+      configMeta.set({ languageUrl: payload.languageUrl ?? null });
     }
   },
   map_translations: {
@@ -71,7 +86,7 @@ const storagePrefix = "cs2ze:";
 
 let storagePromise: Promise<StorageDriver> | null = null;
 const inMemoryEtag: Partial<Record<ResourceName, string | null>> = {};
-const inMemorySerialized: Partial<Record<ResourceName, string>> = {};
+const inMemorySerialized: Partial<Record<ResourceName | "language", string>> = {};
 
 const normalizeTranslations = (data: unknown): MapTranslations => {
   if (!data || typeof data !== "object") return {};
@@ -132,6 +147,57 @@ const applyIfChanged = (name: ResourceName, data: unknown) => {
   RESOURCE_SPECS[name].apply(data);
 };
 
+const resolveLanguageUrl = () => {
+  const candidate = get(configMeta)?.languageUrl;
+  if (candidate && candidate.trim()) {
+    if (candidate.startsWith("http://") || candidate.startsWith("https://")) return candidate.trim();
+    if (candidate.startsWith("//")) return `https:${candidate.trim()}`;
+    if (candidate.startsWith("/")) return new URL(candidate.trim(), window.location.origin).href;
+    return new URL(candidate.trim(), window.location.origin).href;
+  }
+  return DEFAULT_LANGUAGE_URL;
+};
+
+const normalizeLanguagePack = (data: unknown) => {
+  if (data && typeof data === "object") return data as LanguagePack;
+  return {};
+};
+
+const applyLanguagePack = (data: unknown) => {
+  const normalized = normalizeLanguagePack(data);
+  const serialized = JSON.stringify(normalized ?? {});
+  if (inMemorySerialized.language === serialized) return;
+  inMemorySerialized.language = serialized;
+  languagePack.set(normalized);
+};
+
+const loadCachedLanguage = () => {
+  const raw = localStorage.getItem(LANGUAGE_CACHE_KEY);
+  if (!raw) return;
+  try {
+    const cached = JSON.parse(raw);
+    applyLanguagePack(cached);
+  } catch {
+    // ignore malformed cache
+  }
+};
+
+const refreshLanguage = async () => {
+  const headers: Record<string, string> = {};
+  const cachedEtag = localStorage.getItem(LANGUAGE_ETAG_KEY);
+  if (cachedEtag) headers["If-None-Match"] = cachedEtag;
+  const url = resolveLanguageUrl();
+  const res = await fetch(url, { headers });
+  if (res.status === 304) return;
+  if (!res.ok) throw new Error(`Failed language: ${res.status}`);
+  const etag = res.headers.get("ETag") || res.headers.get("etag");
+  const payload = await res.json();
+  const normalized = normalizeLanguagePack(payload);
+  applyLanguagePack(normalized);
+  localStorage.setItem(LANGUAGE_CACHE_KEY, JSON.stringify(normalized));
+  if (etag) localStorage.setItem(LANGUAGE_ETAG_KEY, etag);
+};
+
 const loadCachedResource = async (name: ResourceName) => {
   const storage = await getStorageDriver();
   const cached = await storage.read<unknown>(cacheKey(name));
@@ -162,14 +228,20 @@ const refreshResource = async (name: ResourceName) => {
 export const loadStaticResources = async () => {
   resourceOffline.set(false);
   await Promise.all(Object.keys(RESOURCE_SPECS).map((name) => loadCachedResource(name as ResourceName)));
-  const refreshes = Object.keys(RESOURCE_SPECS).map((name) =>
-    refreshResource(name as ResourceName).catch(() => {
-      const hasCache =
-        !!get(languagePack) ||
-        Object.keys(get(mapTranslations)).length > 0 ||
-        (get(communities) || []).length > 0;
-      if (hasCache) resourceOffline.set(true);
-    })
-  );
+  loadCachedLanguage();
+
+  const markOfflineIfCached = () => {
+    const hasCache =
+      !!get(languagePack) ||
+      Object.keys(get(mapTranslations)).length > 0 ||
+      (get(communities) || []).length > 0;
+    if (hasCache) resourceOffline.set(true);
+  };
+
+  await refreshResource("config").catch(markOfflineIfCached);
+  const refreshes = [
+    refreshResource("map_translations").catch(markOfflineIfCached),
+    refreshLanguage().catch(markOfflineIfCached)
+  ];
   await Promise.all(refreshes);
 };

@@ -239,6 +239,15 @@
         .login-required { padding: 24px; border-radius: var(--radius); border: 1px dashed var(--card-border); background: var(--card-bg); text-align: center; color: var(--text-secondary); }
         .login-required strong { color: var(--text-primary); }
 
+        .settings-panel { display: flex; justify-content: center; width: 100%; }
+        .settings-card { width: min(720px, 100%); background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 20px; }
+        .settings-field { display: flex; flex-direction: column; gap: 10px; }
+        .settings-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .settings-input, .settings-select { border: 1px solid var(--card-border); border-radius: 10px; padding: 10px 12px; font-size: 14px; font-family: inherit; background: var(--bg-color); color: var(--text-primary); }
+        .settings-hint { font-size: 12px; color: var(--text-secondary); }
+        .settings-actions { display: flex; justify-content: flex-start; }
+        .settings-note { font-size: 12px; color: var(--text-secondary); }
+
         .feedback-panel { max-width: 720px; margin: 0 auto; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 16px; }
         .feedback-panel h3 { margin: 0; font-size: 18px; }
         .feedback-panel p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
