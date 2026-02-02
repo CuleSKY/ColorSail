@@ -1,5 +1,5 @@
 import { mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import { appDataDir, join } from "@tauri-apps/plugin-path";
+import { appDataDir, join } from "@tauri-apps/api/path";
 
 type CacheEntry<T> = {
   etag: string | null;

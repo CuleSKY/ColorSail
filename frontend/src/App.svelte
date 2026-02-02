@@ -6,8 +6,16 @@
     filterCommunitiesBySearch,
     getMapTranslationEntry,
     matchesServerSearch,
+    normalizeSearchText,
     sortServers
   } from "./lib/selectors";
+  import {
+    loadMapSubscriptions,
+    removeMapSubscription,
+    saveMapSubscriptions,
+    upsertMapSubscription,
+    type MapSubscription
+  } from "./lib/mapSubscriptions";
   import type { ServerItem } from "./lib/types";
   import {
     communities as communitiesStore,
@@ -77,6 +85,13 @@
 
   let serverMapQueryInput = "";
   let serverMapQuery = "";
+  let mapSubs: MapSubscription[] = [];
+  let mapSearchInput = "";
+  let mapSearch = "";
+  let mapSearchResults: string[] = [];
+  let selectedMap = "";
+  let selectedComms: string[] = [];
+  let showConfirmModal = false;
 
   let communities: Community[] = [];
   let filteredCommunities: Community[] = [];
@@ -154,6 +169,21 @@
   };
 
   $: serverMapQuery = serverMapQueryInput;
+  $: mapSearch = mapSearchInput.trim();
+
+  $: mapSearchResults = (() => {
+    const maps = Object.keys($mapTranslationsStore ?? {});
+    if (!mapSearch) return maps.slice(0, 50);
+    const normalizedQuery = normalizeSearchText(mapSearch);
+    const filtered = maps.filter((mapName) => {
+      if (normalizeSearchText(mapName).includes(normalizedQuery)) return true;
+      const entry = getMapTranslationEntry(mapName, null, $mapTranslationsStore);
+      return [entry.zh_cn, entry.zh_tw].some((value) =>
+        normalizeSearchText(value || "").includes(normalizedQuery)
+      );
+    });
+    return filtered.filter((mapName) => normalizeSearchText(mapName) !== normalizedQuery);
+  })();
 
   $: filteredCommunities = filterCommunitiesBySearch(
     communities,
@@ -231,6 +261,7 @@
     window.addEventListener("resize", handleResize);
 
     loadStaticResources();
+    mapSubs = loadMapSubscriptions();
     startServersPoller();
 
     return () => {
@@ -266,12 +297,64 @@
   const saveServersSource = async () => {
     setServersSource(serversSourceInput);
     serversSourceDirty = false;
+    await loadStaticResources();
     await refreshServersNow();
   };
 
   const handleLanguageChange = (event: Event) => {
     const target = event.currentTarget as HTMLSelectElement;
     setLang(target.value);
+  };
+
+  const selectMap = (mapName: string) => {
+    selectedMap = mapName;
+    selectedComms = [];
+    showConfirmModal = false;
+  };
+
+  const toggleComm = (commId: string) => {
+    if (commId === "all") {
+      selectedComms = ["all"];
+      return;
+    }
+    const next = new Set(selectedComms.filter((value) => value !== "all"));
+    if (next.has(commId)) {
+      next.delete(commId);
+    } else {
+      next.add(commId);
+    }
+    selectedComms = Array.from(next);
+  };
+
+  const openConfirmModal = () => {
+    if (!selectedMap || selectedComms.length === 0) return;
+    showConfirmModal = true;
+  };
+
+  const confirmSubscription = () => {
+    if (!selectedMap || selectedComms.length === 0) return;
+    mapSubs = upsertMapSubscription(mapSubs, selectedMap, selectedComms);
+    saveMapSubscriptions(mapSubs);
+    showConfirmModal = false;
+    selectedComms = [];
+    selectedMap = "";
+  };
+
+  const removeSubscription = (mapName: string) => {
+    mapSubs = removeMapSubscription(mapSubs, mapName);
+    saveMapSubscriptions(mapSubs);
+  };
+
+  const getMapLabel = (mapName: string) => {
+    const entry = getMapTranslationEntry(mapName, null, $mapTranslationsStore);
+    const trad = entry.zh_tw || entry.zh_cn;
+    return trad ? `${mapName} · ${trad}` : mapName;
+  };
+
+  const formatCommLabel = (commId: string) => {
+    if (commId === "all") return t("all");
+    const match = communities.find((comm) => comm.id === commId);
+    return match?.name ?? commId;
   };
 </script>
 
@@ -635,11 +718,117 @@
           </div>
         </div>
       {:else if curView === "map_sub"}
-        <div class="login-required">
-          <strong>{t("sub_menu")}</strong>
-          <div>{t("not_implemented")}</div>
+        <div class="settings-panel animate-enter">
+          <div class="settings-card">
+            <div class="settings-field">
+              <label class="settings-label" for="map-sub-search">{t("sub_menu")}</label>
+              <input
+                id="map-sub-search"
+                class="settings-input"
+                type="text"
+                bind:value={mapSearchInput}
+                placeholder={t("server_search_ph")}
+              />
+              <div class="subscription-results">
+                {#if mapSearch}
+                  <button class="sub-result-btn" type="button" on:click={() => selectMap(mapSearch)}>
+                    {mapSearch}
+                  </button>
+                {/if}
+                {#each mapSearchResults as mapName}
+                  <button class="sub-result-btn" type="button" on:click={() => selectMap(mapName)}>
+                    {getMapLabel(mapName)}
+                  </button>
+                {/each}
+              </div>
+            </div>
+
+            <div class="settings-field">
+              <label class="settings-label">{t("sub_menu")}</label>
+              <div class="subscription-selected">
+                {#if selectedMap}
+                  <strong>{getMapLabel(selectedMap)}</strong>
+                {:else}
+                  <span>{t("server_search_empty").replace("{map}", mapSearch || "...")}</span>
+                {/if}
+              </div>
+              <div class="subscription-comms">
+                <label class="subscription-comm">
+                  <input
+                    type="checkbox"
+                    checked={selectedComms.includes("all")}
+                    on:change={() => toggleComm("all")}
+                  />
+                  <span>{t("all")}</span>
+                </label>
+                {#each communities as comm}
+                  <label class="subscription-comm">
+                    <input
+                      type="checkbox"
+                      checked={selectedComms.includes(comm.id)}
+                      on:change={() => toggleComm(comm.id)}
+                    />
+                    <span>{comm.name}</span>
+                  </label>
+                {/each}
+              </div>
+              <div class="settings-actions">
+                <button
+                  class="btn btn-primary"
+                  type="button"
+                  disabled={!selectedMap || selectedComms.length === 0}
+                  on:click={openConfirmModal}
+                >
+                  {t("settings_save")}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-field">
+              <label class="settings-label">{t("sub_menu")}</label>
+              {#if mapSubs.length === 0}
+                <div class="settings-note">{t("not_implemented")}</div>
+              {:else}
+                <div class="subscription-list">
+                  {#each mapSubs as sub}
+                    <div class="subscription-item">
+                      <div>
+                        <div class="subscription-map">{getMapLabel(sub.map)}</div>
+                        <div class="subscription-comms-list">
+                          {sub.comms.map(formatCommLabel).join(", ")}
+                        </div>
+                      </div>
+                      <button class="btn btn-sec" type="button" on:click={() => removeSubscription(sub.map)}>
+                        {t("remove")}
+                      </button>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+          </div>
         </div>
       {/if}
     </div>
   </div>
 </div>
+
+{#if showConfirmModal}
+  <div class="modal-backdrop" on:click={() => (showConfirmModal = false)}>
+    <div class="modal-card" on:click|stopPropagation>
+      <h3>{t("sub_menu")}</h3>
+      <p>{getMapLabel(selectedMap)}</p>
+      <p>{selectedComms.map(formatCommLabel).join(", ")}</p>
+      <div class="modal-actions">
+        <button class="btn btn-sec" type="button" on:click={() => (showConfirmModal = false)}>
+          {t("cancel")}
+        </button>
+        <button class="btn btn-primary" type="button" on:click={confirmSubscription}>
+          {t("settings_save")}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
