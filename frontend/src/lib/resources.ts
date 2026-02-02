@@ -99,33 +99,9 @@ const getStorageDriver = async (): Promise<StorageDriver> => {
       typeof window !== "undefined" && typeof (window as { __TAURI__?: unknown }).__TAURI__ !== "undefined";
     if (hasTauri) {
       try {
-        const path = await import("@tauri-apps/api/path");
-        const fs = await import("@tauri-apps/api/fs");
-        const appDir = await path.appDataDir();
-        const baseDir = await path.join(appDir, "resources");
-        const ensureDir = async () => {
-          try {
-            await fs.mkdir(baseDir, { recursive: true });
-          } catch {
-            // ignore
-          }
-        };
-        await ensureDir();
-        return {
-          read: async <T>(key: string) => {
-            try {
-              const filePath = await path.join(baseDir, `${key}.json`);
-              const raw = await fs.readTextFile(filePath);
-              return JSON.parse(raw) as CacheEntry<T>;
-            } catch {
-              return null;
-            }
-          },
-          write: async <T>(key: string, entry: CacheEntry<T>) => {
-            const filePath = await path.join(baseDir, `${key}.json`);
-            await fs.writeTextFile(filePath, JSON.stringify(entry));
-          }
-        };
+        const tauriModuleUrl = new URL("./resources.tauri", import.meta.url).href;
+        const { createTauriStorageDriver } = await import(/* @vite-ignore */ tauriModuleUrl);
+        return await createTauriStorageDriver();
       } catch {
         // fall through to localStorage
       }
