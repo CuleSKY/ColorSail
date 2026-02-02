@@ -1,4 +1,5 @@
 import { writable } from "svelte/store";
+import { DEFAULT_BASE_URL, normalizeBaseUrl } from "./url";
 
 export type ViewMode = "grid" | "list";
 export type ThemeMode = "light" | "dark";
@@ -11,7 +12,6 @@ export type AppSettings = {
   theme: ThemeMode;
 };
 
-export const DEFAULT_SERVERS_SOURCE = "https://www.cs2ze.org/servers.json";
 export const DEFAULT_UI_LANGUAGE = "zh-CN";
 
 const readBoolean = (key: string, fallback: boolean) => {
@@ -48,7 +48,7 @@ const readUiLanguage = () => {
 };
 
 const initialSettings: AppSettings = {
-  servers_source: readString("servers_source", DEFAULT_SERVERS_SOURCE),
+  servers_source: normalizeBaseUrl(readString("servers_source", DEFAULT_BASE_URL)),
   ui_language: readUiLanguage(),
   sidebar_collapsed: readBoolean("sidebar_collapsed", false),
   view_mode: readViewMode(),
@@ -83,8 +83,8 @@ const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K
 };
 
 export const setServersSource = (value: string) => {
-  const trimmed = value.trim();
-  updateSetting("servers_source", trimmed || DEFAULT_SERVERS_SOURCE);
+  const normalized = normalizeBaseUrl(value);
+  updateSetting("servers_source", normalized);
 };
 
 export const setUiLanguage = (value: string) => {

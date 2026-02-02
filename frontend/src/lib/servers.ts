@@ -1,8 +1,10 @@
 import { get } from "svelte/store";
 import { communities, serverLoadError, serversByCommunity } from "./stores";
-import { appSettings, DEFAULT_SERVERS_SOURCE } from "./settingsStore";
+import { appSettings } from "./settingsStore";
 import type { CommunityMeta } from "./resources";
 import type { ServerItem } from "./types";
+import { fetchWithAdapter } from "./http";
+import { buildServersUrl, normalizeBaseUrl } from "./url";
 
 type ServerCacheEntry = ServerItem & { _lastSeen: number };
 
@@ -14,36 +16,16 @@ const STALE_MS = 60000;
 let refreshEtag: string | null = null;
 let refreshInFlight = false;
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-let currentServersUrl = DEFAULT_SERVERS_SOURCE;
+let currentBaseUrl = normalizeBaseUrl(get(appSettings).servers_source);
 
 const serverCache: Record<string, Record<string, ServerCacheEntry>> = {};
 
-export const normalizeServersSource = (input: string): string => {
-  const trimmed = (input ?? "").trim();
-  if (!trimmed) return DEFAULT_SERVERS_SOURCE;
-  let url = trimmed;
-  if (url.startsWith("http://") || url.startsWith("https://")) {
-    // keep as-is
-  } else if (url.startsWith("//")) {
-    url = `https:${url}`;
-  } else {
-    url = `https://${url}`;
-  }
-  try {
-    const parsed = new URL(url);
-    if (!parsed.pathname || parsed.pathname === "/") {
-      parsed.pathname = "/servers.json";
-    }
-    return parsed.toString();
-  } catch {
-    return DEFAULT_SERVERS_SOURCE;
-  }
-};
+export const normalizeServersSource = (input: string): string => normalizeBaseUrl(input);
 
-const syncServersUrl = (raw: string) => {
-  const normalized = normalizeServersSource(raw);
-  if (normalized === currentServersUrl) return false;
-  currentServersUrl = normalized;
+const syncBaseUrl = (raw: string) => {
+  const normalized = normalizeBaseUrl(raw);
+  if (normalized === currentBaseUrl) return false;
+  currentBaseUrl = normalized;
   refreshEtag = null;
   return true;
 };
@@ -122,7 +104,8 @@ const refreshServers = async () => {
   try {
     const headers: Record<string, string> = {};
     if (refreshEtag) headers["If-None-Match"] = refreshEtag;
-    const res = await fetch(currentServersUrl, { headers });
+    const serversUrl = buildServersUrl(currentBaseUrl);
+    const res = await fetchWithAdapter(serversUrl, { headers }, currentBaseUrl);
     if (res.status === 304) {
       serverLoadError.set(false);
       return;
@@ -161,7 +144,7 @@ const scheduleNext = () => {
 
 export const startServersPoller = () => {
   if (refreshTimer) return;
-  syncServersUrl(get(appSettings).servers_source);
+  syncBaseUrl(get(appSettings).servers_source);
   refreshServers().finally(() => {
     scheduleNext();
   });
@@ -182,7 +165,7 @@ export const refreshServersNow = async () => {
 };
 
 appSettings.subscribe((settings) => {
-  if (syncServersUrl(settings.servers_source)) {
+  if (syncBaseUrl(settings.servers_source)) {
     refreshServersNow().catch(() => {
       // refresh handles errors internally
     });
