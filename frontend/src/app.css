@@ -239,7 +239,7 @@
         .login-required { padding: 24px; border-radius: var(--radius); border: 1px dashed var(--card-border); background: var(--card-bg); text-align: center; color: var(--text-secondary); }
         .login-required strong { color: var(--text-primary); }
 
-        .settings-panel { display: flex; justify-content: center; width: 100%; }
+        .settings-panel { display: flex; flex-direction: column; align-items: center; gap: 20px; justify-content: center; width: 100%; }
         .settings-card { width: min(720px, 100%); background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 20px; }
         .settings-field { display: flex; flex-direction: column; gap: 10px; }
         .settings-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
@@ -247,6 +247,24 @@
         .settings-hint { font-size: 12px; color: var(--text-secondary); }
         .settings-actions { display: flex; justify-content: flex-start; }
         .settings-note { font-size: 12px; color: var(--text-secondary); }
+
+        .subscription-results { display: flex; flex-wrap: wrap; gap: 8px; }
+        .sub-result-btn { border: 1px solid var(--card-border); background: var(--bg-color); border-radius: 999px; padding: 6px 12px; font-size: 12px; color: var(--text-primary); cursor: pointer; }
+        .sub-result-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .subscription-selected { padding: 8px 12px; border-radius: 10px; border: 1px dashed var(--card-border); background: var(--bg-color); font-size: 13px; color: var(--text-secondary); }
+        .subscription-selected strong { color: var(--text-primary); }
+        .subscription-comms { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+        .subscription-comm { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-primary); }
+        .subscription-list { display: flex; flex-direction: column; gap: 12px; }
+        .subscription-item { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--bg-color); }
+        .subscription-map { font-weight: 600; font-size: 14px; color: var(--text-primary); }
+        .subscription-comms-list { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        .modal-card { width: min(420px, 90vw); background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 24px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 12px; }
+        .modal-card h3 { margin: 0; font-size: 18px; }
+        .modal-card p { margin: 0; font-size: 13px; color: var(--text-secondary); }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
 
         .feedback-panel { max-width: 720px; margin: 0 auto; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 16px; }
         .feedback-panel h3 { margin: 0; font-size: 18px; }
