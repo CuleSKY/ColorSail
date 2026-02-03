@@ -69,6 +69,50 @@ app.secret_key = SECRET_KEY
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 sock = Sock(app)
 
+VITE_MANIFEST_PATH = os.path.join(app.static_folder, 'assets', 'manifest.json')
+_vite_manifest_cache = None
+_vite_manifest_mtime = 0.0
+
+
+def _load_vite_manifest():
+    global _vite_manifest_cache, _vite_manifest_mtime
+    if not os.path.exists(VITE_MANIFEST_PATH):
+        return None
+    mtime = os.path.getmtime(VITE_MANIFEST_PATH)
+    if _vite_manifest_cache is None or mtime != _vite_manifest_mtime:
+        with open(VITE_MANIFEST_PATH, 'r', encoding='utf-8') as handle:
+            _vite_manifest_cache = json.load(handle)
+        _vite_manifest_mtime = mtime
+    return _vite_manifest_cache
+
+
+def vite_manifest(entry='index.html'):
+    dev_server = os.environ.get('VITE_DEV_SERVER')
+    if dev_server and app.debug:
+        dev_server = dev_server.rstrip('/')
+        dev_entry = 'src/main.ts' if entry.endswith('.html') else entry
+        return {
+            'js': f"{dev_server}/{dev_entry}",
+            'css': []
+        }
+    manifest = _load_vite_manifest()
+    if not manifest:
+        raise RuntimeError(
+            "Vite manifest not found. Run `cd frontend && npm run build` or set VITE_DEV_SERVER for dev."
+        )
+    if entry not in manifest:
+        raise KeyError(f"Vite manifest entry missing: {entry}")
+    chunk = manifest[entry]
+    js_path = f"/static/assets/{chunk['file']}"
+    css_paths = [f"/static/assets/{css}" for css in chunk.get('css', [])]
+    return {
+        'js': js_path,
+        'css': css_paths
+    }
+
+
+app.jinja_env.globals['vite_manifest'] = vite_manifest
+
 #SEO优化
 SEO_DATA = {
     'zh-CN': {

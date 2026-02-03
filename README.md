@@ -60,6 +60,27 @@ server {
 }
 ```
 
+## Frontend (Vite + Vue)
+
+Install and run the dev server:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Build production assets (Flask serves `/static`):
+
+```bash
+cd frontend
+npm run build
+```
+
+Caching guidance:
+- `/static/assets/*` should be cached long-term (immutable).
+- `/` or `/index.html` should be short-cache or no-cache so templates refresh promptly.
+
 ## Required environment variables
 
 - `CS2ZE_BASE_URL` (optional, default `http://localhost:5000`)
