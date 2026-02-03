@@ -218,7 +218,12 @@ if cookie_domain_env:
 REDIS_URL = os.environ.get('REDIS_URL', '').strip()
 if REDIS_URL:
     app.config['SESSION_TYPE'] = 'redis'
-    app.config['SESSION_REDIS'] = Redis.from_url(REDIS_URL)
+    redis_client = Redis.from_url(REDIS_URL)
+    try:
+        redis_client.ping()
+    except Exception as e:
+        raise RuntimeError(f"Redis session backend unavailable: {e}")
+    app.config['SESSION_REDIS'] = redis_client
 else:
     app.config['SESSION_TYPE'] = 'filesystem'
     session_dir = os.environ.get('SESSION_FILE_DIR', os.path.join(os.getcwd(), 'session_files'))
