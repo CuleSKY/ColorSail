@@ -18,6 +18,8 @@ from urllib.parse import urlencode
 from datetime import datetime
 from datetime import timedelta
 from flask import Flask, render_template, jsonify, request, redirect, session, url_for, make_response, abort
+from flask_session import Session
+from redis import Redis
 from flask_sock import Sock
 from werkzeug.middleware.proxy_fix import ProxyFix
 import a2s
@@ -60,7 +62,10 @@ if not os.path.isdir(STATIC_DIR) and os.path.isdir('Static'):
     STATIC_DIR = 'Static'
 
 app = Flask(__name__, static_folder=STATIC_DIR)
-app.secret_key = os.environ.get('APP_SECRET_KEY') or os.environ.get('SECRET_KEY') or 'change-me'
+SECRET_KEY = os.environ.get('APP_SECRET_KEY') or os.environ.get('SECRET_KEY')
+if not SECRET_KEY or SECRET_KEY == 'change-me':
+    raise RuntimeError("APP_SECRET_KEY/SECRET_KEY must be set to a fixed non-default value.")
+app.secret_key = SECRET_KEY
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 sock = Sock(app)
 
@@ -93,6 +98,9 @@ PRIME_USERS_FILE = 'prime_users.json'
 PRIME_AUDIT_FILE = 'prime_audit.log'
 ADMIN_HOSTNAME = "admin.cs2ze.org"
 PUBLIC_HOSTNAMES = {"www.cs2ze.org", "cs2ze.org"}
+CANONICAL_HOST = os.environ.get('CANONICAL_HOST', 'www.cs2ze.org').strip().lower()
+CANONICAL_SCHEME = os.environ.get('CANONICAL_SCHEME', 'https').strip().lower()
+CANONICAL_ORIGIN = f"{CANONICAL_SCHEME}://{CANONICAL_HOST}"
 
 # EXG API 地址
 EXG_API_URL = "https://list.darkrp.cn:9000/ServerList/CurrentStatus"
@@ -190,8 +198,40 @@ STEAM_PROFILE_CACHE_TTL_SECONDS = 10 * 60
 
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_REQUEST_BYTES', 2 * 1024 * 1024))
-app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
-app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', '').lower() in ('1', 'true', 'yes')
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_PATH'] = '/'
+app.config['SESSION_REFRESH_EACH_REQUEST'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=int(os.environ.get('SESSION_LIFETIME_DAYS', '30')))
+app.config['SESSION_COOKIE_MAX_AGE'] = int(app.config['PERMANENT_SESSION_LIFETIME'].total_seconds())
+
+cookie_domain_env = os.environ.get('SESSION_COOKIE_DOMAIN')
+if cookie_domain_env:
+    cookie_domain_env = cookie_domain_env.strip()
+    if cookie_domain_env == '.cs2ze.org':
+        allow_cross = os.environ.get('SESSION_COOKIE_DOMAIN_ALLOW_CROSS_SUBDOMAIN', '').lower() in ('1', 'true', 'yes')
+        if not allow_cross:
+            raise RuntimeError("SESSION_COOKIE_DOMAIN=.cs2ze.org is not allowed without explicit opt-in.")
+    app.config['SESSION_COOKIE_DOMAIN'] = cookie_domain_env
+
+REDIS_URL = os.environ.get('REDIS_URL', '').strip()
+if REDIS_URL:
+    app.config['SESSION_TYPE'] = 'redis'
+    redis_client = Redis.from_url(REDIS_URL)
+    try:
+        redis_client.ping()
+    except Exception as e:
+        raise RuntimeError(f"Redis session backend unavailable: {e}")
+    app.config['SESSION_REDIS'] = redis_client
+else:
+    app.config['SESSION_TYPE'] = 'filesystem'
+    session_dir = os.environ.get('SESSION_FILE_DIR', os.path.join(os.getcwd(), 'session_files'))
+    os.makedirs(session_dir, exist_ok=True)
+    app.config['SESSION_FILE_DIR'] = session_dir
+app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_PERMANENT'] = True
+Session(app)
 
 AGENT_ALLOWED_CIDRS = [cidr.strip() for cidr in os.environ.get('AGENT_ALLOWED_CIDRS', '').split(',') if cidr.strip()]
 AGENT_TRUSTED_PROXIES = [cidr.strip() for cidr in os.environ.get('AGENT_TRUSTED_PROXIES', '').split(',') if cidr.strip()]
@@ -362,6 +402,22 @@ def is_admin_host():
 def is_public_host():
     return normalize_host(get_request_host()) in PUBLIC_HOSTNAMES
 
+@app.before_request
+def enforce_canonical_host():
+    if session.get('steam_logged_in'):
+        session.permanent = True
+    if is_admin_host():
+        return None
+    host = normalize_host(get_request_host())
+    if host and host in PUBLIC_HOSTNAMES and CANONICAL_HOST and host != CANONICAL_HOST:
+        scheme = request.headers.get('X-Forwarded-Proto', request.scheme)
+        target = f"{scheme}://{CANONICAL_HOST}{request.path}"
+        qs = request.query_string.decode()
+        if qs:
+            target = f"{target}?{qs}"
+        return redirect(target, code=301)
+    return None
+
 def require_admin():
     if is_admin_host():
         return None
@@ -388,6 +444,14 @@ def validate_steam64(value):
 def make_fast_join_url(game, ip, port):
     appid = 730 if str(game).lower() == 'cs2' else 240
     return f"steam://rungameid/{appid}//+connect%20{ip}:{port}"
+
+def require_valid_origin():
+    origin = request.headers.get('Origin', '')
+    if not origin:
+        return make_response("Forbidden", 403)
+    if origin != CANONICAL_ORIGIN:
+        return make_response("Forbidden", 403)
+    return None
 
 def log_prime_audit(action, admin_id, target_id, result, reason):
     ts = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -782,6 +846,19 @@ def set_no_store(response):
     response.headers['Vary'] = 'Cookie'
     return response
 
+def build_embed_csp():
+    return (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' data:; "
+        "connect-src 'self'; "
+        "frame-ancestors https://www.cs2ze.org; "
+        "object-src 'none'; "
+        "base-uri 'self'"
+    )
+
 def build_steam_openid_url():
     state = secrets.token_urlsafe(24)
     session['steam_login_state'] = state
@@ -880,7 +957,9 @@ def render_steam_callback(status, reason, steam_id=None):
 </body>
 </html>"""
     resp = make_response(html)
-    return set_no_store(resp)
+    resp = set_no_store(resp)
+    resp.headers['X-CS2ZE-Auth-Bypass'] = 'steam-callback'
+    return resp
 
 def fetch_steam_profile(steam_id):
     if not steam_id:
@@ -1647,13 +1726,47 @@ def index():
                            initial_config=initial_config, 
                            server_cache={},
                            seo_info=seo_info,      # 新增SEO
-                           current_lang=render_lang # 新增語言渲染
+                           current_lang=render_lang, # 新增語言渲染
+                           embed_mode=False
                            )
+
+@app.route('/embed/servers')
+def embed_servers():
+    url_lang = request.args.get('lang')
+    render_lang = url_lang if url_lang else 'zh-CN'
+
+    if render_lang.startswith('en'):
+        render_lang = 'en'
+    elif 'TW' in render_lang or 'HK' in render_lang:
+        render_lang = 'zh-TW'
+    else:
+        render_lang = 'zh-CN'
+
+    seo_info = SEO_DATA.get(render_lang, SEO_DATA['zh-CN'])
+    snapshot = get_config_snapshot()
+    initial_config = [dict(comm) for comm in snapshot['community_meta']]
+    for comm in initial_config:
+        comm['servers'] = []
+
+    resp = make_response(render_template(
+        'index.html',
+        initial_view='servers',
+        initial_config=initial_config,
+        server_cache={},
+        seo_info=seo_info,
+        current_lang=render_lang,
+        embed_mode=True
+    ))
+    resp.headers['Content-Security-Policy'] = build_embed_csp()
+    resp.headers['X-Frame-Options'] = 'ALLOW-FROM https://www.cs2ze.org'
+    return resp
 
 @app.route('/api/steam/login')
 def steam_login():
     login_url = build_steam_openid_url()
-    return set_no_store(redirect(login_url))
+    resp = set_no_store(redirect(login_url))
+    resp.headers['X-CS2ZE-Auth-Bypass'] = 'steam-login'
+    return resp
 
 @app.route('/api/steam/callback')
 def steam_callback():
@@ -1694,6 +1807,7 @@ def steam_callback():
         
     session['steam_id'] = steam_id
     session['steam_logged_in'] = True
+    session.permanent = True
     ensure_csrf_token()
     
     # 清理 session
@@ -1702,7 +1816,6 @@ def steam_callback():
     
     print(f"[SteamDebug]  登录流程完成，已写入 Session: {steam_id}")
     print("-" * 30)
-    
     return render_steam_callback("ok", "authenticated", steam_id=steam_id)
 
 @app.route('/api/steam/status')
@@ -1748,8 +1861,34 @@ def auth_me():
         "profile": profile
     }))
 
+@app.route('/auth/debug/cookie')
+def auth_debug_cookie():
+    denied = require_admin()
+    if denied:
+        return denied
+    probe_value = secrets.token_urlsafe(16)
+    resp = make_json_response({
+        "ok": True,
+        "cookie_name": "cs2ze_cookie_probe",
+        "cookie_value": probe_value,
+        "note": "Inspect Set-Cookie presence through CDN layers."
+    })
+    resp.set_cookie(
+        "cs2ze_cookie_probe",
+        probe_value,
+        max_age=300,
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+        path="/"
+    )
+    return set_no_store(resp)
+
 @app.route('/api/autojoin/apply', methods=['POST'])
 def autojoin_apply():
+    origin_denied = require_valid_origin()
+    if origin_denied:
+        return origin_denied
     if not is_logged_in():
         return make_response("Unauthorized", 401)
     payload = request.get_json(silent=True) or {}
@@ -1764,6 +1903,9 @@ def autojoin_apply():
 
 @app.route('/api/steam/logout', methods=['POST'])
 def steam_logout():
+    origin_denied = require_valid_origin()
+    if origin_denied:
+        return origin_denied
     session.clear()
     resp = set_no_store(make_json_response({"logged_in": False}))
     cookie_domain = app.config.get('SESSION_COOKIE_DOMAIN')
@@ -2009,6 +2151,9 @@ if AUTOJOIN_AVAILABLE:
 
     @app.route('/api/autojoin/join', methods=['POST'])
     def autojoin_join():
+        origin_denied = require_valid_origin()
+        if origin_denied:
+            return origin_denied
         denied = require_prime()
         if denied:
             return denied
@@ -2023,6 +2168,9 @@ if AUTOJOIN_AVAILABLE:
 
     @app.route('/api/autojoin/report', methods=['POST'])
     def autojoin_report():
+        origin_denied = require_valid_origin()
+        if origin_denied:
+            return origin_denied
         denied = require_prime()
         if denied:
             return denied
@@ -2030,6 +2178,9 @@ if AUTOJOIN_AVAILABLE:
 
     @app.route('/api/autojoin/leave', methods=['POST'])
     def autojoin_leave():
+        origin_denied = require_valid_origin()
+        if origin_denied:
+            return origin_denied
         denied = require_prime()
         if denied:
             return denied
@@ -2184,6 +2335,14 @@ def set_cache_headers(response):
     path = request.path or ''
     if path.startswith('/static/'):
         response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+        return response
+    if (
+        path.startswith('/auth/')
+        or path.startswith('/api/steam/')
+        or path.startswith('/api/me')
+        or path.startswith('/logout')
+    ):
+        return set_no_store(response)
     return response
 
 @app.route('/sitemap.xml')
