@@ -13,6 +13,6 @@ const initialConfig = window.__SERVER_SOURCES__ ?? window.__INITIAL_CONFIG__ ?? 
 const pageContext = window.__PAGE_CONTEXT__ ?? {};
 
 const app = createApp(App, { initialConfig, pageContext });
-app.config.compilerOptions.delimiters = ['[[', ']]'];
+// Vite runtime-only build does not support custom template delimiters.
 app.mount('#app');
 window.dispatchEvent(new Event('app:mounted'));
