@@ -18,6 +18,7 @@ from urllib.parse import urlencode
 from datetime import datetime
 from datetime import timedelta
 from flask import Flask, render_template, jsonify, request, redirect, session, url_for, make_response, abort
+from jinja2 import TemplateNotFound
 from flask_session import Session
 from redis import Redis
 from flask_sock import Sock
@@ -112,6 +113,8 @@ def vite_manifest(entry='index.html'):
 
 
 app.jinja_env.globals['vite_manifest'] = vite_manifest
+
+FRAGMENT_CACHE_SECONDS = 86400
 
 #SEO优化
 SEO_DATA = {
@@ -1803,6 +1806,19 @@ def embed_servers():
     ))
     resp.headers['Content-Security-Policy'] = build_embed_csp()
     resp.headers['X-Frame-Options'] = 'ALLOW-FROM https://www.cs2ze.org'
+    return resp
+
+@app.route('/fragments/<path:name>')
+def fragment(name):
+    if '/' in name or '\\' in name:
+        abort(404)
+    if not re.match(r'^[\w.-]+\.html$', name):
+        abort(404)
+    try:
+        resp = make_response(render_template(f'fragments/{name}'))
+    except TemplateNotFound:
+        abort(404)
+    resp.headers['Cache-Control'] = f'public, max-age={FRAGMENT_CACHE_SECONDS}'
     return resp
 
 @app.route('/api/steam/login')
