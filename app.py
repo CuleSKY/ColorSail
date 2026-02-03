@@ -12,6 +12,8 @@ import hmac
 import ipaddress
 import secrets
 import re
+from flask import current_app, abort, make_response
+from pathlib import Path
 from collections import deque, OrderedDict
 from types import MappingProxyType
 from urllib.parse import urlencode
@@ -1808,17 +1810,23 @@ def embed_servers():
     resp.headers['X-Frame-Options'] = 'ALLOW-FROM https://www.cs2ze.org'
     return resp
 
-@app.route('/fragments/<path:name>')
-def fragment(name):
-    if '/' in name or '\\' in name:
+@app.get("/fragments/<path:name>")
+def fragment(name: str):
+    # 安全：只允许 fragments 目录下的 html
+    if not name.endswith(".html"):
         abort(404)
-    if not re.match(r'^[\w.-]+\.html$', name):
+    if ".." in name or name.startswith(("/", "\\")):
         abort(404)
-    try:
-        resp = make_response(render_template(f'fragments/{name}'))
-    except TemplateNotFound:
+
+    frag_path = Path(current_app.root_path) / "templates" / "fragments" / name
+    if not frag_path.is_file():
         abort(404)
-    resp.headers['Cache-Control'] = f'public, max-age={FRAGMENT_CACHE_SECONDS}'
+
+    html = frag_path.read_text(encoding="utf-8")
+
+    resp = make_response(html)
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
+    resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     return resp
 
 @app.route('/api/steam/login')
