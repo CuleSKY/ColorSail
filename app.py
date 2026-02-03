@@ -100,6 +100,7 @@ ADMIN_HOSTNAME = "admin.cs2ze.org"
 PUBLIC_HOSTNAMES = {"www.cs2ze.org", "cs2ze.org"}
 CANONICAL_HOST = os.environ.get('CANONICAL_HOST', 'www.cs2ze.org').strip().lower()
 CANONICAL_SCHEME = os.environ.get('CANONICAL_SCHEME', 'https').strip().lower()
+CANONICAL_ORIGIN = f"{CANONICAL_SCHEME}://{CANONICAL_HOST}"
 
 # EXG API 地址
 EXG_API_URL = "https://list.darkrp.cn:9000/ServerList/CurrentStatus"
@@ -197,21 +198,22 @@ STEAM_PROFILE_CACHE_TTL_SECONDS = 10 * 60
 
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_REQUEST_BYTES', 2 * 1024 * 1024))
-app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
-app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', '').lower() in ('1', 'true', 'yes')
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_PATH'] = '/'
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=int(os.environ.get('SESSION_LIFETIME_DAYS', '30')))
+app.config['SESSION_COOKIE_MAX_AGE'] = int(app.config['PERMANENT_SESSION_LIFETIME'].total_seconds())
 
-if CANONICAL_HOST and CANONICAL_HOST.endswith('cs2ze.org'):
-    default_cookie_domain = '.cs2ze.org'
-else:
-    default_cookie_domain = None
 cookie_domain_env = os.environ.get('SESSION_COOKIE_DOMAIN')
 if cookie_domain_env:
+    cookie_domain_env = cookie_domain_env.strip()
+    if cookie_domain_env == '.cs2ze.org':
+        allow_cross = os.environ.get('SESSION_COOKIE_DOMAIN_ALLOW_CROSS_SUBDOMAIN', '').lower() in ('1', 'true', 'yes')
+        if not allow_cross:
+            raise RuntimeError("SESSION_COOKIE_DOMAIN=.cs2ze.org is not allowed without explicit opt-in.")
     app.config['SESSION_COOKIE_DOMAIN'] = cookie_domain_env
-elif default_cookie_domain:
-    app.config['SESSION_COOKIE_DOMAIN'] = default_cookie_domain
 
 REDIS_URL = os.environ.get('REDIS_URL', '').strip()
 if REDIS_URL:
@@ -437,6 +439,14 @@ def validate_steam64(value):
 def make_fast_join_url(game, ip, port):
     appid = 730 if str(game).lower() == 'cs2' else 240
     return f"steam://rungameid/{appid}//+connect%20{ip}:{port}"
+
+def require_valid_origin():
+    origin = request.headers.get('Origin', '')
+    if not origin:
+        return make_response("Forbidden", 403)
+    if origin != CANONICAL_ORIGIN:
+        return make_response("Forbidden", 403)
+    return None
 
 def log_prime_audit(action, admin_id, target_id, result, reason):
     ts = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -942,7 +952,9 @@ def render_steam_callback(status, reason, steam_id=None):
 </body>
 </html>"""
     resp = make_response(html)
-    return set_no_store(resp)
+    resp = set_no_store(resp)
+    resp.headers['X-CS2ZE-Auth-Bypass'] = 'steam-callback'
+    return resp
 
 def fetch_steam_profile(steam_id):
     if not steam_id:
@@ -1747,7 +1759,9 @@ def embed_servers():
 @app.route('/api/steam/login')
 def steam_login():
     login_url = build_steam_openid_url()
-    return set_no_store(redirect(login_url))
+    resp = set_no_store(redirect(login_url))
+    resp.headers['X-CS2ZE-Auth-Bypass'] = 'steam-login'
+    return resp
 
 @app.route('/api/steam/callback')
 def steam_callback():
@@ -1797,7 +1811,6 @@ def steam_callback():
     
     print(f"[SteamDebug]  登录流程完成，已写入 Session: {steam_id}")
     print("-" * 30)
-    
     return render_steam_callback("ok", "authenticated", steam_id=steam_id)
 
 @app.route('/api/steam/status')
@@ -1843,8 +1856,34 @@ def auth_me():
         "profile": profile
     }))
 
+@app.route('/auth/debug/cookie')
+def auth_debug_cookie():
+    denied = require_admin()
+    if denied:
+        return denied
+    probe_value = secrets.token_urlsafe(16)
+    resp = make_json_response({
+        "ok": True,
+        "cookie_name": "cs2ze_cookie_probe",
+        "cookie_value": probe_value,
+        "note": "Inspect Set-Cookie presence through CDN layers."
+    })
+    resp.set_cookie(
+        "cs2ze_cookie_probe",
+        probe_value,
+        max_age=300,
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+        path="/"
+    )
+    return set_no_store(resp)
+
 @app.route('/api/autojoin/apply', methods=['POST'])
 def autojoin_apply():
+    origin_denied = require_valid_origin()
+    if origin_denied:
+        return origin_denied
     if not is_logged_in():
         return make_response("Unauthorized", 401)
     payload = request.get_json(silent=True) or {}
@@ -1859,6 +1898,9 @@ def autojoin_apply():
 
 @app.route('/api/steam/logout', methods=['POST'])
 def steam_logout():
+    origin_denied = require_valid_origin()
+    if origin_denied:
+        return origin_denied
     session.clear()
     resp = set_no_store(make_json_response({"logged_in": False}))
     cookie_domain = app.config.get('SESSION_COOKIE_DOMAIN')
@@ -2104,6 +2146,9 @@ if AUTOJOIN_AVAILABLE:
 
     @app.route('/api/autojoin/join', methods=['POST'])
     def autojoin_join():
+        origin_denied = require_valid_origin()
+        if origin_denied:
+            return origin_denied
         denied = require_prime()
         if denied:
             return denied
@@ -2118,6 +2163,9 @@ if AUTOJOIN_AVAILABLE:
 
     @app.route('/api/autojoin/report', methods=['POST'])
     def autojoin_report():
+        origin_denied = require_valid_origin()
+        if origin_denied:
+            return origin_denied
         denied = require_prime()
         if denied:
             return denied
@@ -2125,6 +2173,9 @@ if AUTOJOIN_AVAILABLE:
 
     @app.route('/api/autojoin/leave', methods=['POST'])
     def autojoin_leave():
+        origin_denied = require_valid_origin()
+        if origin_denied:
+            return origin_denied
         denied = require_prime()
         if denied:
             return denied
@@ -2279,6 +2330,14 @@ def set_cache_headers(response):
     path = request.path or ''
     if path.startswith('/static/'):
         response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+        return response
+    if (
+        path.startswith('/auth/')
+        or path.startswith('/api/steam/')
+        or path.startswith('/api/me')
+        or path.startswith('/logout')
+    ):
+        return set_no_store(response)
     return response
 
 @app.route('/sitemap.xml')
