@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="google-site-verification" content="XkKhhFgY9EELfEwJLhpwFPgm9RmCI5UiTjQyia5lFC4" />
+    {% if not embed_mode %}
     <link rel="preconnect" href="https://unpkg.com">
     <link rel="dns-prefetch" href="https://unpkg.com">
+    {% endif %}
     
     <title>{{ seo_info.title }}</title>
     <meta name="description" content="{{ seo_info.desc }}">
@@ -26,7 +28,11 @@
 
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="/static/nerv_logo.png?v=3">
+    {% if embed_mode %}
+    <script src="/static/vendor/vue.global.prod.js"></script>
+    {% else %}
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    {% endif %}
     <script>
         (function() {
             const collapsed = localStorage.getItem('sidebar_collapsed') === 'true';
@@ -102,6 +108,11 @@
         }
 
         #app { display: flex; width: 100%; height: 100%; }
+
+        body[data-embed-mode="true"] #app { display: block; }
+        body[data-embed-mode="true"] .content-wrapper { height: 100%; }
+        body[data-embed-mode="true"] #main-content { padding-top: 16px; }
+        html.embed-dense body[data-embed-mode="true"] #main-content { padding: 12px 16px 40px 16px; }
 
         * { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); }
         *::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -521,10 +532,11 @@
 }
     </style>
 </head>
-<body data-initial-view="{{ initial_view or 'servers' }}">
+<body data-initial-view="{{ initial_view or 'servers' }}" data-embed-mode="{{ 'true' if embed_mode else 'false' }}">
 
 <div id="app" :class="{ 'app-blurred': showLoginPrompt }" :style="isMobile ? {} : { display: 'flex', width: '100%', height: '100%' }" @click="closeDropdowns">
 
+    {% if not embed_mode %}
     <div class="login-overlay" v-if="showLoginPrompt">
         <div class="login-modal">
             <h3>[[ t('steam_prompt_title') ]]</h3>
@@ -538,7 +550,9 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
+    {% if not embed_mode %}
     <div id="sidebar" :class="{ collapsed: isCollapsed }" @click.stop>
         <button class="hamburger-btn" @click="toggleSidebar">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -608,8 +622,10 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <div class="content-wrapper">
+        {% if not embed_mode %}
         <div class="edit-banner" v-if="isEditMode"></div>
         <header>
             <div class="header-left">
@@ -691,6 +707,7 @@
                 </div>
             </div>
         </header>
+        {% endif %}
 
         <div class="community-nav" v-if="curView === 'servers'">
             <div class="jump-pill" v-for="comm in filteredCommunities" :key="comm.id" @click="scrollToComm(comm.id)">
@@ -943,8 +960,18 @@ createApp({
                 serverCache.value[cid] = cacheMap;
             });
         }
+        const embedMode = document.body.dataset.embedMode === 'true';
+        const urlParams = new URLSearchParams(window.location.search);
+        const paramLang = urlParams.get('lang');
+        const paramClient = urlParams.get('client');
+        const paramNonce = urlParams.get('nonce');
+        const paramTheme = urlParams.get('theme');
+        const paramTab = urlParams.get('tab');
+        const paramDense = urlParams.get('dense');
         const initialView = document.body.dataset.initialView || 'servers';
-        const curView = ref(initialView);
+        const allowedTabs = new Set(['servers', 'map_sub', 'stats', 'feedback']);
+        const resolvedView = allowedTabs.has(paramTab) ? paramTab : initialView;
+        const curView = ref(resolvedView);
         const toastMsg = ref('');
         let toastTimer = null;
         let steamLoginWindow = null;
@@ -988,8 +1015,15 @@ createApp({
         const draggedIndex = ref(null);
         const dragOverIndex = ref(null);
         
-        const urlParams = new URLSearchParams(window.location.search);
-        const paramLang = urlParams.get('lang');
+        const embedConfig = {
+            enabled: embedMode,
+            client: paramClient,
+            nonce: paramNonce,
+            theme: paramTheme,
+            lang: paramLang,
+            tab: paramTab,
+            dense: paramDense
+        };
         const sysLang = navigator.language || navigator.userLanguage;
 
         let defaultLang = 'en';
@@ -1008,6 +1042,34 @@ createApp({
 
         const defaultChineseLang = defaultLang.startsWith('zh') ? defaultLang : 'zh-CN';
         const curLang = ref(defaultLang);
+
+        const EMBED_TARGET_ORIGIN = 'https://www.cs2ze.org';
+        const isTauriClient = embedMode && paramClient === 'tauri';
+        const hasEmbedNonce = embedMode && Boolean(paramNonce);
+        const shouldUsePostMessage = isTauriClient && hasEmbedNonce;
+        const isEmbedDense = embedMode && ['1', 'true', 'yes'].includes(String(paramDense || '').toLowerCase());
+
+        if (embedMode && paramTheme) {
+            const themeValue = String(paramTheme).toLowerCase();
+            if (themeValue === 'dark') isDark.value = true;
+            if (themeValue === 'light') isDark.value = false;
+        }
+        if (isEmbedDense) {
+            document.documentElement.classList.add('embed-dense');
+        }
+
+        const postEmbedMessage = (type, payload = {}) => {
+            if (!shouldUsePostMessage) return false;
+            if (!window.parent || window.parent === window) return false;
+            window.parent.postMessage({ type, v: 1, nonce: paramNonce, payload }, EMBED_TARGET_ORIGIN);
+            return true;
+        };
+
+        const sendEmbedReady = () => {
+            postEmbedMessage('CS2ZE_READY', {
+                features: ['join', 'copy', 'subscribe_map']
+            });
+        };
 
 
         const ROLE_LABELS = {
@@ -1207,7 +1269,7 @@ createApp({
                 curView.value = 'servers';
                 showToast(t('login_required_title'));
             }
-            if (!isMobile.value) {
+            if (!isMobile.value && !embedMode) {
                 const dismissed = localStorage.getItem('steam_prompt_dismissed');
                 if (!isLoggedIn.value && dismissed !== 'true') {
                     showLoginPrompt.value = true;
@@ -1215,6 +1277,9 @@ createApp({
             }
             if (initialView === 'stats' && isLoggedIn.value) {
                 await loadStats();
+            }
+            if (embedMode) {
+                sendEmbedReady();
             }
         });
         
@@ -1503,11 +1568,13 @@ createApp({
 
         const addSubscription = () => {
             if (!selectedMap.value || newSubComms.value.length === 0) return;
+            const nextMap = selectedMap.value;
+            const nextComms = [...newSubComms.value];
             const existingIdx = subscriptions.value.findIndex(s => s.map === selectedMap.value);
             if (existingIdx !== -1) {
-                subscriptions.value[existingIdx].comms = [...newSubComms.value];
+                subscriptions.value[existingIdx].comms = [...nextComms];
             } else {
-                subscriptions.value.push({ map: selectedMap.value, comms: [...newSubComms.value] });
+                subscriptions.value.push({ map: nextMap, comms: [...nextComms] });
             }
             localStorage.setItem('map_subs', JSON.stringify(subscriptions.value));
             selectedMap.value = null; 
@@ -1515,6 +1582,11 @@ createApp({
             subSearchQuery.value = '';
             searchResults.value = [];
             showToast(t('subscribed'), 2000);
+            if (embedMode) {
+                postEmbedMessage('CS2ZE_SUBSCRIBE_MAP', {
+                    map: nextMap
+                });
+            }
         };
 
         const removeSubscription = (idx) => {
@@ -1917,6 +1989,14 @@ createApp({
             }
             return srv.display_ip || (srv.ip + ':' + srv.port);
         };
+        const getJoinPayload = (srv) => {
+            const host = srv.connect_ip || srv.ip || '';
+            return {
+                ip: host,
+                port: srv.port || null,
+                name: srv.name || ''
+            };
+        };
         const getConnectUrl = (srv, game) => {
             const address = getConnectAddress(srv);
             const appid = String(game || 'cs2').toLowerCase() === 'css' ? 240 : 730;
@@ -1930,6 +2010,13 @@ createApp({
 
         const joinServer = (srv, comm) => {
             const target = decorateServer(srv, comm);
+            const address = getConnectAddress(target);
+            if (embedMode) {
+                const sent = postEmbedMessage('CS2ZE_JOIN', getJoinPayload(target));
+                if (sent) return;
+                copyText(`connect ${address}`, t('copy_console_done'));
+                return;
+            }
             window.location.href = getFastJoinUrl(target);
         };
 
@@ -1966,11 +2053,20 @@ createApp({
         };
 
         const copyCmd = async (srv) => {
+            const address = getConnectAddress(srv);
+            if (embedMode) {
+                const sent = postEmbedMessage('CS2ZE_COPY', {
+                    text: `connect ${address}`,
+                    kind: 'connect'
+                });
+                if (sent) return;
+                copyText(`connect ${address}`, t('copy_console_done'));
+                return;
+            }
             if (!isLoggedIn.value) {
                 showToast(t('login_required_copy'));
                 return;
             }
-            const address = getConnectAddress(srv);
             copyText(`connect ${address}`, t('copy_console_done'));
         };
 
