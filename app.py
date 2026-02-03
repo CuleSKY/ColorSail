@@ -18,6 +18,8 @@ from urllib.parse import urlencode
 from datetime import datetime
 from datetime import timedelta
 from flask import Flask, render_template, jsonify, request, redirect, session, url_for, make_response, abort
+from flask_session import Session
+from redis import Redis
 from flask_sock import Sock
 from werkzeug.middleware.proxy_fix import ProxyFix
 import a2s
@@ -60,7 +62,10 @@ if not os.path.isdir(STATIC_DIR) and os.path.isdir('Static'):
     STATIC_DIR = 'Static'
 
 app = Flask(__name__, static_folder=STATIC_DIR)
-app.secret_key = os.environ.get('APP_SECRET_KEY') or os.environ.get('SECRET_KEY') or 'change-me'
+SECRET_KEY = os.environ.get('APP_SECRET_KEY') or os.environ.get('SECRET_KEY')
+if not SECRET_KEY or SECRET_KEY == 'change-me':
+    raise RuntimeError("APP_SECRET_KEY/SECRET_KEY must be set to a fixed non-default value.")
+app.secret_key = SECRET_KEY
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 sock = Sock(app)
 
@@ -93,6 +98,8 @@ PRIME_USERS_FILE = 'prime_users.json'
 PRIME_AUDIT_FILE = 'prime_audit.log'
 ADMIN_HOSTNAME = "admin.cs2ze.org"
 PUBLIC_HOSTNAMES = {"www.cs2ze.org", "cs2ze.org"}
+CANONICAL_HOST = os.environ.get('CANONICAL_HOST', 'www.cs2ze.org').strip().lower()
+CANONICAL_SCHEME = os.environ.get('CANONICAL_SCHEME', 'https').strip().lower()
 
 # EXG API 地址
 EXG_API_URL = "https://list.darkrp.cn:9000/ServerList/CurrentStatus"
@@ -192,6 +199,32 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_REQUEST_BYTES', 2 * 1024 * 1024))
 app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', '').lower() in ('1', 'true', 'yes')
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_REFRESH_EACH_REQUEST'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=int(os.environ.get('SESSION_LIFETIME_DAYS', '30')))
+
+if CANONICAL_HOST and CANONICAL_HOST.endswith('cs2ze.org'):
+    default_cookie_domain = '.cs2ze.org'
+else:
+    default_cookie_domain = None
+cookie_domain_env = os.environ.get('SESSION_COOKIE_DOMAIN')
+if cookie_domain_env:
+    app.config['SESSION_COOKIE_DOMAIN'] = cookie_domain_env
+elif default_cookie_domain:
+    app.config['SESSION_COOKIE_DOMAIN'] = default_cookie_domain
+
+REDIS_URL = os.environ.get('REDIS_URL', '').strip()
+if REDIS_URL:
+    app.config['SESSION_TYPE'] = 'redis'
+    app.config['SESSION_REDIS'] = Redis.from_url(REDIS_URL)
+else:
+    app.config['SESSION_TYPE'] = 'filesystem'
+    session_dir = os.environ.get('SESSION_FILE_DIR', os.path.join(os.getcwd(), 'session_files'))
+    os.makedirs(session_dir, exist_ok=True)
+    app.config['SESSION_FILE_DIR'] = session_dir
+app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_PERMANENT'] = True
+Session(app)
 
 AGENT_ALLOWED_CIDRS = [cidr.strip() for cidr in os.environ.get('AGENT_ALLOWED_CIDRS', '').split(',') if cidr.strip()]
 AGENT_TRUSTED_PROXIES = [cidr.strip() for cidr in os.environ.get('AGENT_TRUSTED_PROXIES', '').split(',') if cidr.strip()]
@@ -361,6 +394,22 @@ def is_admin_host():
 
 def is_public_host():
     return normalize_host(get_request_host()) in PUBLIC_HOSTNAMES
+
+@app.before_request
+def enforce_canonical_host():
+    if session.get('steam_logged_in'):
+        session.permanent = True
+    if is_admin_host():
+        return None
+    host = normalize_host(get_request_host())
+    if host and host in PUBLIC_HOSTNAMES and CANONICAL_HOST and host != CANONICAL_HOST:
+        scheme = request.headers.get('X-Forwarded-Proto', request.scheme)
+        target = f"{scheme}://{CANONICAL_HOST}{request.path}"
+        qs = request.query_string.decode()
+        if qs:
+            target = f"{target}?{qs}"
+        return redirect(target, code=301)
+    return None
 
 def require_admin():
     if is_admin_host():
@@ -781,6 +830,19 @@ def set_no_store(response):
     response.headers['Expires'] = '0'
     response.headers['Vary'] = 'Cookie'
     return response
+
+def build_embed_csp():
+    return (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' data:; "
+        "connect-src 'self'; "
+        "frame-ancestors https://www.cs2ze.org; "
+        "object-src 'none'; "
+        "base-uri 'self'"
+    )
 
 def build_steam_openid_url():
     state = secrets.token_urlsafe(24)
@@ -1647,8 +1709,40 @@ def index():
                            initial_config=initial_config, 
                            server_cache={},
                            seo_info=seo_info,      # 新增SEO
-                           current_lang=render_lang # 新增語言渲染
+                           current_lang=render_lang, # 新增語言渲染
+                           embed_mode=False
                            )
+
+@app.route('/embed/servers')
+def embed_servers():
+    url_lang = request.args.get('lang')
+    render_lang = url_lang if url_lang else 'zh-CN'
+
+    if render_lang.startswith('en'):
+        render_lang = 'en'
+    elif 'TW' in render_lang or 'HK' in render_lang:
+        render_lang = 'zh-TW'
+    else:
+        render_lang = 'zh-CN'
+
+    seo_info = SEO_DATA.get(render_lang, SEO_DATA['zh-CN'])
+    snapshot = get_config_snapshot()
+    initial_config = [dict(comm) for comm in snapshot['community_meta']]
+    for comm in initial_config:
+        comm['servers'] = []
+
+    resp = make_response(render_template(
+        'index.html',
+        initial_view='servers',
+        initial_config=initial_config,
+        server_cache={},
+        seo_info=seo_info,
+        current_lang=render_lang,
+        embed_mode=True
+    ))
+    resp.headers['Content-Security-Policy'] = build_embed_csp()
+    resp.headers['X-Frame-Options'] = 'ALLOW-FROM https://www.cs2ze.org'
+    return resp
 
 @app.route('/api/steam/login')
 def steam_login():
@@ -1694,6 +1788,7 @@ def steam_callback():
         
     session['steam_id'] = steam_id
     session['steam_logged_in'] = True
+    session.permanent = True
     ensure_csrf_token()
     
     # 清理 session
