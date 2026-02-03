@@ -62,11 +62,11 @@ server {
 
 ## Frontend (Vite + Vue)
 
-Install and run the dev server:
+Install and run the dev server (Vite only):
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
@@ -74,8 +74,20 @@ Build production assets (Flask serves `/static`):
 
 ```bash
 cd frontend
+npm ci
 npm run build
 ```
+
+Run the Flask/Gunicorn main site (serves the compiled assets from `/static/assets`):
+
+```bash
+gunicorn -w 1 -b 127.0.0.1:5000 wsgi_main:application
+```
+
+Production deploy notes:
+- Vite outputs to `static/assets/` (manifest + hashed JS/CSS).
+- Copy `static/assets/` to the server alongside the Flask app, and keep `/static/` (logos, `/static/maps/`) intact.
+- Serve `/static/assets/*` with long-lived immutable caching; keep HTML/templates short/no-cache so updated bundles load.
 
 Caching guidance:
 - `/static/assets/*` should be cached long-term (immutable).
