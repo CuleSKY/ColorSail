@@ -8,7 +8,16 @@ declare global {
   }
 }
 
-const initialConfig = window.__INITIAL_CONFIG__ ?? [];
+const rawInitialConfig = window.__INITIAL_CONFIG__;
+const initialConfig = Array.isArray(rawInitialConfig)
+  ? { server: rawInitialConfig }
+  : {
+      ...(rawInitialConfig && typeof rawInitialConfig === 'object' ? rawInitialConfig : {}),
+      server:
+        rawInitialConfig && typeof rawInitialConfig === 'object' && 'server' in rawInitialConfig
+          ? (rawInitialConfig as { server?: unknown }).server ?? []
+          : [],
+    };
 const pageContext = window.__PAGE_CONTEXT__ ?? {};
 
 const app = createApp(App, { initialConfig, pageContext });
