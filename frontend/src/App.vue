@@ -1331,7 +1331,7 @@ setInterval(() => {
 
 const getServers = (cid) => {
   const comm = communities.value.find(c => c.id === cid);
-  let list = servers.value[cid] ? [...servers.value[cid}}.map(s => decorateServer(s, comm)) : [];
+  let list = servers.value[cid] ? [...servers.value[cid]].map(s => decorateServer(s, comm)) : [];
   const query = normalizeSearchText(serverMapQuery.value);
   if (query) {
     list = list.filter((serverEntry) => {
