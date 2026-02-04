@@ -12,6 +12,12 @@ pip install -r requirements.txt
 
 See `docs/autojoin_v2_deploy.md` for AutoJoin v2 deployment requirements and WebSocket proxying notes.
 
+## Map translation auto-fill
+
+- Map translation entries are stored in `map_translations.json` (keys are normalized map names, values include `zh_cn` and `zh_tw`).
+- The backend auto-creates empty entries for any map seen from community/A2S/EXG responses, and fills missing `zh_cn`/`zh_tw` when EXG provides `Status.MapDisplayName`.
+- Traditional Chinese conversion uses OpenCC (`opencc-python-reimplemented`) when available, with a lightweight fallback if OpenCC is unavailable.
+
 ## Admin notes
 
 - Admin routes are intended to be served from `admin.cs2ze.org` behind Cloudflare Access; `/admin` on `www.cs2ze.org` returns 404.
