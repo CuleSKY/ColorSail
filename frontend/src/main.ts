@@ -6,6 +6,7 @@ declare global {
     __INITIAL_CONFIG__?: unknown;
     __SERVER_SOURCES__?: unknown;
     __PAGE_CONTEXT__?: unknown;
+    __APP_MOUNTED__?: boolean;
   }
 }
 
@@ -15,4 +16,5 @@ const pageContext = window.__PAGE_CONTEXT__ ?? {};
 const app = createApp(App, { initialConfig, pageContext });
 // Vite runtime-only build does not support custom template delimiters.
 app.mount('#app');
+window.__APP_MOUNTED__ = true;
 window.dispatchEvent(new Event('app:mounted'));

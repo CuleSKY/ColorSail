@@ -911,10 +911,11 @@ const goToView = (view) => {
   }
   const target = VIEW_ROUTES[view] || '/';
   if (window.location.pathname !== target) {
-    window.location.href = target;
-  } else {
-    curView.value = view;
+    const url = new URL(window.location.href);
+    url.pathname = target;
+    window.history.pushState({}, '', url);
   }
+  curView.value = view;
 };
 
 const openMapLink = () => {
