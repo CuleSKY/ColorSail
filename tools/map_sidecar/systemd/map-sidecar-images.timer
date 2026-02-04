@@ -1,0 +1,10 @@
+[Unit]
+Description=CS2ZE Map Sidecar - Fetch missing workshop images daily at 04:00 Asia/Shanghai
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+Timezone=Asia/Shanghai
+Unit=map-sidecar-images.service
+
+[Install]
+WantedBy=timers.target

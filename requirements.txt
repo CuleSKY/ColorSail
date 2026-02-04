@@ -9,3 +9,4 @@ websocket-client
 beautifulsoup4
 cryptography
 opencc-python-reimplemented
+pymysql

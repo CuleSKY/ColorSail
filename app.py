@@ -12,7 +12,6 @@ import hmac
 import ipaddress
 import secrets
 import re
-import tempfile
 import atexit
 from flask import current_app, abort, make_response
 from pathlib import Path
@@ -202,9 +201,6 @@ API_SERVERS_BUILT_AT = 0.0
 API_SERVERS_BUILT_VER = -1
 CID_CACHE_LOCK = threading.Lock()
 CID_SERVERS_CACHE = {}  # per-cid cache for /api/servers/<cid> (version, payload_bytes, etag)
-MAP_TRANS_DIRTY = False
-MAP_TRANS_LAST_WRITE = 0
-MAP_TRANS_WRITE_DEBOUNCE_SECONDS = 5
 MAP_CACHE_UPDATED_AT = 0
 APP_INIT_LOCK = threading.Lock()
 APP_INITIALIZED = False
@@ -341,8 +337,6 @@ def refresh_local_caches(force=False):
                     raw_trans = json.load(f)
             else:
                 raw_trans = {}
-                with open(TRANS_FILE, 'w', encoding='utf-8') as f:
-                    json.dump({}, f)
             normalized = {}
             cleaned = {}
             for key, value in raw_trans.items():
@@ -1103,72 +1097,17 @@ def get_map_translation_entry(map_name):
     return None
 
 def ensure_map_translation_entry(map_raw):
-    global MAP_TRANS_DIRTY
     map_clean = normalize_map_name(map_raw)
     if not map_clean:
         return None
     with MAP_TRANS_LOCK:
-        entry = MAP_TRANS_CACHE.get(map_clean)
-        if not entry:
-            entry = {"zh_cn": "", "zh_tw": ""}
-            MAP_TRANS_CACHE[map_clean] = entry
-            MAP_TRANS_DIRTY = True
-            rebuild_translated_index()
-        return entry
+        return MAP_TRANS_CACHE.get(map_clean) or MAP_TRANS_NORMALIZED.get(map_clean)
 
 def update_map_translation_entry(map_name, map_display):
-    global MAP_TRANS_DIRTY
-    if not map_name:
-        return False
-    map_clean = normalize_map_name(map_name)
-    if not map_clean:
-        return False
-    zh_cn = str(map_display).strip() if map_display else ''
-    updated = False
-    with MAP_TRANS_LOCK:
-        entry = MAP_TRANS_CACHE.get(map_clean) or {"zh_cn": "", "zh_tw": ""}
-        if not entry.get('zh_cn') and zh_cn:
-            entry['zh_cn'] = zh_cn
-            updated = True
-        if not entry.get('zh_tw') and entry.get('zh_cn'):
-            entry['zh_tw'] = convert_to_traditional(entry.get('zh_cn', ''))
-            if entry.get('zh_tw'):
-                updated = True
-        if map_clean not in MAP_TRANS_CACHE or updated:
-            MAP_TRANS_CACHE[map_clean] = entry
-        if updated:
-            rebuild_translated_index()
-            MAP_TRANS_DIRTY = True
-    return updated
+    return False
 
 def maybe_flush_map_translations(force=False):
-    global MAP_TRANS_DIRTY, MAP_TRANS_LAST_WRITE
-    now = time.time()
-    with MAP_TRANS_LOCK:
-        if not MAP_TRANS_DIRTY and not force:
-            return False
-        if not force and (now - MAP_TRANS_LAST_WRITE) < MAP_TRANS_WRITE_DEBOUNCE_SECONDS:
-            return False
-        tmp_path = None
-        try:
-            dir_name = os.path.dirname(TRANS_FILE) or '.'
-            fd, tmp_path = tempfile.mkstemp(prefix='.map_translations.', suffix='.tmp', dir=dir_name)
-            with os.fdopen(fd, 'w', encoding='utf-8') as f:
-                json.dump(MAP_TRANS_CACHE, f, ensure_ascii=False, indent=4)
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(tmp_path, TRANS_FILE)
-            MAP_TRANS_DIRTY = False
-            MAP_TRANS_LAST_WRITE = now
-            return True
-        except Exception as e:
-            print(f"[Cache] 翻译写入失败: {e}")
-            if tmp_path and os.path.exists(tmp_path):
-                try:
-                    os.remove(tmp_path)
-                except Exception:
-                    pass
-            return False
+    return False
 
 atexit.register(lambda: maybe_flush_map_translations(force=True))
 
