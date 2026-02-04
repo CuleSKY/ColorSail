@@ -171,19 +171,19 @@
         </div>
       </header>
 
-      <div class="community-nav" v-if="curView === 'servers'">
+      <div class="community-nav" v-show="curView === 'servers'">
         <div class="jump-pill" v-for="comm in filteredCommunities" :key="comm.id" @click="scrollToComm(comm.id)">
           <img v-if="getCommunityLogoMeta(comm).url" :src="getCommunityLogoMeta(comm).url"  :class="{ 'logo-svg': getCommunityLogoMeta(comm).isSvg, 'logo-invert': getCommunityLogoMeta(comm).isSvg && isDark }"loading="lazy" decoding="async">>
           <span>{{ comm.name }}</span>
         </div>
       </div>
 
-      <div class="server-search-bar" v-if="curView === 'servers'">
+      <div class="server-search-bar" v-show="curView === 'servers'">
         <input class="server-search-input" type="text" v-model="serverMapQueryInput" :placeholder="t('server_search_ph')">
       </div>
 
-      <div id="main-content">
-        <div v-if="curView === 'servers'" class="animate-enter">
+      <div id="main-content" ref="mainContentRef">
+        <div v-show="curView === 'servers'" class="animate-enter">
           <div v-if="serverSearchNotice" class="server-search-hint">
             {{ serverSearchNotice }}
           </div>
@@ -253,7 +253,7 @@
           </div>
         </div>
 
-        <div v-if="curView === 'map_sub' && isLoggedIn" class="animate-enter">
+        <div v-show="curView === 'map_sub' && isLoggedIn" class="animate-enter">
           <div class="sub-container">
             <div class="perm-warning" v-if="notificationPermission !== 'granted'" @click="requestPerm">
               {{ t('notify_warn') }}
@@ -311,7 +311,7 @@
           </div>
         </div>
 
-        <div v-if="curView === 'stats'" class="animate-enter">
+        <div v-show="curView === 'stats'" class="animate-enter">
           <div v-if="isLoggedIn" class="stats-dashboard">
             <div class="stats-summary-row">
               <div class="summary-card">
@@ -358,7 +358,7 @@
           </div>
         </div>
 
-        <div v-if="curView === 'feedback'" class="animate-enter">
+        <div v-show="curView === 'feedback'" class="animate-enter">
           <div class="feedback-panel">
             <h3>{{ t('feedback_dev_title') }}</h3>
             <p>{{ t('feedback_dev_desc') }}</p>
@@ -372,7 +372,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const props = defineProps({
   initialConfig: {
@@ -461,6 +461,8 @@ const steamId = ref(null);
 const showLoginPrompt = ref(false);
 const feedbackSubject = ref('');
 const feedbackMessage = ref('');
+const mainContentRef = ref(null);
+const serversScrollTop = ref(0);
 
 const currentStats = ref([]);
 const totalPlayers = ref(0);
@@ -577,6 +579,32 @@ watch(serverMapQueryInput, (next) => {
   searchDebounceTimer = setTimeout(() => {
     serverMapQuery.value = next;
   }, 200);
+});
+const getMainScrollContainer = () => mainContentRef.value || document.getElementById('main-content');
+const saveServersScroll = () => {
+  const container = getMainScrollContainer();
+  if (container) {
+    serversScrollTop.value = container.scrollTop;
+  } else {
+    serversScrollTop.value = window.scrollY || window.pageYOffset || 0;
+  }
+};
+const restoreServersScroll = async () => {
+  await nextTick();
+  const container = getMainScrollContainer();
+  if (container) {
+    container.scrollTop = serversScrollTop.value;
+  } else {
+    window.scrollTo(0, serversScrollTop.value);
+  }
+};
+watch(curView, (nextView, prevView) => {
+  if (prevView === 'servers' && nextView !== 'servers') {
+    saveServersScroll();
+  }
+  if (nextView === 'servers' && prevView !== 'servers') {
+    restoreServersScroll();
+  }
 });
 watch([isLoggedIn, curView], () => {
   scheduleServerRefresh();
