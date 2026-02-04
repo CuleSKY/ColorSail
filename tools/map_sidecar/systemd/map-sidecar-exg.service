@@ -1,0 +1,9 @@
+[Unit]
+Description=CS2ZE Map Sidecar - Ingest EXG maplist and export map_index.json
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/1panel/www/sites/www.cs2ze.org/NERV_CS2ZE
+EnvironmentFile=-/etc/default/map-sidecar
+ExecStart=/usr/bin/python3 -m tools.map_sidecar.main ingest-exg

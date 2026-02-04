@@ -1,0 +1,10 @@
+[Unit]
+Description=CS2ZE Map Sidecar - Ingest EXG maplist every 30 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=30min
+Unit=map-sidecar-exg.service
+
+[Install]
+WantedBy=timers.target
