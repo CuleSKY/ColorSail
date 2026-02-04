@@ -9,8 +9,40 @@
     viteCss: [],
     injectedHtmlLength: 0,
   };
+  let overlayDisabled = false;
+
+  const showNonBlockingError = (message) => {
+    console.warn('[boot] non-blocking error', message);
+    const existing = document.getElementById('boot-toast');
+    if (existing) {
+      existing.textContent = message;
+      return;
+    }
+    const toast = document.createElement('div');
+    toast.id = 'boot-toast';
+    toast.textContent = message;
+    toast.style.position = 'fixed';
+    toast.style.right = '20px';
+    toast.style.bottom = '20px';
+    toast.style.zIndex = '9999';
+    toast.style.padding = '12px 16px';
+    toast.style.background = 'rgba(20, 20, 24, 0.95)';
+    toast.style.color = '#fff';
+    toast.style.borderRadius = '10px';
+    toast.style.fontSize = '12px';
+    toast.style.maxWidth = '320px';
+    toast.style.boxShadow = '0 8px 24px rgba(0,0,0,0.25)';
+    document.body.appendChild(toast);
+    window.setTimeout(() => {
+      toast.remove();
+    }, 6000);
+  };
 
   const showError = (message) => {
+    if (overlayDisabled) {
+      showNonBlockingError(message);
+      return;
+    }
     if (!bootRoot) {
       return;
     }
@@ -91,20 +123,48 @@
     return !!(appRoot && appRoot.children && appRoot.children.length > 0);
   };
 
+  const hideBootUI = () => {
+    if (bootRoot) {
+      bootRoot.style.display = 'none';
+      console.info('[boot] boot-root hidden');
+    }
+  };
+
+  const showBootUI = () => {
+    if (overlayDisabled) {
+      console.info('[boot] overlay disabled; skipping boot UI');
+      return;
+    }
+    if (bootRoot) {
+      bootRoot.style.display = '';
+    }
+  };
+
+  const disableOverlayForever = () => {
+    if (overlayDisabled) {
+      return;
+    }
+    overlayDisabled = true;
+    hideBootUI();
+  };
+
   const checkReadyToHide = () => {
     if (appMounted && appHasContent()) {
-      if (bootRoot) {
-        bootRoot.style.display = 'none';
-        console.info('[boot] boot-root hidden');
-      }
+      hideBootUI();
     }
   };
 
   window.addEventListener('app:mounted', () => {
     appMounted = true;
     console.info('[boot] app:mounted received');
+    disableOverlayForever();
     checkReadyToHide();
   });
+
+  if (window.__APP_MOUNTED__) {
+    appMounted = true;
+    disableOverlayForever();
+  }
 
   const waitForAppRender = () => new Promise((resolve, reject) => {
     const start = window.performance.now();
@@ -127,12 +187,6 @@
     const appRoot = document.querySelector('#app');
     if (!appRoot) {
       throw new Error('Missing #app root after fragment injection');
-    }
-  };
-
-  const ensureBootRootVisible = () => {
-    if (bootRoot) {
-      bootRoot.style.display = '';
     }
   };
 
@@ -164,7 +218,7 @@
       if (bootRoot) {
         bootRoot.style.background = 'transparent';
       }
-      ensureBootRootVisible();
+      showBootUI();
       requireAppContainer();
 
       const viteEntry = window.__VITE_ENTRY__ || {};
