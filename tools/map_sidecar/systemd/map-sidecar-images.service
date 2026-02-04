@@ -6,4 +6,4 @@ After=network-online.target
 Type=oneshot
 WorkingDirectory=/opt/1panel/www/sites/www.cs2ze.org/NERV_CS2ZE
 EnvironmentFile=-/etc/default/map-sidecar
-ExecStart=/usr/bin/python3 -m tools.map_sidecar.main fetch-images
+ExecStart=/usr/bin/python3 ${PROJECT_ROOT}/tools/map_sidecar/map_sidecar.py fetch-images

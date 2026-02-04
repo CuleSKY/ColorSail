@@ -22,10 +22,10 @@ Optional:
 ## Commands
 
 ```bash
-python -m tools.map_sidecar.main poll-servers
-python -m tools.map_sidecar.main ingest-exg
-python -m tools.map_sidecar.main refresh-index
-python -m tools.map_sidecar.main fetch-images
+python tools/map_sidecar/map_sidecar.py poll-servers
+python tools/map_sidecar/map_sidecar.py ingest-exg
+python tools/map_sidecar/map_sidecar.py refresh-index
+python tools/map_sidecar/map_sidecar.py fetch-images
 ```
 
 ## Systemd timers
