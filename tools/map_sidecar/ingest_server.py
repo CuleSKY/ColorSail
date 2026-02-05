@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import signal
 import sys
 import time
@@ -22,7 +23,16 @@ from tools.map_sidecar.db import MySQLClient
 from tools.map_sidecar.exporter import export_map_index
 from tools.map_sidecar.logging_utils import setup_logging
 from tools.map_sidecar.redis_cache import RedisCache
-from tools.map_sidecar.utils import convert_to_traditional, normalize_map_key
+from tools.map_sidecar.utils import convert_to_traditional, normalize_map_key, parse_beijing_time
+
+MAP_RE = re.compile(r"^[a-z0-9]+_[a-z0-9][a-z0-9_\-]*$", re.I)
+
+
+def _empty_to_none(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    return cleaned if cleaned else None
 
 
 def _validate_records(payload: dict) -> list[dict]:
@@ -39,64 +49,68 @@ def _validate_records(payload: dict) -> list[dict]:
         raw_map = record.get("map")
         if not isinstance(raw_map, str):
             raise ValueError(f"Record {idx} map must be a string")
-        map_key = normalize_map_key(raw_map)
-        if not map_key or map_key != raw_map.strip().lower():
+        map_key = raw_map.strip().lower()
+        if not MAP_RE.match(map_key):
+            raise ValueError(f"Record {idx} map is invalid")
+        normalized_key = normalize_map_key(map_key)
+        if not normalized_key or normalized_key != map_key:
             raise ValueError(f"Record {idx} map is invalid")
 
-        name_zh_cn = record.get("name_zh_cn")
-        if name_zh_cn is not None and not isinstance(name_zh_cn, str):
-            raise ValueError(f"Record {idx} name_zh_cn must be a string or null")
+        name_zh = record.get("name_zh")
+        if not isinstance(name_zh, str):
+            raise ValueError(f"Record {idx} name_zh must be a string")
 
-        duration_raw = record.get("duration_raw")
-        if duration_raw is not None and not isinstance(duration_raw, str):
-            raise ValueError(f"Record {idx} duration_raw must be a string or null")
+        difficulty = record.get("difficulty")
+        if not isinstance(difficulty, str):
+            raise ValueError(f"Record {idx} difficulty must be a string")
 
-        cooldown_end_epoch = record.get("cooldown_end_epoch")
-        if cooldown_end_epoch is not None:
-            if isinstance(cooldown_end_epoch, bool):
-                raise ValueError(f"Record {idx} cooldown_end_epoch must be an integer or null")
-            if isinstance(cooldown_end_epoch, str):
-                if not cooldown_end_epoch.isdigit():
-                    raise ValueError(f"Record {idx} cooldown_end_epoch must be an integer or null")
-                cooldown_end_epoch = int(cooldown_end_epoch)
-            elif not isinstance(cooldown_end_epoch, int):
-                raise ValueError(f"Record {idx} cooldown_end_epoch must be an integer or null")
+        tags = record.get("tags")
+        if not isinstance(tags, list) or any(not isinstance(tag, str) for tag in tags):
+            raise ValueError(f"Record {idx} tags must be a list of strings")
 
-        workshop_id = record.get("workshop_id")
-        if workshop_id is not None:
-            if isinstance(workshop_id, bool):
-                raise ValueError(f"Record {idx} workshop_id must be an integer or null")
-            if isinstance(workshop_id, str):
-                if not workshop_id.isdigit():
-                    raise ValueError(f"Record {idx} workshop_id must be an integer or null")
-                workshop_id = int(workshop_id)
-            elif not isinstance(workshop_id, int):
-                raise ValueError(f"Record {idx} workshop_id must be an integer or null")
+        cooldown = record.get("cooldown")
+        if not isinstance(cooldown, dict):
+            raise ValueError(f"Record {idx} cooldown must be an object")
+        duration_raw = cooldown.get("duration_raw")
+        if not isinstance(duration_raw, str):
+            raise ValueError(f"Record {idx} cooldown.duration_raw must be a string")
+        deadline = cooldown.get("deadline")
+        if deadline is not None and not isinstance(deadline, str):
+            raise ValueError(f"Record {idx} cooldown.deadline must be a string or null")
 
-        workshop_url = record.get("workshop_url")
-        if workshop_url is not None and not isinstance(workshop_url, str):
-            raise ValueError(f"Record {idx} workshop_url must be a string or null")
+        workshop = record.get("workshop")
+        if not isinstance(workshop, dict):
+            raise ValueError(f"Record {idx} workshop must be an object")
+        workshop_id_raw = workshop.get("id")
+        if not isinstance(workshop_id_raw, str):
+            raise ValueError(f"Record {idx} workshop.id must be a string")
+        workshop_url = workshop.get("url")
+        if not isinstance(workshop_url, str):
+            raise ValueError(f"Record {idx} workshop.url must be a string")
 
         achievement = record.get("achievement")
-        if achievement is not None and not isinstance(achievement, str):
-            raise ValueError(f"Record {idx} achievement must be a string or null")
+        if not isinstance(achievement, str):
+            raise ValueError(f"Record {idx} achievement must be a string")
 
-        name_zh_tw = record.get("name_zh_tw")
-        if name_zh_tw is not None and not isinstance(name_zh_tw, str):
-            raise ValueError(f"Record {idx} name_zh_tw must be a string or null")
-        if not name_zh_tw and name_zh_cn:
-            name_zh_tw = convert_to_traditional(name_zh_cn)
+        name_zh_cn = _empty_to_none(name_zh)
+        name_zh_tw = convert_to_traditional(name_zh_cn) if name_zh_cn else None
+        duration_raw = _empty_to_none(duration_raw)
+        deadline = _empty_to_none(deadline)
+        cooldown_end_epoch = parse_beijing_time(deadline) if deadline else None
+        achievement = _empty_to_none(achievement)
+        workshop_id = int(workshop_id_raw) if workshop_id_raw.isdigit() else None
+        workshop_url = _empty_to_none(workshop_url)
 
         cleaned.append(
             {
-                "map": map_key,
-                "name_zh_cn": name_zh_cn.strip() if isinstance(name_zh_cn, str) else None,
-                "name_zh_tw": name_zh_tw.strip() if isinstance(name_zh_tw, str) else None,
-                "duration_raw": duration_raw.strip() if isinstance(duration_raw, str) else None,
+                "map": normalized_key,
+                "name_zh_cn": name_zh_cn,
+                "name_zh_tw": name_zh_tw,
+                "duration_raw": duration_raw,
                 "cooldown_end_epoch": cooldown_end_epoch,
                 "workshop_id": workshop_id,
-                "workshop_url": workshop_url.strip() if isinstance(workshop_url, str) else None,
-                "achievement": achievement.strip() if isinstance(achievement, str) else None,
+                "workshop_url": workshop_url,
+                "achievement": achievement,
             }
         )
 
