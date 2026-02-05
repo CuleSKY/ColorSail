@@ -68,6 +68,8 @@ Required:
 
 Optional:
 - `EXG_MAPLIST_URL` (default: `https://list.darkrp.cn:9000/serverlist/cs2maplist`)
+- `EXG_MAPLIST_PUSH_MODE` (`ingest` or `file`, default: `file`)
+- `EXG_MAPLIST_OUTPUT_PATH` (default: `<PROJECT_ROOT>/static/data/maplist_normalized.json`)
 - `FETCH_TIMEOUT_SECONDS` (default: `15`)
 - `RETENTION_HOURS` (default: `72`)
 - `DEBUG` (`true` to retain EXG HTML snapshots)
@@ -78,6 +80,8 @@ PROJECT_ROOT=/opt/cs2ze/NERV_CS2ZE
 EXG_MAPLIST_URL=https://list.darkrp.cn:9000/serverlist/cs2maplist
 OVERSEAS_INGEST_URL=https://www.cs2ze.org/sidecar/exg/ingest
 INGEST_TOKEN=REPLACE_ME
+EXG_MAPLIST_PUSH_MODE=ingest
+EXG_MAPLIST_OUTPUT_PATH=/opt/cs2ze/NERV_CS2ZE/static/data/maplist_normalized.json
 FETCH_TIMEOUT_SECONDS=15
 RETENTION_HOURS=72
 DEBUG=false
@@ -96,9 +100,9 @@ Overseas:
 
 CN fetcher:
 ```bash
-.venv/bin/python -m tools.map_sidecar.sidecar cn-fetch
-.venv/bin/python -m tools.map_sidecar.sidecar cn-fetch --dry-run
-.venv/bin/python -m tools.map_sidecar.sidecar cn-fetch --input-html tools/map_sidecar/tests/fixtures/exg_maplist_sample.html --parse-only
+.venv/bin/python -m tools.map_sidecar.exg_cn_pipeline fetch
+.venv/bin/python -m tools.map_sidecar.exg_cn_pipeline normalize --input-html tools/map_sidecar/tests/fixtures/exg_maplist_sample.html
+.venv/bin/python -m tools.map_sidecar.exg_cn_pipeline run --dry-run
 ```
 
 ## One-command start/stop (standalone daemon)
@@ -130,7 +134,7 @@ curl -i -X POST https://www.cs2ze.org/sidecar/exg/ingest \
 
 CN dry-run preview:
 ```bash
-.venv/bin/python -m tools.map_sidecar.sidecar cn-fetch --dry-run
+.venv/bin/python -m tools.map_sidecar.exg_cn_pipeline run --dry-run
 ```
 
 ## Systemd install
@@ -165,7 +169,7 @@ sudo systemctl enable --now exg-fetcher-cn.timer
 ## Notes
 
 - `map_translations.json` and `map_index.json` are written atomically to the project root.
-- `maplist.normalized.json` is written by the CN fetcher to `<PROJECT_ROOT>/maplist.normalized.json` (list of normalized EXG map entries).
+- `static/data/maplist_normalized.json` is the authoritative normalized EXG maplist consumed by the main site.
 - EXG HTML is retained under `tools/map_sidecar/debug/exg_html/` on the **CN fetcher** when `DEBUG=true` or parsing fails; files older than `RETENTION_HOURS` are deleted automatically.
 - Workshop images are saved as lowercase `<map_key>.jpg` under `<PROJECT_ROOT>/<STATIC_DIR_NAME>/maps/`.
 - Overseas hosts do **not** fetch the EXG HTML directly; ingestion happens via the HTTP sidecar endpoint.
