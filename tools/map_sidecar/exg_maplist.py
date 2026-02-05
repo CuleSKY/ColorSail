@@ -9,8 +9,14 @@ from typing import List, Optional
 import requests
 from bs4 import BeautifulSoup
 
-from .config import Settings
-from .utils import BEIJING_TZ, convert_to_traditional, ensure_dir, normalize_map_key, parse_beijing_time
+from tools.map_sidecar.config import Settings
+from tools.map_sidecar.utils import (
+    BEIJING_TZ,
+    convert_to_traditional,
+    ensure_dir,
+    normalize_map_key,
+    parse_beijing_time,
+)
 
 EXG_URL = "https://list.darkrp.cn:9000/serverlist/cs2maplist"
 DEBUG_DIR = os.path.join(os.path.dirname(__file__), "debug", "exg_html")

@@ -3,8 +3,7 @@ import os
 from logging.handlers import TimedRotatingFileHandler
 
 
-def setup_logging(log_dir: str, log_level: str = "INFO") -> logging.Logger:
-    os.makedirs(log_dir, exist_ok=True)
+def setup_logging(log_dir: str | None, log_level: str = "INFO") -> logging.Logger:
     logger = logging.getLogger("map_sidecar")
     if logger.handlers:
         return logger
@@ -19,14 +18,16 @@ def setup_logging(log_dir: str, log_level: str = "INFO") -> logging.Logger:
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
 
-    file_handler = TimedRotatingFileHandler(
-        os.path.join(log_dir, "map_sidecar.log"),
-        when="D",
-        interval=1,
-        backupCount=3,
-        encoding="utf-8",
-    )
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
+    if log_dir:
+        os.makedirs(log_dir, exist_ok=True)
+        file_handler = TimedRotatingFileHandler(
+            os.path.join(log_dir, "map_sidecar.log"),
+            when="D",
+            interval=1,
+            backupCount=3,
+            encoding="utf-8",
+        )
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
 
     return logger

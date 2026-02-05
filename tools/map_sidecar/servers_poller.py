@@ -6,11 +6,11 @@ from typing import Iterable, List
 
 import requests
 
-from .config import Settings
-from .db import MySQLClient
-from .exporter import atomic_write_json
-from .redis_cache import RedisCache
-from .utils import normalize_map_key
+from tools.map_sidecar.config import Settings
+from tools.map_sidecar.db import MySQLClient
+from tools.map_sidecar.exporter import atomic_write_json
+from tools.map_sidecar.redis_cache import RedisCache
+from tools.map_sidecar.utils import normalize_map_key
 
 SERVERS_ETAG_KEY = "map_sidecar:servers_etag"
 SERVERS_MAP_KEYS_KEY = "map_sidecar:servers_map_keys"

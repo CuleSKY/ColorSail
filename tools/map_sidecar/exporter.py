@@ -1,9 +1,17 @@
+from __future__ import annotations
+
 import json
 import os
 import tempfile
-from typing import Any
+import time
+from typing import TYPE_CHECKING, Any
 
-from .utils import ensure_dir
+from tools.map_sidecar.utils import ensure_dir
+
+if TYPE_CHECKING:
+    from tools.map_sidecar.config import Settings
+    from tools.map_sidecar.db import MySQLClient
+    import logging
 
 
 def atomic_write_json(path: str, payload: Any) -> None:
@@ -22,3 +30,26 @@ def atomic_write_json(path: str, payload: Any) -> None:
                 os.remove(tmp_path)
             except OSError:
                 pass
+
+
+def export_map_index(settings: "Settings", logger: "logging.Logger", db: "MySQLClient") -> int:
+    records = db.fetch_map_index()
+    payload = {
+        "generated_at_epoch": int(time.time()),
+        "maps": {},
+    }
+    for record in records:
+        payload["maps"][record.map_key] = {
+            "name_zh_cn": record.name_zh_cn or "",
+            "name_zh_tw": record.name_zh_tw or "",
+            "exg": {
+                "achievement": record.achievement,
+                "cooldown_end_epoch": record.cooldown_end_epoch,
+                "workshop_id": record.workshop_id,
+                "workshop_url": record.workshop_url,
+            },
+        }
+    target_path = os.path.join(settings.project_root, "map_index.json")
+    atomic_write_json(target_path, payload)
+    logger.info("map_index.json exported (%s maps)", len(records))
+    return len(records)
