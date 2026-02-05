@@ -16,7 +16,7 @@ from bs4 import BeautifulSoup
 from tools.map_sidecar.config import load_cn_fetcher_settings
 from tools.map_sidecar.exporter import atomic_write_json
 from tools.map_sidecar.logging_utils import setup_logging
-from tools.map_sidecar.utils import BEIJING_TZ, ensure_dir
+from tools.map_sidecar.utils import BEIJING_TZ, ensure_dir, normalize_map_key
 from tools.normalize_maplist_from_html import (
     MAP_RE,
     MapEntry,
@@ -209,6 +209,9 @@ def parse_maplist_html(html_path: str) -> list[MapEntry]:
 
         map_name = norm(tds[0].get_text(" ", strip=True))
         if not map_name or not MAP_RE.match(map_name):
+            continue
+        map_name = normalize_map_key(map_name)
+        if not map_name:
             continue
 
         cn_name = norm(tds[1].get_text(" ", strip=True))
