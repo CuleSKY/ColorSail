@@ -5,5 +5,5 @@ After=network-online.target
 [Service]
 Type=oneshot
 WorkingDirectory=/opt/1panel/www/sites/www.cs2ze.org/NERV_CS2ZE
-EnvironmentFile=-/etc/default/map-sidecar
-ExecStart=/opt/1panel/www/sites/www.cs2ze.org/NERV_CS2ZE/.venv/bin/python /opt/1panel/www/sites/www.cs2ze.org/NERV_CS2ZE/tools/map_sidecar/map_sidecar.py refresh-index
+EnvironmentFile=/etc/default/map-sidecar
+ExecStart=/opt/1panel/www/sites/www.cs2ze.org/NERV_CS2ZE/.venv/bin/python -m tools.map_sidecar.sidecar refresh-index

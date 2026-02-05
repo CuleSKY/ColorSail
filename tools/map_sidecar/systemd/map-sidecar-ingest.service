@@ -5,8 +5,8 @@ After=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/1panel/www/sites/www.cs2ze.org/NERV_CS2ZE
-EnvironmentFile=-/etc/default/map-sidecar
-ExecStart=/opt/1panel/www/sites/www.cs2ze.org/NERV_CS2ZE/.venv/bin/python /opt/1panel/www/sites/www.cs2ze.org/NERV_CS2ZE/tools/map_sidecar/ingest_server.py
+EnvironmentFile=/etc/default/map-sidecar
+ExecStart=/opt/1panel/www/sites/www.cs2ze.org/NERV_CS2ZE/.venv/bin/python -m tools.map_sidecar.sidecar ingest-server
 Restart=on-failure
 RestartSec=5s
 

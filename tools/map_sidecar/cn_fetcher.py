@@ -7,60 +7,21 @@ import os
 import re
 import sys
 import time
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import List, Optional
 
 import requests
 from bs4 import BeautifulSoup
 
-if __package__:
-    from .logging_utils import setup_logging
-    from .utils import BEIJING_TZ, ensure_dir, normalize_map_key, parse_beijing_time
-else:
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from logging_utils import setup_logging  # type: ignore
-    from utils import BEIJING_TZ, ensure_dir, normalize_map_key, parse_beijing_time  # type: ignore
-
-DEFAULT_EXG_URL = "https://list.darkrp.cn:9000/serverlist/cs2maplist"
+from tools.map_sidecar.config import CnFetcherSettings, load_cn_fetcher_settings, validate_cn_fetcher_settings
+from tools.map_sidecar.logging_utils import setup_logging
+from tools.map_sidecar.utils import BEIJING_TZ, ensure_dir, normalize_map_key, parse_beijing_time
 DEBUG_DIR = os.path.join(os.path.dirname(__file__), "debug", "exg_html")
 USER_AGENT = "cs2ze-exg-cn-fetcher/1.0"
 
 
 class MaplistParseError(RuntimeError):
     pass
-
-
-@dataclass(frozen=True)
-class Settings:
-    exg_maplist_url: str
-    overseas_ingest_url: str
-    ingest_token: str
-    debug: bool
-    fetch_timeout_seconds: int
-    retention_hours: int
-
-
-def _get_env(name: str, default: str | None = None) -> str | None:
-    value = os.environ.get(name)
-    if value is None:
-        return default
-    value = value.strip()
-    return value if value else default
-
-
-def load_settings() -> Settings:
-    fetch_timeout = int(_get_env("FETCH_TIMEOUT_SECONDS", "15"))
-    retention_hours = int(_get_env("RETENTION_HOURS", "72"))
-    return Settings(
-        exg_maplist_url=_get_env("EXG_MAPLIST_URL", DEFAULT_EXG_URL),
-        overseas_ingest_url=_get_env("OVERSEAS_INGEST_URL", ""),
-        ingest_token=_get_env("INGEST_TOKEN", ""),
-        debug=str(_get_env("DEBUG", "false")).lower() in {"1", "true", "yes"},
-        fetch_timeout_seconds=fetch_timeout,
-        retention_hours=retention_hours,
-    )
 
 
 def _cleanup_debug_html(logger: logging.Logger, retention_hours: int) -> None:
@@ -200,7 +161,7 @@ def parse_maplist(html: str) -> List[dict]:
     return rows
 
 
-def fetch_exg_html(settings: Settings) -> str:
+def fetch_exg_html(settings: CnFetcherSettings) -> str:
     response = requests.get(
         settings.exg_maplist_url,
         timeout=settings.fetch_timeout_seconds,
@@ -219,7 +180,7 @@ def build_payload(records: List[dict]) -> dict:
     }
 
 
-def post_payload(settings: Settings, payload: dict, logger: logging.Logger) -> None:
+def post_payload(settings: CnFetcherSettings, payload: dict, logger: logging.Logger) -> None:
     headers = {
         "Authorization": f"Bearer {settings.ingest_token}",
         "Content-Type": "application/json",
@@ -237,17 +198,12 @@ def post_payload(settings: Settings, payload: dict, logger: logging.Logger) -> N
     logger.info("Ingest accepted: %s", response.status_code)
 
 
-def run_fetch(settings: Settings, logger: logging.Logger, dry_run: bool, dump_payload: bool) -> int:
-    if not settings.exg_maplist_url:
-        logger.error("EXG_MAPLIST_URL is required")
+def run_fetch(settings: CnFetcherSettings, logger: logging.Logger, dry_run: bool, dump_payload: bool) -> int:
+    try:
+        validate_cn_fetcher_settings(settings, dry_run=dry_run)
+    except ValueError as exc:
+        logger.error("%s", exc)
         return 1
-    if not dry_run:
-        if not settings.overseas_ingest_url:
-            logger.error("OVERSEAS_INGEST_URL is required")
-            return 1
-        if not settings.ingest_token:
-            logger.error("INGEST_TOKEN is required")
-            return 1
 
     _cleanup_debug_html(logger, settings.retention_hours)
     html = fetch_exg_html(settings)
@@ -284,9 +240,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
-    settings = load_settings()
-    log_dir = os.environ.get("MAP_SIDECAR_LOG_DIR", os.path.join(os.getcwd(), "logs"))
-    logger = setup_logging(log_dir)
+    settings = load_cn_fetcher_settings()
+    logger = setup_logging(settings.log_dir)
     logger.setLevel(logging.INFO)
 
     parser = build_parser()

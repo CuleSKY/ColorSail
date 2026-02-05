@@ -8,7 +8,7 @@ import hashlib
 
 import pymysql
 
-from .config import Settings
+from tools.map_sidecar.config import Settings
 
 
 @dataclass
