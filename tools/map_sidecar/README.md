@@ -98,6 +98,7 @@ CN fetcher:
 ```bash
 .venv/bin/python -m tools.map_sidecar.sidecar cn-fetch
 .venv/bin/python -m tools.map_sidecar.sidecar cn-fetch --dry-run
+.venv/bin/python -m tools.map_sidecar.sidecar cn-fetch --input-html tools/map_sidecar/tests/fixtures/exg_maplist_sample.html --parse-only
 ```
 
 ## One-command start/stop (standalone daemon)
@@ -124,7 +125,7 @@ Ingest endpoint (correct token -> 200):
 curl -i -X POST https://www.cs2ze.org/sidecar/exg/ingest \
   -H 'Authorization: Bearer REPLACE_ME' \
   -H 'Content-Type: application/json' \
-  -d '{"source":"exg_maplist","fetched_at_epoch":1710000000,"records":[{"map":"de_dust2","name_zh_cn":"沙漠2","duration_raw":"60","cooldown_end_epoch":1710003600,"workshop_id":123456,"workshop_url":"https://steamcommunity.com/sharedfiles/filedetails/?id=123456","achievement":"Win 10 rounds"}]}'
+  -d '{"source":"exg_maplist","fetched_at_epoch":1710000000,"records":[{"map":"de_dust2","name_zh":"沙漠2","difficulty":"未标注","tags":[],"cooldown":{"duration_raw":"60","deadline":"2024/03/10 12:00"},"achievement":"Win 10 rounds","workshop":{"id":"123456789","url":"https://steamcommunity.com/sharedfiles/filedetails/?id=123456789"}}]}'
 ```
 
 CN dry-run preview:
@@ -164,6 +165,7 @@ sudo systemctl enable --now exg-fetcher-cn.timer
 ## Notes
 
 - `map_translations.json` and `map_index.json` are written atomically to the project root.
+- `maplist.normalized.json` is written by the CN fetcher to `<PROJECT_ROOT>/maplist.normalized.json` (list of normalized EXG map entries).
 - EXG HTML is retained under `tools/map_sidecar/debug/exg_html/` on the **CN fetcher** when `DEBUG=true` or parsing fails; files older than `RETENTION_HOURS` are deleted automatically.
 - Workshop images are saved as lowercase `<map_key>.jpg` under `<PROJECT_ROOT>/<STATIC_DIR_NAME>/maps/`.
 - Overseas hosts do **not** fetch the EXG HTML directly; ingestion happens via the HTTP sidecar endpoint.
