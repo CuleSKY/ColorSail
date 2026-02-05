@@ -1,5 +1,5 @@
 [Unit]
-Description=CS2ZE Map Sidecar - Ingest EXG maplist every 30 minutes
+Description=CS2ZE Map Sidecar - EXG ingest health check every 30 minutes
 
 [Timer]
 OnBootSec=2min
