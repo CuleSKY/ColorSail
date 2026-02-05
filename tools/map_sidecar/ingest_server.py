@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import logging
+import os
 import re
 import signal
 import sys
@@ -20,7 +22,7 @@ from tools.map_sidecar.config import (
     validate_settings,
 )
 from tools.map_sidecar.db import MySQLClient
-from tools.map_sidecar.exporter import export_map_index
+from tools.map_sidecar.exporter import atomic_write_json, export_map_index
 from tools.map_sidecar.logging_utils import setup_logging
 from tools.map_sidecar.redis_cache import RedisCache
 from tools.map_sidecar.utils import convert_to_traditional, normalize_map_key, parse_beijing_time
@@ -117,12 +119,23 @@ def _validate_records(payload: dict) -> list[dict]:
     return cleaned
 
 
+def _write_normalized_maplist(settings, logger: logging.Logger, records: Iterable[dict]) -> None:
+    output_path = os.path.join(settings.project_root, settings.static_dir_name, "data", "maplist_normalized.json")
+    payload = list(records)
+    try:
+        atomic_write_json(output_path, payload)
+        logger.info("maplist_normalized.json updated (%s records)", len(payload))
+    except OSError as exc:
+        logger.warning("Failed to write maplist_normalized.json: %s", exc)
+
+
 def _process_records(
     records: Iterable[dict],
     settings,
     logger: logging.Logger,
     db: MySQLClient,
     cache: RedisCache,
+    raw_records: Iterable[dict],
 ) -> bool:
     map_keys = {record["map"] for record in records}
     now_epoch = int(time.time())
@@ -147,6 +160,7 @@ def _process_records(
             cache.set(INDEX_STAMP_KEY, str(stamp))
     else:
         logger.info("EXG ingest completed with no changes")
+    _write_normalized_maplist(settings, logger, raw_records)
     return changed
 
 
@@ -241,6 +255,7 @@ class IngestHandler(BaseHTTPRequestHandler):
                 self.server.logger,
                 self.server.db,
                 self.server.cache,
+                payload.get("records", []),
             )
             self.server.cache.set(EXG_LAST_INGEST_KEY, str(int(time.time())))
         except Exception as exc:

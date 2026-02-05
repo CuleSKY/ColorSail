@@ -13,6 +13,7 @@ import ipaddress
 import secrets
 import re
 import atexit
+import tempfile
 from flask import current_app, abort, make_response
 from pathlib import Path
 from collections import deque, OrderedDict
@@ -178,7 +179,13 @@ MAP_IMAGE_INDEX = {}
 MAP_IMAGE_MTIME = 0
 MAP_TRANS_CACHE = {}
 MAP_TRANS_NORMALIZED = {}
+MAP_TRANS_DIRTY = False
+MAP_TRANS_LAST_WRITE = 0.0
+MAP_TRANS_WRITE_INTERVAL_SECONDS = 15
+MAPLIST_NORMALIZED_CACHE = {}
+MAPLIST_NORMALIZED_MTIME = 0
 MAP_TRANS_LOCK = threading.Lock()
+MAPLIST_NORMALIZED_LOCK = threading.Lock()
 SERVER_CACHE_LOCK = threading.Lock()
 AGENT_CACHE_LOCK = threading.Lock()
 PUBLIC_BUILD_LOCK = threading.Lock()
@@ -303,7 +310,14 @@ def generate_distinct_colors(n):
 
 def refresh_local_caches(force=False):
     """刷新地图图片索引和翻译文件"""
-    global MAP_IMAGE_INDEX, MAP_IMAGE_MTIME, MAP_TRANS_CACHE, MAP_TRANS_NORMALIZED, MAP_CACHE_UPDATED_AT
+    global MAP_IMAGE_INDEX
+    global MAP_IMAGE_MTIME
+    global MAP_TRANS_CACHE
+    global MAP_TRANS_NORMALIZED
+    global MAP_TRANS_DIRTY
+    global MAPLIST_NORMALIZED_CACHE
+    global MAPLIST_NORMALIZED_MTIME
+    global MAP_CACHE_UPDATED_AT
     now = int(time.time())
     if not force and (now - MAP_CACHE_UPDATED_AT) < CACHE_REFRESH_INTERVAL_SECONDS:
         return
@@ -355,11 +369,45 @@ def refresh_local_caches(force=False):
                     normalized[normalized_key] = entry
             MAP_TRANS_CACHE = cleaned
             MAP_TRANS_NORMALIZED = normalized
+            MAP_TRANS_DIRTY = False
             print(f"[Cache] 已加载 {len(MAP_TRANS_CACHE)} 个地图翻译")
     except Exception as e:
         print(f"[Cache] 翻译加载失败: {e}")
         MAP_TRANS_CACHE = {}
         MAP_TRANS_NORMALIZED = {}
+        MAP_TRANS_DIRTY = False
+
+    try:
+        normalized_path = os.path.join(app.static_folder, "data", "maplist_normalized.json")
+        if os.path.exists(normalized_path):
+            mtime = int(os.path.getmtime(normalized_path))
+            if force or mtime != MAPLIST_NORMALIZED_MTIME:
+                with MAPLIST_NORMALIZED_LOCK:
+                    with open(normalized_path, "r", encoding="utf-8") as handle:
+                        data = json.load(handle)
+                    if isinstance(data, list):
+                        normalized = {}
+                        for entry in data:
+                            if not isinstance(entry, dict):
+                                continue
+                            map_key = normalize_map_name(entry.get("map"))
+                            if not map_key:
+                                continue
+                            if map_key in normalized:
+                                continue
+                            normalized[map_key] = entry
+                        MAPLIST_NORMALIZED_CACHE = normalized
+                        MAPLIST_NORMALIZED_MTIME = mtime
+                        print(f"[Cache] 已加载 {len(MAPLIST_NORMALIZED_CACHE)} 条 EXG maplist 记录")
+                    else:
+                        raise ValueError("maplist_normalized.json must be a list")
+        else:
+            MAPLIST_NORMALIZED_CACHE = {}
+            MAPLIST_NORMALIZED_MTIME = 0
+    except Exception as e:
+        print(f"[Cache] EXG maplist 加载失败: {e}")
+        MAPLIST_NORMALIZED_CACHE = {}
+        MAPLIST_NORMALIZED_MTIME = 0
     MAP_CACHE_UPDATED_AT = now
 
 def convert_to_traditional(text):
@@ -1084,11 +1132,31 @@ def rebuild_translated_index():
             normalized[normalized_key] = entry
     MAP_TRANS_NORMALIZED = normalized
 
+def get_exg_maplist_entry(map_name):
+    if not map_name:
+        return None
+    map_clean = normalize_map_name(map_name)
+    if not map_clean:
+        return None
+    with MAPLIST_NORMALIZED_LOCK:
+        return MAPLIST_NORMALIZED_CACHE.get(map_clean)
+
+def _maplist_entry_to_translation(entry):
+    if not entry:
+        return None
+    name_zh = str(entry.get("name_zh") or "").strip()
+    if not name_zh:
+        return None
+    return {"zh_cn": name_zh, "zh_tw": convert_to_traditional(name_zh)}
+
 def get_map_translation_entry(map_name):
     if not map_name:
         return None
     if map_name in MAP_TRANS_CACHE:
         return MAP_TRANS_CACHE[map_name]
+    maplist_entry = _maplist_entry_to_translation(get_exg_maplist_entry(map_name))
+    if maplist_entry:
+        return maplist_entry
     map_clean = normalize_map_name(map_name)
     if map_clean and map_clean in MAP_TRANS_CACHE:
         return MAP_TRANS_CACHE[map_clean]
@@ -1101,13 +1169,59 @@ def ensure_map_translation_entry(map_raw):
     if not map_clean:
         return None
     with MAP_TRANS_LOCK:
-        return MAP_TRANS_CACHE.get(map_clean) or MAP_TRANS_NORMALIZED.get(map_clean)
+        existing = MAP_TRANS_CACHE.get(map_clean) or MAP_TRANS_NORMALIZED.get(map_clean)
+        if existing:
+            return existing
+        entry = {"zh_cn": "", "zh_tw": ""}
+        MAP_TRANS_CACHE[map_clean] = entry
+        global MAP_TRANS_DIRTY
+        MAP_TRANS_DIRTY = True
+        return entry
 
 def update_map_translation_entry(map_name, map_display):
-    return False
+    global MAP_TRANS_DIRTY
+    map_clean = normalize_map_name(map_name)
+    if not map_clean:
+        return False
+    name = str(map_display or "").strip()
+    if not name:
+        return False
+    with MAP_TRANS_LOCK:
+        entry = MAP_TRANS_CACHE.get(map_clean, {"zh_cn": "", "zh_tw": ""})
+        if entry.get("zh_cn"):
+            return False
+        entry["zh_cn"] = name
+        entry["zh_tw"] = convert_to_traditional(name) if name else ""
+        MAP_TRANS_CACHE[map_clean] = entry
+        MAP_TRANS_DIRTY = True
+    rebuild_translated_index()
+    return True
 
 def maybe_flush_map_translations(force=False):
-    return False
+    global MAP_TRANS_DIRTY, MAP_TRANS_LAST_WRITE
+    if not MAP_TRANS_DIRTY:
+        return False
+    now = time.time()
+    if not force and (now - MAP_TRANS_LAST_WRITE) < MAP_TRANS_WRITE_INTERVAL_SECONDS:
+        return False
+    dir_name = os.path.dirname(TRANS_FILE) or "."
+    os.makedirs(dir_name, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(prefix=".tmp.", suffix=".json", dir=dir_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(MAP_TRANS_CACHE, handle, ensure_ascii=False, indent=2, sort_keys=True)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, TRANS_FILE)
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+    MAP_TRANS_LAST_WRITE = now
+    MAP_TRANS_DIRTY = False
+    return True
 
 atexit.register(lambda: maybe_flush_map_translations(force=True))
 
@@ -1359,9 +1473,24 @@ def fetch_exg_data_from_api():
                     entry = ensure_map_translation_entry(map_name)
                     if map_display:
                         update_map_translation_entry(map_name, map_display)
+                    maplist_entry = get_exg_maplist_entry(map_name)
                     if entry:
                         server_obj['map_cn'] = entry.get('zh_cn', '')
                         server_obj['map_tw'] = entry.get('zh_tw', '')
+                    elif maplist_entry:
+                        map_name_zh = str(maplist_entry.get("name_zh") or "").strip()
+                        if map_name_zh:
+                            server_obj['map_cn'] = map_name_zh
+                            server_obj['map_tw'] = convert_to_traditional(map_name_zh)
+                    if maplist_entry:
+                        server_obj['map_exg'] = {
+                            "name_zh": maplist_entry.get("name_zh", ""),
+                            "difficulty": maplist_entry.get("difficulty", ""),
+                            "tags": maplist_entry.get("tags", []),
+                            "cooldown": maplist_entry.get("cooldown", {}),
+                            "achievement": maplist_entry.get("achievement", ""),
+                            "workshop": maplist_entry.get("workshop", {}),
+                        }
                     
                     servers.append(server_obj)
                     
@@ -1431,6 +1560,21 @@ def fetch_a2s_data(server_cfg, game_type='cs2'):
         if entry:
             res['map_cn'] = entry.get('zh_cn', '')
             res['map_tw'] = entry.get('zh_tw', '')
+        maplist_entry = get_exg_maplist_entry(info.map_name)
+        if maplist_entry and not entry:
+            map_name_zh = str(maplist_entry.get("name_zh") or "").strip()
+            if map_name_zh:
+                res['map_cn'] = map_name_zh
+                res['map_tw'] = convert_to_traditional(map_name_zh)
+        if maplist_entry:
+            res['map_exg'] = {
+                "name_zh": maplist_entry.get("name_zh", ""),
+                "difficulty": maplist_entry.get("difficulty", ""),
+                "tags": maplist_entry.get("tags", []),
+                "cooldown": maplist_entry.get("cooldown", {}),
+                "achievement": maplist_entry.get("achievement", ""),
+                "workshop": maplist_entry.get("workshop", {}),
+            }
         maybe_flush_map_translations()
             
     except Exception as e:
