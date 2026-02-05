@@ -1,4 +1,6 @@
 from __future__ import annotations
+from dataclasses import dataclass, asdict
+from typing import Any, Dict
 
 import argparse
 import json
@@ -24,6 +26,20 @@ POST_RENDER_WAIT_MS = 750
 
 class MaplistParseError(RuntimeError):
     pass
+
+@dataclass
+class MapRecord:
+    # 字段名必须与现有 JSON 完全一致
+    map: str
+    name_zh_cn: Optional[str]
+    duration_raw: Optional[str]
+    cooldown_end_epoch: Optional[int]
+    workshop_id: Optional[int]
+    workshop_url: Optional[str]
+    achievement: Optional[str]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
 
 
 def _cleanup_debug_html(logger: logging.Logger, retention_hours: int) -> None:
@@ -121,11 +137,12 @@ def parse_maplist(html: str) -> List[dict]:
     if not data_rows:
         raise MaplistParseError("No data rows found in EXG maplist HTML")
 
-    rows = []
+    records: List[MapRecord] = []
     for row in data_rows:
         cells = [cell.get_text(strip=True) for cell in row.find_all(["td", "th"])]
         if not cells:
             continue
+
         if mapping:
             map_raw = cells[mapping.get("map", 0)] if len(cells) > mapping.get("map", 0) else None
             name_raw = cells[mapping.get("name", 1)] if len(cells) > mapping.get("name", 1) else None
@@ -144,23 +161,29 @@ def parse_maplist(html: str) -> List[dict]:
         map_key = normalize_map_key(map_raw)
         if not map_key:
             continue
+
         cooldown_epoch = parse_beijing_time(cooldown_raw or "")
         workshop_id, workshop_url = _parse_workshop(workshop_raw or "")
         name_zh_cn = name_raw.strip() if name_raw else None
-        record = {
-            "map": map_key,
-            "name_zh_cn": name_zh_cn,
-            "duration_raw": duration_raw.strip() if duration_raw else None,
-            "cooldown_end_epoch": cooldown_epoch,
-            "workshop_id": workshop_id,
-            "workshop_url": workshop_url,
-            "achievement": achievement_raw.strip() if achievement_raw else None,
-        }
-        rows.append(record)
+        duration_norm = duration_raw.strip() if duration_raw else None
+        achievement_norm = achievement_raw.strip() if achievement_raw else None
 
-    if not rows:
+        records.append(
+            MapRecord(
+                map=map_key,
+                name_zh_cn=name_zh_cn,
+                duration_raw=duration_norm,
+                cooldown_end_epoch=cooldown_epoch,
+                workshop_id=workshop_id,
+                workshop_url=workshop_url,
+                achievement=achievement_norm,
+            )
+        )
+
+    if not records:
         raise MaplistParseError("No valid rows parsed from EXG maplist HTML")
-    return rows
+    return [r.to_dict() for r in records]
+
 
 
 def _fetch_exg_html_requests(settings: CnFetcherSettings) -> str:
@@ -189,7 +212,15 @@ def _fetch_exg_html_browser(settings: CnFetcherSettings, logger: logging.Logger,
     min_rows = 50
     logger.info("Fetching EXG maplist with Chromium (headless=%s)", headless)
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=headless)
+        browser = playwright.chromium.launch(
+            headless=headless,
+            executable_path="/usr/bin/chromium-browser", 
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+            ],
+        )
         context = browser.new_context(user_agent=USER_AGENT)
         page = context.new_page()
         try:
