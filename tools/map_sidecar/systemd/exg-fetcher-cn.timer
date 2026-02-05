@@ -1,0 +1,10 @@
+[Unit]
+Description=CS2ZE EXG maplist CN fetcher every 30 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=30min
+Unit=exg-fetcher-cn.service
+
+[Install]
+WantedBy=timers.target
