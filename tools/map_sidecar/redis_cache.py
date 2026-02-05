@@ -3,7 +3,7 @@ from typing import Any, Optional
 
 import redis
 
-from .config import Settings
+from tools.map_sidecar.config import Settings
 
 
 class RedisCache:
