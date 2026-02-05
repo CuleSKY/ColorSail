@@ -186,6 +186,7 @@ def _fetch_exg_html_browser(settings: CnFetcherSettings, logger: logging.Logger,
         ) from exc
 
     timeout_ms = settings.fetch_timeout_seconds * 1000
+    min_rows = 50
     logger.info("Fetching EXG maplist with Chromium (headless=%s)", headless)
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=headless)
@@ -193,11 +194,26 @@ def _fetch_exg_html_browser(settings: CnFetcherSettings, logger: logging.Logger,
         page = context.new_page()
         try:
             page.goto(settings.exg_maplist_url, wait_until="domcontentloaded", timeout=timeout_ms)
-            page.wait_for_selector(SELECTOR_EXG_ROWS, timeout=timeout_ms)
+            page.wait_for_function(
+                f"document.querySelectorAll('#data-tablebody tr').length > {min_rows}",
+                timeout=timeout_ms,
+            )
             page.wait_for_timeout(POST_RENDER_WAIT_MS)
             html = page.content()
         except PlaywrightTimeoutError as exc:
+            html = page.content()
+            title = page.title()
+            row_count = page.eval_on_selector_all(SELECTOR_EXG_ROWS, "els => els.length")
+            logger.error("EXG maplist render timeout: title=%s rows=%s", title, row_count)
+            _save_debug_html(logger, html)
             raise MaplistParseError("Timed out waiting for EXG maplist rows to render") from exc
+        except Exception:
+            html = page.content()
+            title = page.title()
+            row_count = page.eval_on_selector_all(SELECTOR_EXG_ROWS, "els => els.length")
+            logger.error("EXG maplist render failed: title=%s rows=%s", title, row_count)
+            _save_debug_html(logger, html)
+            raise
         finally:
             context.close()
             browser.close()
