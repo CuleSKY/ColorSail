@@ -8,6 +8,12 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+If you plan to use the EXG CN fetcher, install Playwright's Chromium runtime:
+
+```bash
+python -m playwright install --with-deps chromium
+```
+
 ## Deployment notes
 
 See `docs/autojoin_v2_deploy.md` for AutoJoin v2 deployment requirements and WebSocket proxying notes.
@@ -17,6 +23,22 @@ See `docs/autojoin_v2_deploy.md` for AutoJoin v2 deployment requirements and Web
 - Map translation entries are stored in `map_translations.json` (keys are normalized map names, values include `zh_cn` and `zh_tw`).
 - The backend auto-creates empty entries for any map seen from community/A2S/EXG responses, and fills missing `zh_cn`/`zh_tw` when EXG provides `Status.MapDisplayName`.
 - Traditional Chinese conversion uses OpenCC (`opencc-python-reimplemented`) when available, with a lightweight fallback if OpenCC is unavailable.
+
+## EXG CN fetcher self-check
+
+From the repo root, confirm the rendered EXG maplist can be fetched and parsed:
+
+```bash
+python -m tools.map_sidecar.sidecar cn-fetch --dry-run
+```
+
+The output should include a `record_count` and a short preview. Systemd should be able to run:
+
+```bash
+python -m tools.map_sidecar.sidecar cn-fetch
+```
+
+Check `journalctl` for a success log entry if running under systemd.
 
 ## Admin notes
 

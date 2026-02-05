@@ -83,6 +83,16 @@ def build_parser() -> argparse.ArgumentParser:
     cn_parser = sub.add_parser("cn-fetch", help="Fetch EXG maplist from CN and POST to overseas")
     cn_parser.add_argument("--dry-run", action="store_true", help="Fetch + parse only; do not POST")
     cn_parser.add_argument("--dump-payload", action="store_true", help="Print full payload JSON")
+    cn_parser.add_argument(
+        "--headed",
+        action="store_true",
+        help="Run Chromium with a visible window (debugging only)",
+    )
+    cn_parser.add_argument(
+        "--use-requests",
+        action="store_true",
+        help="Use requests instead of Chromium rendering (debugging only)",
+    )
 
     return parser
 
@@ -96,7 +106,14 @@ def main() -> int:
         logger = setup_logging(settings.log_dir)
         logger.setLevel(logging.INFO)
         try:
-            return run_fetch(settings, logger, args.dry_run, args.dump_payload)
+            return run_fetch(
+                settings,
+                logger,
+                args.dry_run,
+                args.dump_payload,
+                headless=not args.headed,
+                use_requests=args.use_requests,
+            )
         except Exception as exc:  # pragma: no cover - safety net
             logger.error("CN fetch failed: %s", exc)
             return 1

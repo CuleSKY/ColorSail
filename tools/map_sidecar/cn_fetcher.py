@@ -18,6 +18,8 @@ from tools.map_sidecar.logging_utils import setup_logging
 from tools.map_sidecar.utils import BEIJING_TZ, ensure_dir, normalize_map_key, parse_beijing_time
 DEBUG_DIR = os.path.join(os.path.dirname(__file__), "debug", "exg_html")
 USER_AGENT = "cs2ze-exg-cn-fetcher/1.0"
+SELECTOR_EXG_ROWS = "#data-tablebody tr"
+POST_RENDER_WAIT_MS = 750
 
 
 class MaplistParseError(RuntimeError):
@@ -161,7 +163,7 @@ def parse_maplist(html: str) -> List[dict]:
     return rows
 
 
-def fetch_exg_html(settings: CnFetcherSettings) -> str:
+def _fetch_exg_html_requests(settings: CnFetcherSettings) -> str:
     response = requests.get(
         settings.exg_maplist_url,
         timeout=settings.fetch_timeout_seconds,
@@ -170,6 +172,56 @@ def fetch_exg_html(settings: CnFetcherSettings) -> str:
     if not response.ok:
         raise MaplistParseError(f"EXG maplist fetch failed: {response.status_code}")
     return response.text
+
+
+def _fetch_exg_html_browser(settings: CnFetcherSettings, logger: logging.Logger, headless: bool) -> str:
+    try:
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:
+        raise RuntimeError(
+            "Playwright is required for EXG maplist rendering. Install it with "
+            "`pip install playwright` and then run "
+            "`python -m playwright install --with-deps chromium`."
+        ) from exc
+
+    timeout_ms = settings.fetch_timeout_seconds * 1000
+    logger.info("Fetching EXG maplist with Chromium (headless=%s)", headless)
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=headless)
+        context = browser.new_context(user_agent=USER_AGENT)
+        page = context.new_page()
+        try:
+            page.goto(settings.exg_maplist_url, wait_until="domcontentloaded", timeout=timeout_ms)
+            page.wait_for_selector(SELECTOR_EXG_ROWS, timeout=timeout_ms)
+            page.wait_for_timeout(POST_RENDER_WAIT_MS)
+            html = page.content()
+        except PlaywrightTimeoutError as exc:
+            raise MaplistParseError("Timed out waiting for EXG maplist rows to render") from exc
+        finally:
+            context.close()
+            browser.close()
+
+    return html
+
+
+def _ensure_rendered_table(html: str) -> None:
+    if "#data-tablebody" not in html:
+        raise MaplistParseError("Rendered HTML missing #data-tablebody")
+    if not re.search(r"<tbody[^>]*id=[\"']data-tablebody[\"'][^>]*>.*?<tr", html, re.S):
+        raise MaplistParseError("Rendered HTML missing #data-tablebody rows")
+
+
+def fetch_exg_html(
+    settings: CnFetcherSettings,
+    logger: logging.Logger,
+    headless: bool = True,
+    use_requests: bool = False,
+) -> str:
+    if use_requests:
+        logger.warning("Using requests fallback for EXG maplist (debug only)")
+        return _fetch_exg_html_requests(settings)
+    return _fetch_exg_html_browser(settings, logger, headless)
 
 
 def build_payload(records: List[dict]) -> dict:
@@ -198,7 +250,14 @@ def post_payload(settings: CnFetcherSettings, payload: dict, logger: logging.Log
     logger.info("Ingest accepted: %s", response.status_code)
 
 
-def run_fetch(settings: CnFetcherSettings, logger: logging.Logger, dry_run: bool, dump_payload: bool) -> int:
+def run_fetch(
+    settings: CnFetcherSettings,
+    logger: logging.Logger,
+    dry_run: bool,
+    dump_payload: bool,
+    headless: bool = True,
+    use_requests: bool = False,
+) -> int:
     try:
         validate_cn_fetcher_settings(settings, dry_run=dry_run)
     except ValueError as exc:
@@ -206,8 +265,9 @@ def run_fetch(settings: CnFetcherSettings, logger: logging.Logger, dry_run: bool
         return 1
 
     _cleanup_debug_html(logger, settings.retention_hours)
-    html = fetch_exg_html(settings)
+    html = fetch_exg_html(settings, logger, headless=headless, use_requests=use_requests)
     try:
+        _ensure_rendered_table(html)
         records = parse_maplist(html)
     except MaplistParseError:
         _save_debug_html(logger, html)
@@ -236,6 +296,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="EXG maplist CN fetcher")
     parser.add_argument("--dry-run", action="store_true", help="Fetch + parse only; do not POST")
     parser.add_argument("--dump-payload", action="store_true", help="Print full payload JSON")
+    parser.add_argument(
+        "--headed",
+        action="store_true",
+        help="Run Chromium with a visible window (debugging only)",
+    )
+    parser.add_argument(
+        "--use-requests",
+        action="store_true",
+        help="Use requests instead of Chromium rendering (debugging only)",
+    )
     return parser
 
 
@@ -248,7 +318,14 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        return run_fetch(settings, logger, args.dry_run, args.dump_payload)
+        return run_fetch(
+            settings,
+            logger,
+            args.dry_run,
+            args.dump_payload,
+            headless=not args.headed,
+            use_requests=args.use_requests,
+        )
     except MaplistParseError as exc:
         logger.error("EXG maplist parse failed: %s", exc)
         return 1
