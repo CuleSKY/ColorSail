@@ -4,5 +4,6 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-EnvironmentFile=-/etc/default/exg-fetcher
-ExecStart=/usr/bin/python3 ${PROJECT_ROOT}/tools/map_sidecar/cn_fetcher.py
+WorkingDirectory=/opt/cs2ze/NERV_CS2ZE
+EnvironmentFile=/etc/default/exg-fetcher
+ExecStart=/opt/cs2ze/NERV_CS2ZE/.venv/bin/python -m tools.map_sidecar.sidecar cn-fetch

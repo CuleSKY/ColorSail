@@ -1,95 +1,28 @@
 from __future__ import annotations
 
 import argparse
-import ipaddress
 import json
 import logging
-import os
+import signal
 import sys
 import time
-from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Iterable, Optional
 
-if __package__:
-    from .config import load_settings
-    from .db import MySQLClient
-    from .exporter import atomic_write_json
-    from .logging_utils import setup_logging
-    from .redis_cache import RedisCache
-    from .utils import convert_to_traditional, normalize_map_key
-else:
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from config import load_settings  # type: ignore
-    from db import MySQLClient  # type: ignore
-    from exporter import atomic_write_json  # type: ignore
-    from logging_utils import setup_logging  # type: ignore
-    from redis_cache import RedisCache  # type: ignore
-    from utils import convert_to_traditional, normalize_map_key  # type: ignore
-
-INDEX_STAMP_KEY = "map_sidecar:index_stamp"
-EXG_LAST_INGEST_KEY = "map_sidecar:exg_last_ingest"
-
-
-@dataclass(frozen=True)
-class IngestSettings:
-    bind_host: str
-    bind_port: int
-    ingest_token: str
-    allowlist: tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]
-    max_bytes: int
-    request_timeout_seconds: int
-
-
-def _get_env(name: str, default: str | None = None) -> str | None:
-    value = os.environ.get(name)
-    if value is None:
-        return default
-    value = value.strip()
-    return value if value else default
-
-
-def _load_ingest_settings() -> IngestSettings:
-    allowlist_raw = _get_env("INGEST_ALLOWLIST", "") or ""
-    allowlist: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
-    for entry in allowlist_raw.split(","):
-        entry = entry.strip()
-        if not entry:
-            continue
-        allowlist.append(ipaddress.ip_network(entry, strict=False))
-
-    return IngestSettings(
-        bind_host=_get_env("INGEST_BIND_HOST", "0.0.0.0"),
-        bind_port=int(_get_env("INGEST_BIND_PORT", "8082")),
-        ingest_token=_get_env("INGEST_TOKEN", ""),
-        allowlist=tuple(allowlist),
-        max_bytes=int(_get_env("INGEST_MAX_BYTES", "1048576")),
-        request_timeout_seconds=int(_get_env("INGEST_REQUEST_TIMEOUT_SECONDS", "10")),
-    )
-
-
-def export_map_index(settings, logger: logging.Logger, db: MySQLClient) -> int:
-    records = db.fetch_map_index()
-    payload = {
-        "generated_at_epoch": int(time.time()),
-        "maps": {},
-    }
-    for record in records:
-        payload["maps"][record.map_key] = {
-            "name_zh_cn": record.name_zh_cn or "",
-            "name_zh_tw": record.name_zh_tw or "",
-            "exg": {
-                "achievement": record.achievement,
-                "cooldown_end_epoch": record.cooldown_end_epoch,
-                "workshop_id": record.workshop_id,
-                "workshop_url": record.workshop_url,
-            },
-        }
-    target_path = os.path.join(settings.project_root, "map_index.json")
-    atomic_write_json(target_path, payload)
-    logger.info("map_index.json exported (%s maps)", len(records))
-    return len(records)
+from tools.map_sidecar.config import (
+    EXG_LAST_INGEST_KEY,
+    INDEX_STAMP_KEY,
+    IngestSettings,
+    load_ingest_settings,
+    load_settings,
+    validate_ingest_settings,
+    validate_settings,
+)
+from tools.map_sidecar.db import MySQLClient
+from tools.map_sidecar.exporter import export_map_index
+from tools.map_sidecar.logging_utils import setup_logging
+from tools.map_sidecar.redis_cache import RedisCache
+from tools.map_sidecar.utils import convert_to_traditional, normalize_map_key
 
 
 def _validate_records(payload: dict) -> list[dict]:
@@ -333,26 +266,14 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> int:
-    ingest_settings = _load_ingest_settings()
-    if not ingest_settings.ingest_token:
-        print("INGEST_TOKEN is required", file=sys.stderr)
-        return 1
-
-    app_settings = load_settings()
-    logger = setup_logging(app_settings.log_dir)
-    logger.setLevel(logging.INFO)
-
-    if not app_settings.mysql_host:
-        logger.error("MYSQL_HOST is required")
-        return 1
-
-    db = MySQLClient(app_settings)
-    cache = RedisCache(app_settings)
-
-    parser = build_parser()
-    args = parser.parse_args()
-
+def run_server(
+    ingest_settings: IngestSettings,
+    app_settings,
+    logger: logging.Logger,
+    db: MySQLClient,
+    cache: RedisCache,
+    once: bool = False,
+) -> int:
     server = IngestHTTPServer(
         (ingest_settings.bind_host, ingest_settings.bind_port),
         IngestHandler,
@@ -369,8 +290,14 @@ def main() -> int:
         ingest_settings.bind_port,
     )
 
+    def handle_sigterm(signum, frame):  # noqa: ARG001
+        logger.info("EXG ingest server received SIGTERM")
+        server.shutdown()
+
+    signal.signal(signal.SIGTERM, handle_sigterm)
+
     try:
-        if args.once:
+        if once:
             server.handle_request()
         else:
             server.serve_forever()
@@ -379,6 +306,34 @@ def main() -> int:
     finally:
         server.server_close()
     return 0
+
+
+def main() -> int:
+    ingest_settings = load_ingest_settings()
+    app_settings = load_settings()
+    logger = setup_logging(app_settings.log_dir)
+    logger.setLevel(logging.INFO)
+
+    parser = build_parser()
+    args = parser.parse_args()
+
+    try:
+        validate_ingest_settings(ingest_settings)
+        validate_settings(app_settings, require_mysql=True)
+    except ValueError as exc:
+        logger.error("%s", exc)
+        return 1
+
+    db = MySQLClient(app_settings)
+    cache = RedisCache(app_settings)
+    return run_server(
+        ingest_settings,
+        app_settings,
+        logger,
+        db,
+        cache,
+        once=args.once,
+    )
 
 
 if __name__ == "__main__":

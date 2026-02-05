@@ -5,9 +5,9 @@ import os
 import requests
 from bs4 import BeautifulSoup
 
-from .config import Settings
-from .db import MySQLClient
-from .utils import ensure_dir
+from tools.map_sidecar.config import Settings
+from tools.map_sidecar.db import MySQLClient
+from tools.map_sidecar.utils import ensure_dir
 
 IMAGE_CLASS = "workshopItemPreviewImageEnlargeable"
 USER_AGENT = "cs2ze-map-sidecar/1.0"
