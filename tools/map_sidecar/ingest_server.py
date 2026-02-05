@@ -122,8 +122,11 @@ def _validate_records(payload: dict) -> list[dict]:
 def _write_normalized_maplist(settings, logger: logging.Logger, records: Iterable[dict]) -> None:
     output_path = os.path.join(settings.project_root, settings.static_dir_name, "data", "maplist_normalized.json")
     payload = list(records)
-    atomic_write_json(output_path, payload)
-    logger.info("maplist_normalized.json updated (%s records)", len(payload))
+    try:
+        atomic_write_json(output_path, payload)
+        logger.info("maplist_normalized.json updated (%s records)", len(payload))
+    except OSError as exc:
+        logger.warning("Failed to write maplist_normalized.json: %s", exc)
 
 
 def _process_records(
