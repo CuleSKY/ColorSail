@@ -771,6 +771,7 @@ def fetch_missing_images(settings: Settings, logger: logging.Logger, db: MySQLCl
 
 
 INDEX_STAMP_KEY = "map_sidecar:index_stamp"
+EXG_LAST_INGEST_KEY = "map_sidecar:exg_last_ingest"
 
 
 def export_map_index(settings, logger, db: MySQLClient) -> int:
@@ -801,35 +802,25 @@ def cmd_poll_servers(settings, logger, db, cache) -> None:
 
 
 def cmd_ingest_exg(settings, logger, db, cache) -> None:
-    try:
-        records = fetch_and_parse(settings, logger)
-    except MaplistParseError as exc:
-        logger.error("EXG maplist parse failed: %s", exc)
+    logger.warning("EXG ingestion is disabled on overseas hosts; use the ingest sidecar endpoint.")
+
+
+def cmd_exg_health(settings, logger, cache) -> None:
+    max_age = int(os.environ.get("EXG_HEALTH_MAX_AGE_SECONDS", "7200"))
+    last_ingest = cache.get(EXG_LAST_INGEST_KEY)
+    if not last_ingest:
+        logger.warning("EXG ingest timestamp not found in cache")
         return
-
-    map_keys = {record["map"] for record in records}
-    now_epoch = int(time.time())
-    db.ensure_maps_placeholder(map_keys, now_epoch)
-
-    changed = False
-    exg_changed = db.upsert_map_exg(records)
-    if exg_changed:
-        changed = True
-
-    for record in records:
-        name_cn = record.get("name_zh_cn")
-        name_tw = record.get("name_zh_tw")
-        updated = db.update_map_names_from_exg(record["map"], name_cn, name_tw)
-        if updated:
-            changed = True
-
-    if changed:
-        export_map_index(settings, logger, db)
-        stamp = db.get_change_stamp()
-        if stamp is not None:
-            cache.set(INDEX_STAMP_KEY, str(stamp))
+    try:
+        last_epoch = int(last_ingest)
+    except ValueError:
+        logger.warning("EXG ingest timestamp is invalid: %s", last_ingest)
+        return
+    age = int(time.time()) - last_epoch
+    if age > max_age:
+        logger.warning("EXG ingest is stale (%s seconds ago)", age)
     else:
-        logger.info("EXG maplist ingestion completed with no changes")
+        logger.info("EXG ingest is healthy (%s seconds ago)", age)
 
 
 def cmd_refresh_index(settings, logger, db, cache) -> None:
@@ -854,7 +845,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("poll-servers", help="Poll /servers.json and export translations")
-    sub.add_parser("ingest-exg", help="Fetch EXG maplist and update DB/export index")
+    sub.add_parser("ingest-exg", help="(disabled) formerly fetched EXG maplist")
+    sub.add_parser("exg-health", help="Check last EXG ingest timestamp")
     sub.add_parser("refresh-index", help="Refresh map_index.json if DB changed")
     sub.add_parser("fetch-images", help="Fetch missing workshop images")
 
@@ -880,6 +872,8 @@ def main() -> int:
         cmd_poll_servers(settings, logger, db, cache)
     elif args.command == "ingest-exg":
         cmd_ingest_exg(settings, logger, db, cache)
+    elif args.command == "exg-health":
+        cmd_exg_health(settings, logger, cache)
     elif args.command == "refresh-index":
         cmd_refresh_index(settings, logger, db, cache)
     elif args.command == "fetch-images":
