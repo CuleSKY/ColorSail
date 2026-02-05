@@ -1,0 +1,8 @@
+[Unit]
+Description=CS2ZE EXG maplist CN fetcher
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/default/exg-fetcher
+ExecStart=/usr/bin/python3 ${PROJECT_ROOT}/tools/map_sidecar/cn_fetcher.py
