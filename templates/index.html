@@ -424,7 +424,20 @@
         .exg-pill--red { color: var(--status-offline); border-color: var(--status-offline); }
         .exg-pill--green { color: var(--status-online); border-color: var(--status-online); }
         .exg-pill-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1 1 auto; }
-        .exg-pill-date { flex: 0 0 auto; font-weight: 600; }
+        .exg-pill-date { flex: 0 0 auto; font-weight: 600; cursor: help; }
+        .exg-tooltip {
+            position: fixed;
+            z-index: 999;
+            padding: 6px 10px;
+            border-radius: 6px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            box-shadow: var(--shadow);
+            color: var(--text-primary);
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
         .btn-unsub { padding: 8px 16px; border-radius: 6px; cursor: pointer; border: 1px solid var(--status-offline); background: transparent; color: var(--status-offline); font-size: 13px; font-weight: 600; transition: all 0.2s; }
         .btn-unsub:hover { background: var(--status-offline); color: white; transform: scale(1.05); }
         

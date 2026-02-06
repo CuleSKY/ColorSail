@@ -307,7 +307,11 @@
                   >
                     <template v-if="exgStatusByIndex[idx].state === 'cooldown'">
                       <span class="exg-pill-text">{{ exgStatusByIndex[idx].prefix }}</span>
-                      <span class="exg-pill-date" :title="exgStatusByIndex[idx].tooltip">{{ exgStatusByIndex[idx].date }}</span>
+                      <span
+                        class="exg-pill-date"
+                        @mouseenter="showExgTooltip($event, exgStatusByIndex[idx].datetime)"
+                        @mouseleave="hideExgTooltip"
+                      >{{ exgStatusByIndex[idx].date }}</span>
                     </template>
                     <template v-else>
                       <span class="exg-pill-text">{{ exgStatusByIndex[idx].label }}</span>
@@ -323,6 +327,14 @@
 
             <div class="sub-test-btn" @click="testNotification">{{ t('test_notify') }}</div>
           </div>
+        </div>
+
+        <div
+          v-if="exgTooltip.visible"
+          class="exg-tooltip"
+          :style="{ top: `${exgTooltip.top}px`, left: `${exgTooltip.left}px` }"
+        >
+          {{ exgTooltip.text }}
         </div>
 
         <div v-show="curView === 'stats'" class="animate-enter">
@@ -497,6 +509,12 @@ const subscriptions = ref([]);
 const lastNotifiedMaps = ref({});
 const hasNotification = typeof Notification !== 'undefined';
 const notificationPermission = ref(hasNotification ? Notification.permission : 'denied');
+const exgTooltip = ref({
+  visible: false,
+  text: '',
+  top: 0,
+  left: 0
+});
 
 const draggedIndex = ref(null);
 const dragOverIndex = ref(null);
@@ -640,6 +658,32 @@ watch(curLang, () => document.title = t('app_title'), { immediate: true });
 const handleResize = () => {
   viewportWidth.value = window.innerWidth;
   isMobile.value = window.innerWidth <= 768;
+  if (isMobile.value) {
+    exgTooltip.value = { ...exgTooltip.value, visible: false };
+  }
+};
+
+const showExgTooltip = (event, datetime) => {
+  if (!datetime || viewportWidth.value < 768) return;
+  const target = event?.currentTarget;
+  if (!target || typeof target.getBoundingClientRect !== 'function') return;
+  const rect = target.getBoundingClientRect();
+  const padding = 8;
+  const maxWidth = 220;
+  const left = Math.min(
+    Math.max(padding, rect.left),
+    window.innerWidth - maxWidth - padding
+  );
+  exgTooltip.value = {
+    visible: true,
+    text: datetime,
+    top: rect.bottom + 6,
+    left
+  };
+};
+
+const hideExgTooltip = () => {
+  exgTooltip.value = { ...exgTooltip.value, visible: false };
 };
 
 const handleGlobalClick = (e) => {
@@ -1128,6 +1172,9 @@ const getExgStatus = (sub) => {
   if (!hasDeadline && !hasDuration) return null;
   const deadline = hasDeadline ? entry.deadline : null;
   const durationRaw = hasDuration ? entry.duration_raw : '';
+  if ((deadline === null || deadline === undefined) && (durationRaw === null || durationRaw === undefined)) {
+    return null;
+  }
   const state = getExgStatusState(deadline, durationRaw);
   if (state === 'cooldown' && deadline !== null && deadline !== undefined) {
     const date = formatExgDate(deadline);
@@ -1138,7 +1185,7 @@ const getExgStatus = (sub) => {
       state,
       prefix,
       date,
-      tooltip: formatTemplate(t('map.exg.cooldown_tooltip'), { datetime })
+      datetime
     };
   }
   if (state === 'available') {
@@ -1710,3 +1757,23 @@ const submitFeedback = () => {
   showToast(t('feedback_sent'));
 };
 </script>
+
+<style scoped>
+.exg-pill-date {
+  cursor: help;
+}
+
+.exg-tooltip {
+  position: fixed;
+  z-index: 999;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow);
+  color: var(--text-primary);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+</style>
