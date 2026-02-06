@@ -670,14 +670,21 @@ const showExgTooltip = (event, datetime) => {
   const rect = target.getBoundingClientRect();
   const padding = 8;
   const maxWidth = 220;
+  const tooltipOffset = 6;
+  const estimatedHeight = 28;
+  const centeredLeft = rect.left + rect.width / 2 - maxWidth / 2;
   const left = Math.min(
-    Math.max(padding, rect.left),
+    Math.max(padding, centeredLeft),
     window.innerWidth - maxWidth - padding
   );
+  const preferredTop = rect.bottom + tooltipOffset;
+  const top = preferredTop + estimatedHeight > window.innerHeight - padding
+    ? Math.max(padding, rect.top - tooltipOffset - estimatedHeight)
+    : preferredTop;
   exgTooltip.value = {
     visible: true,
     text: datetime,
-    top: rect.bottom + 6,
+    top,
     left
   };
 };
