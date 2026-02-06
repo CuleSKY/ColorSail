@@ -119,6 +119,7 @@ SEO_DATA = {
 CONFIG_FILE = 'config.json'
 TRANS_FILE = 'map_translations.json'
 LANGUAGE_FILE = 'language.json'
+MAP_INDEX_FILE = os.path.join(os.path.dirname(__file__), 'map_index.json')
 DB_FILE = "stats.db"
 STATIC_MAP_DIR = os.path.join(STATIC_DIR, 'maps')
 PRIME_USERS_FILE = 'prime_users.json'
@@ -162,6 +163,8 @@ MAPLIST_NORMALIZED_CACHE = {}
 MAPLIST_NORMALIZED_MTIME = 0
 MAP_TRANS_LOCK = threading.Lock()
 MAPLIST_NORMALIZED_LOCK = threading.Lock()
+MAP_INDEX_CACHE = {"mtime": 0.0, "payload": None, "etag": None, "last_load_time": 0.0}
+MAP_INDEX_LOCK = threading.Lock()
 SERVER_CACHE_LOCK = threading.Lock()
 AGENT_CACHE_LOCK = threading.Lock()
 PUBLIC_BUILD_LOCK = threading.Lock()
@@ -670,23 +673,48 @@ def etag_matches(if_none_match, etag_value):
     candidates = [tag.strip() for tag in if_none_match.split(',')]
     return etag_value in candidates or f'W/{etag_value}' in candidates
 
-def make_etag_response(payload, cache_control=None):
-    payload_normalized = normalize_json(payload)
-    payload_json = json.dumps(payload_normalized, sort_keys=True, separators=(',', ':'))
-    etag = hashlib.sha256(payload_json.encode('utf-8')).hexdigest()
-    etag_value = f"\"{etag}\""
+def make_etag_response(payload, cache_control=None, etag_value=None):
+    if isinstance(payload, (bytes, bytearray)):
+        payload_bytes = bytes(payload)
+        payload_json = None
+    elif isinstance(payload, str):
+        payload_json = payload
+        payload_bytes = payload.encode('utf-8')
+    else:
+        payload_normalized = normalize_json(payload)
+        payload_json = json.dumps(payload_normalized, sort_keys=True, separators=(',', ':'))
+        payload_bytes = payload_json.encode('utf-8')
+    etag_value = etag_value or f"\"{hashlib.sha256(payload_bytes).hexdigest()}\""
     if etag_matches(request.headers.get('If-None-Match', ''), etag_value):
         resp = make_response('', 304)
         resp.headers['ETag'] = etag_value
         if cache_control:
             resp.headers['Cache-Control'] = cache_control
         return resp
-    resp = make_response(payload_json, 200)
-    resp.headers['Content-Type'] = 'application/json'
+    body = payload_bytes if payload_json is None else payload_json
+    resp = make_response(body, 200)
+    resp.headers['Content-Type'] = 'application/json; charset=utf-8'
     resp.headers['ETag'] = etag_value
     if cache_control:
         resp.headers['Cache-Control'] = cache_control
     return resp
+
+def load_map_index_snapshot():
+    mtime = os.path.getmtime(MAP_INDEX_FILE)
+    with MAP_INDEX_LOCK:
+        cached_bytes = MAP_INDEX_CACHE["payload"]
+        cached_etag = MAP_INDEX_CACHE["etag"]
+        if cached_bytes is not None and MAP_INDEX_CACHE["mtime"] == mtime:
+            return cached_bytes, cached_etag
+    with open(MAP_INDEX_FILE, 'rb') as handle:
+        payload_bytes = handle.read()
+    etag_value = f"\"{hashlib.sha256(payload_bytes).hexdigest()}\""
+    with MAP_INDEX_LOCK:
+        MAP_INDEX_CACHE["mtime"] = mtime
+        MAP_INDEX_CACHE["payload"] = payload_bytes
+        MAP_INDEX_CACHE["etag"] = etag_value
+        MAP_INDEX_CACHE["last_load_time"] = time.time()
+    return payload_bytes, etag_value
 
 def server_sort_key(server):
     if not isinstance(server, dict):
@@ -2279,6 +2307,15 @@ def get_translations():
 def get_public_translations():
     refresh_local_caches()
     return make_etag_response(MAP_TRANS_CACHE, 'public, max-age=1')
+
+@app.route('/map_index.json')
+def get_public_map_index():
+    try:
+        payload_bytes, etag_value = load_map_index_snapshot()
+    except Exception:
+        current_app.logger.exception("map_index snapshot unavailable")
+        return make_json_response({"ok": False, "error": "map_index_unavailable"}, status=503)
+    return make_etag_response(payload_bytes, 'public, max-age=60', etag_value=etag_value)
 
 @app.route('/api/language')
 def get_language_pack():
