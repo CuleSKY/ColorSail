@@ -14,6 +14,7 @@ import secrets
 import re
 import atexit
 import tempfile
+import pymysql
 from flask import current_app, abort, make_response
 from pathlib import Path
 from collections import deque, OrderedDict
@@ -165,6 +166,8 @@ MAP_TRANS_LOCK = threading.Lock()
 MAPLIST_NORMALIZED_LOCK = threading.Lock()
 MAP_INDEX_CACHE = {"mtime": 0.0, "payload": None, "etag": None, "last_load_time": 0.0}
 MAP_INDEX_LOCK = threading.Lock()
+MAP_INDEX_TRANSLATIONS_CACHE = {"mtime": 0.0, "data": None}
+MAP_INDEX_TRANSLATIONS_LOCK = threading.Lock()
 SERVER_CACHE_LOCK = threading.Lock()
 AGENT_CACHE_LOCK = threading.Lock()
 PUBLIC_BUILD_LOCK = threading.Lock()
@@ -177,6 +180,7 @@ PUBLIC_SERVERS_BYTES = EMPTY_JSON_BYTES  # cached /servers.json payload to avoid
 PUBLIC_SERVERS_ETAG = EMPTY_JSON_ETAG
 PUBLIC_SERVERS_BUILT_AT = 0.0
 PUBLIC_SERVERS_BUILT_VER = -1
+PUBLIC_SERVERS_NOTICE = None
 API_BUILD_LOCK = threading.Lock()
 API_BUILD_COND = threading.Condition(API_BUILD_LOCK)
 API_BUILDING = False
@@ -210,7 +214,12 @@ DNS_CACHE = {}
 DNS_CACHE_LOCK = threading.Lock()
 DNS_CACHE_TTL_SECONDS = 300
 DNS_CACHE_MAX_ENTRIES = 2048
+MYSQL_MAPS_CACHE = {}
+MYSQL_MAPS_CACHE_LOADED_AT = 0.0
+MYSQL_MAPS_CACHE_TTL_SECONDS = int(os.environ.get('MYSQL_MAPS_CACHE_TTL_SECONDS', '180'))
+MYSQL_MAPS_CACHE_LOCK = threading.Lock()
 OPENCC_S2T = OpenCC('s2t') if OpenCC else None
+OPENCC_S2TW = OpenCC('s2tw') if OpenCC else None
 OPENCC_S2HK = OpenCC('s2hk') if OpenCC else None
 OPENCC_S2TWP = OpenCC('s2twp') if OpenCC else None
 
@@ -410,6 +419,22 @@ def convert_to_traditional(text):
         return str(text).translate(fallback_map)
     except Exception:
         return text
+
+def convert_to_tw(text):
+    if not text:
+        return ''
+    try:
+        if OPENCC_S2TW:
+            return OPENCC_S2TW.convert(text)
+    except Exception:
+        pass
+    return convert_to_traditional(text)
+
+def strip_leading_bracket_tag(text):
+    if not text:
+        return ''
+    cleaned = re.sub(r'^\[[^\]]+\]', '', str(text))
+    return cleaned.lstrip()
 
 def ip_in_cidrs(client_ip, cidrs):
     if not cidrs:
@@ -716,6 +741,41 @@ def load_map_index_snapshot():
         MAP_INDEX_CACHE["last_load_time"] = time.time()
     return payload_bytes, etag_value
 
+def load_map_index_translations():
+    try:
+        mtime = os.path.getmtime(MAP_INDEX_FILE)
+    except OSError:
+        with MAP_INDEX_TRANSLATIONS_LOCK:
+            MAP_INDEX_TRANSLATIONS_CACHE["mtime"] = 0.0
+            MAP_INDEX_TRANSLATIONS_CACHE["data"] = {}
+        return {}
+    with MAP_INDEX_TRANSLATIONS_LOCK:
+        cached_data = MAP_INDEX_TRANSLATIONS_CACHE["data"]
+        if cached_data is not None and MAP_INDEX_TRANSLATIONS_CACHE["mtime"] == mtime:
+            return cached_data
+    try:
+        with open(MAP_INDEX_FILE, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except Exception as e:
+        print(f"[MapIndex] 读取失败: {e}")
+        return {}
+    translations = {}
+    if isinstance(payload, dict):
+        for map_key, entry in payload.items():
+            if not map_key:
+                continue
+            map_cn = ""
+            if isinstance(entry, dict):
+                map_cn = str(entry.get("map_cn") or "").strip()
+            elif isinstance(entry, str):
+                map_cn = entry.strip()
+            if map_cn:
+                translations[str(map_key)] = map_cn
+    with MAP_INDEX_TRANSLATIONS_LOCK:
+        MAP_INDEX_TRANSLATIONS_CACHE["mtime"] = mtime
+        MAP_INDEX_TRANSLATIONS_CACHE["data"] = translations
+    return translations
+
 def server_sort_key(server):
     if not isinstance(server, dict):
         return ('', '', '', '')
@@ -788,7 +848,41 @@ def apply_server_cache_updates(updates):
                 CID_SERVERS_CACHE.pop(cid, None)
     return changed_cids
 
-def build_servers_payload_bytes():
+def apply_mysql_map_translations(servers_by_cid, use_map_index_fallback=False):
+    map_keys = set()
+    for servers in servers_by_cid.values():
+        for srv in servers:
+            map_key = normalize_map_name(srv.get("map"))
+            if map_key:
+                map_keys.add(map_key)
+    translations = {}
+    db_failed = False
+    if map_keys:
+        translations, db_failed = get_mysql_map_translations(sorted(map_keys))
+    map_index_translations = {}
+    if db_failed and use_map_index_fallback:
+        map_index_translations = load_map_index_translations()
+    translated = OrderedDict()
+    for cid, servers in servers_by_cid.items():
+        updated_servers = []
+        for srv in servers:
+            map_name = srv.get("map")
+            map_key = normalize_map_name(map_name) or (str(map_name).strip() if map_name else "")
+            entry = translations.get(map_key) if map_key else None
+            if entry:
+                map_cn, map_tw = resolve_mysql_map_translation(map_key, entry)
+            elif db_failed and use_map_index_fallback:
+                map_cn, map_tw = resolve_map_index_translation(map_key, map_index_translations.get(map_key))
+            else:
+                map_cn, map_tw = resolve_mysql_map_translation(map_key, None)
+            updated = dict(srv)
+            updated["map_cn"] = map_cn
+            updated["map_tw"] = map_tw
+            updated_servers.append(updated)
+        translated[cid] = updated_servers
+    return translated, db_failed
+
+def build_servers_payload_bytes(use_map_index_fallback=False):
     snapshot = get_config_snapshot()
     with SERVER_CACHE_LOCK:
         current_version = SERVER_CACHE_VERSION
@@ -801,6 +895,7 @@ def build_servers_payload_bytes():
     if data:
         for cid in sorted(data.keys()):
             ordered[cid] = data[cid]
+    ordered, db_failed = apply_mysql_map_translations(ordered, use_map_index_fallback=use_map_index_fallback)
     # Self-check notes:
     # - /servers.json top-level order follows community_meta; extras appended in sorted order.
     # - per-community server list order is preserved from SERVER_CACHE (EXG/config/agent).
@@ -809,10 +904,11 @@ def build_servers_payload_bytes():
     payload_bytes = payload_json.encode('utf-8')
     etag = hashlib.sha256(payload_bytes).hexdigest()
     etag_value = f"\"{etag}\""
-    return payload_bytes, etag_value, current_version
+    return payload_bytes, etag_value, current_version, db_failed
 
 def rebuild_public_servers_cache_if_needed(min_interval=1.0):
     global PUBLIC_SERVERS_BYTES, PUBLIC_SERVERS_ETAG, PUBLIC_SERVERS_BUILT_AT, PUBLIC_SERVERS_BUILT_VER
+    global PUBLIC_SERVERS_NOTICE
     global PUBLIC_BUILDING, PUBLIC_BUILD_TARGET_VER
     with SERVER_CACHE_LOCK:
         current_version = SERVER_CACHE_VERSION
@@ -839,9 +935,12 @@ def rebuild_public_servers_cache_if_needed(min_interval=1.0):
         PUBLIC_BUILD_TARGET_VER = current_version
     payload_bytes = None
     etag_value = None
+    db_failed = False
     build_ok = False
     try:
-        payload_bytes, etag_value, current_version = build_servers_payload_bytes()
+        payload_bytes, etag_value, current_version, db_failed = build_servers_payload_bytes(
+            use_map_index_fallback=True
+        )
         build_ok = True
     except Exception as e:
         print(f"[PublicServers] cache build failed: {e}")
@@ -853,6 +952,7 @@ def rebuild_public_servers_cache_if_needed(min_interval=1.0):
                 PUBLIC_SERVERS_ETAG = etag_value
                 PUBLIC_SERVERS_BUILT_AT = now
                 PUBLIC_SERVERS_BUILT_VER = current_version
+                PUBLIC_SERVERS_NOTICE = "DB_UNAVAILABLE_USING_MAP_INDEX" if db_failed else None
             PUBLIC_BUILDING = False
             PUBLIC_BUILD_TARGET_VER = -1
             PUBLIC_BUILD_COND.notify_all()
@@ -886,7 +986,7 @@ def rebuild_api_servers_cache_if_needed(min_interval=1.0):
     etag_value = None
     build_ok = False
     try:
-        payload_bytes, etag_value, current_version = build_servers_payload_bytes()
+        payload_bytes, etag_value, current_version, _ = build_servers_payload_bytes()
         build_ok = True
     except Exception as e:
         print(f"[ApiServers] cache build failed: {e}")
@@ -1145,6 +1245,12 @@ def get_exg_maplist_entry(map_name):
     with MAPLIST_NORMALIZED_LOCK:
         return MAPLIST_NORMALIZED_CACHE.get(map_clean)
 
+def is_exg_cd_map(map_name):
+    map_clean = normalize_map_name(map_name)
+    if not map_clean:
+        return False
+    return map_clean.startswith(("ze_", "mg_", "surf_", "kz_", "bhop_"))
+
 def _maplist_entry_to_translation(entry):
     if not entry:
         return None
@@ -1167,6 +1273,117 @@ def get_map_translation_entry(map_name):
     if map_clean and map_clean in MAP_TRANS_NORMALIZED:
         return MAP_TRANS_NORMALIZED[map_clean]
     return None
+
+def _mysql_config_from_env():
+    host = os.environ.get('MYSQL_HOST')
+    db_name = os.environ.get('MYSQL_DB')
+    user = os.environ.get('MYSQL_USER')
+    password = os.environ.get('MYSQL_PASSWORD')
+    port_value = os.environ.get('MYSQL_PORT', '3306')
+    try:
+        port = int(port_value)
+    except ValueError:
+        port = 3306
+    if not host or not db_name or not user or not password:
+        return None
+    return {
+        "host": host,
+        "port": port,
+        "db": db_name,
+        "user": user,
+        "password": password
+    }
+
+def resolve_mysql_map_translation(map_key, translation_entry):
+    map_key_value = (map_key or "").strip()
+    zh_cn = ""
+    zh_tw = ""
+    if translation_entry:
+        zh_cn = str(translation_entry.get("name_zh_cn") or "").strip()
+        zh_tw = str(translation_entry.get("name_zh_tw") or "").strip()
+    map_cn = zh_cn or map_key_value
+    map_cn = strip_leading_bracket_tag(map_cn)
+    if zh_tw:
+        map_tw = strip_leading_bracket_tag(zh_tw)
+    else:
+        map_tw = convert_to_tw(map_cn) if map_cn else map_key_value
+    if not map_cn:
+        map_cn = map_key_value
+    if not map_tw:
+        map_tw = map_key_value
+    return map_cn, map_tw
+
+def resolve_map_index_translation(map_key, map_cn_value):
+    map_key_value = (map_key or "").strip()
+    map_cn = strip_leading_bracket_tag(map_cn_value or "") if map_cn_value else ""
+    if not map_cn:
+        map_cn = map_key_value
+    map_tw = convert_to_tw(map_cn) if map_cn else map_key_value
+    if not map_tw:
+        map_tw = map_key_value
+    return map_cn, map_tw
+
+def fetch_mysql_map_translations(map_keys):
+    if not map_keys:
+        return {}
+    config = _mysql_config_from_env()
+    if not config:
+        raise RuntimeError("mysql config missing")
+    query = "SELECT map_key, name_zh_cn, name_zh_tw FROM maps WHERE map_key IN ({})".format(
+        ",".join(["%s"] * len(map_keys))
+    )
+    connection = pymysql.connect(
+        host=config["host"],
+        port=config["port"],
+        user=config["user"],
+        password=config["password"],
+        database=config["db"],
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=True,
+        connect_timeout=5
+    )
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(query, list(map_keys))
+            rows = cursor.fetchall()
+    finally:
+        connection.close()
+    translations = {}
+    for row in rows:
+        map_key = str(row.get("map_key") or "").strip()
+        if not map_key:
+            continue
+        translations[map_key] = {
+            "name_zh_cn": row.get("name_zh_cn") or "",
+            "name_zh_tw": row.get("name_zh_tw") or ""
+        }
+    return translations
+
+def get_mysql_map_translations(map_keys):
+    global MYSQL_MAPS_CACHE, MYSQL_MAPS_CACHE_LOADED_AT
+    if not map_keys:
+        return {}, False
+    now = time.time()
+    with MYSQL_MAPS_CACHE_LOCK:
+        cache_age = now - MYSQL_MAPS_CACHE_LOADED_AT
+        if MYSQL_MAPS_CACHE and cache_age > MYSQL_MAPS_CACHE_TTL_SECONDS:
+            MYSQL_MAPS_CACHE = {}
+            MYSQL_MAPS_CACHE_LOADED_AT = 0.0
+        missing = [key for key in map_keys if key not in MYSQL_MAPS_CACHE]
+    if not missing:
+        with MYSQL_MAPS_CACHE_LOCK:
+            return {key: MYSQL_MAPS_CACHE.get(key) for key in map_keys}, False
+    try:
+        fetched = fetch_mysql_map_translations(missing)
+    except Exception as e:
+        print(f"[MySQL] 地图翻译查询失败: {e}")
+        with MYSQL_MAPS_CACHE_LOCK:
+            return {key: MYSQL_MAPS_CACHE.get(key) for key in map_keys}, True
+    with MYSQL_MAPS_CACHE_LOCK:
+        for key in missing:
+            MYSQL_MAPS_CACHE[key] = fetched.get(key, {"name_zh_cn": "", "name_zh_tw": ""})
+        MYSQL_MAPS_CACHE_LOADED_AT = now
+        return {key: MYSQL_MAPS_CACHE.get(key) for key in map_keys}, False
 
 def ensure_map_translation_entry(map_raw):
     map_clean = normalize_map_name(map_raw)
@@ -1486,7 +1703,7 @@ def fetch_exg_data_from_api():
                         if map_name_zh:
                             server_obj['map_cn'] = map_name_zh
                             server_obj['map_tw'] = convert_to_traditional(map_name_zh)
-                    if maplist_entry:
+                    if maplist_entry and is_exg_cd_map(map_name):
                         server_obj['map_exg'] = {
                             "name_zh": maplist_entry.get("name_zh", ""),
                             "difficulty": maplist_entry.get("difficulty", ""),
@@ -1570,7 +1787,7 @@ def fetch_a2s_data(server_cfg, game_type='cs2'):
             if map_name_zh:
                 res['map_cn'] = map_name_zh
                 res['map_tw'] = convert_to_traditional(map_name_zh)
-        if maplist_entry:
+        if maplist_entry and is_exg_cd_map(info.map_name):
             res['map_exg'] = {
                 "name_zh": maplist_entry.get("name_zh", ""),
                 "difficulty": maplist_entry.get("difficulty", ""),
@@ -2118,15 +2335,20 @@ def get_public_servers():
     with PUBLIC_BUILD_LOCK:
         payload_bytes = PUBLIC_SERVERS_BYTES
         etag_value = PUBLIC_SERVERS_ETAG
+        notice = PUBLIC_SERVERS_NOTICE
     if etag_matches(request.headers.get('If-None-Match', ''), etag_value):
         resp = make_response('', 304)
         resp.headers['ETag'] = etag_value
         resp.headers['Cache-Control'] = 'public, max-age=15'
+        if notice:
+            resp.headers['X-CS2ZE-Notice'] = notice
         return resp
     resp = make_response(payload_bytes, 200)
     resp.headers['Content-Type'] = 'application/json; charset=utf-8'
     resp.headers['ETag'] = etag_value
     resp.headers['Cache-Control'] = 'public, max-age=15'
+    if notice:
+        resp.headers['X-CS2ZE-Notice'] = notice
     return resp
 
 @app.route('/api/servers/<cid>')
