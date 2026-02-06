@@ -9,9 +9,14 @@ try:
     from zoneinfo import ZoneInfo
 except ImportError:  # pragma: no cover
     from backports.zoneinfo import ZoneInfo  # type: ignore
+try:
+    from opencc import OpenCC
+except ImportError:  # pragma: no cover
+    OpenCC = None  # type: ignore
 
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
 MAP_KEY_RE = re.compile(r"^[a-z0-9_]+$")
+OPENCC_S2T = OpenCC("s2t") if OpenCC else None
 
 
 def normalize_map_key(raw: str | None) -> Optional[str]:
@@ -35,21 +40,9 @@ def normalize_map_key(raw: str | None) -> Optional[str]:
 def convert_to_traditional(text: str) -> str:
     if not text:
         return ""
-    fallback_map = str.maketrans({
-        "汉": "漢",
-        "龙": "龍",
-        "门": "門",
-        "风": "風",
-        "画": "畫",
-        "楼": "樓",
-        "体": "體",
-        "云": "雲",
-        "战": "戰",
-        "峡": "峽",
-        "岛": "島",
-        "台": "臺",
-    })
-    return str(text).translate(fallback_map)
+    if not OPENCC_S2T:
+        raise RuntimeError("OpenCC s2t is required for zh_tw conversion")
+    return OPENCC_S2T.convert(str(text))
 
 
 def parse_beijing_time(value: str) -> Optional[int]:
