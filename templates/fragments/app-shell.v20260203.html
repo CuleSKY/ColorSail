@@ -307,7 +307,7 @@
                   >
                     <template v-if="exgStatusByIndex[idx].state === 'cooldown'">
                       <span class="exg-pill-text">{{ exgStatusByIndex[idx].prefix }}</span>
-                      <span class="exg-pill-date" :title="exgStatusByIndex[idx].tooltip">{{ exgStatusByIndex[idx].date }}</span>
+                      <span class="exg-pill-date" @mouseenter="showExgTooltip($event, exgStatusByIndex[idx].datetime)" @mouseleave="hideExgTooltip">{{ exgStatusByIndex[idx].date }}</span>
                     </template>
                     <template v-else>
                       <span class="exg-pill-text">{{ exgStatusByIndex[idx].label }}</span>
@@ -324,6 +324,8 @@
             <div class="sub-test-btn" @click="testNotification">{{ t('test_notify') }}</div>
           </div>
         </div>
+
+        <div v-if="exgTooltip.visible" class="exg-tooltip" :style="{ top: `${exgTooltip.top}px`, left: `${exgTooltip.left}px` }">{{ exgTooltip.text }}</div>
 
         <div v-if="curView === 'stats'" class="animate-enter">
           <div v-if="isLoggedIn" class="stats-dashboard">

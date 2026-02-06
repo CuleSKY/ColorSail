@@ -218,6 +218,9 @@ MYSQL_MAPS_CACHE = {}
 MYSQL_MAPS_CACHE_LOADED_AT = 0.0
 MYSQL_MAPS_CACHE_TTL_SECONDS = int(os.environ.get('MYSQL_MAPS_CACHE_TTL_SECONDS', '180'))
 MYSQL_MAPS_CACHE_LOCK = threading.Lock()
+MYSQL_EXG_CACHE = {}
+MYSQL_EXG_CACHE_LOADED_AT = 0.0
+MYSQL_EXG_CACHE_LOCK = threading.Lock()
 OPENCC_S2T = OpenCC('s2t') if OpenCC else None
 OPENCC_S2TW = OpenCC('s2tw') if OpenCC else None
 OPENCC_S2HK = OpenCC('s2hk') if OpenCC else None
@@ -857,8 +860,10 @@ def apply_mysql_map_translations(servers_by_cid, use_map_index_fallback=False):
                 map_keys.add(map_key)
     translations = {}
     db_failed = False
+    exg_entries = {}
     if map_keys:
         translations, db_failed = get_mysql_map_translations(sorted(map_keys))
+        exg_entries, _ = get_mysql_map_exg_entries(sorted(map_keys))
     map_index_translations = {}
     if db_failed and use_map_index_fallback:
         map_index_translations = load_map_index_translations()
@@ -878,6 +883,15 @@ def apply_mysql_map_translations(servers_by_cid, use_map_index_fallback=False):
             updated = dict(srv)
             updated["map_cn"] = map_cn
             updated["map_tw"] = map_tw
+            updated.pop("map_exg", None)
+            exg_entry = exg_entries.get(map_key) if map_key else None
+            if exg_entry is None:
+                updated_servers.append(updated)
+                continue
+            if is_exg_cd_map(map_key):
+                exg_payload = build_exg_payload(map_cn, exg_entry)
+                if exg_payload:
+                    updated["map_exg"] = exg_payload
             updated_servers.append(updated)
         translated[cid] = updated_servers
     return translated, db_failed
@@ -1359,6 +1373,92 @@ def fetch_mysql_map_translations(map_keys):
         }
     return translations
 
+def fetch_mysql_map_exg_entries(map_keys):
+    if not map_keys:
+        return {}
+    config = _mysql_config_from_env()
+    if not config:
+        raise RuntimeError("mysql config missing")
+    query = (
+        "SELECT map_key, cooldown_end_epoch, duration_raw, achievement, workshop_id, workshop_url "
+        "FROM map_exg WHERE map_key IN ({})".format(",".join(["%s"] * len(map_keys)))
+    )
+    connection = pymysql.connect(
+        host=config["host"],
+        port=config["port"],
+        user=config["user"],
+        password=config["password"],
+        database=config["db"],
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=True,
+        connect_timeout=5
+    )
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(query, list(map_keys))
+            rows = cursor.fetchall()
+    finally:
+        connection.close()
+    entries = {}
+    for row in rows:
+        map_key = str(row.get("map_key") or "").strip()
+        if not map_key:
+            continue
+        entries[map_key] = {
+            "cooldown_end_epoch": row.get("cooldown_end_epoch"),
+            "duration_raw": row.get("duration_raw"),
+            "achievement": row.get("achievement"),
+            "workshop_id": row.get("workshop_id"),
+            "workshop_url": row.get("workshop_url"),
+        }
+    return entries
+
+def get_mysql_map_exg_entries(map_keys):
+    global MYSQL_EXG_CACHE, MYSQL_EXG_CACHE_LOADED_AT
+    if not map_keys:
+        return {}, False
+    now = time.time()
+    with MYSQL_EXG_CACHE_LOCK:
+        cache_age = now - MYSQL_EXG_CACHE_LOADED_AT
+        if MYSQL_EXG_CACHE and cache_age > MYSQL_MAPS_CACHE_TTL_SECONDS:
+            MYSQL_EXG_CACHE = {}
+            MYSQL_EXG_CACHE_LOADED_AT = 0.0
+        missing = [key for key in map_keys if key not in MYSQL_EXG_CACHE]
+    if not missing:
+        with MYSQL_EXG_CACHE_LOCK:
+            return {key: MYSQL_EXG_CACHE.get(key) for key in map_keys}, False
+    try:
+        fetched = fetch_mysql_map_exg_entries(missing)
+    except Exception as e:
+        print(f"[MySQL] EXG 数据查询失败: {e}")
+        with MYSQL_EXG_CACHE_LOCK:
+            return {key: MYSQL_EXG_CACHE.get(key) for key in map_keys}, True
+    with MYSQL_EXG_CACHE_LOCK:
+        for key in missing:
+            MYSQL_EXG_CACHE[key] = fetched.get(key)
+        MYSQL_EXG_CACHE_LOADED_AT = now
+        return {key: MYSQL_EXG_CACHE.get(key) for key in map_keys}, False
+
+def build_exg_payload(map_cn, exg_entry):
+    cooldown_end_epoch = exg_entry.get("cooldown_end_epoch")
+    duration_raw = exg_entry.get("duration_raw")
+    if cooldown_end_epoch is None and duration_raw is None:
+        return None
+    return {
+        "name_zh": map_cn or "",
+        "difficulty": "",
+        "tags": [],
+        "cooldown": {
+            "deadline": cooldown_end_epoch,
+            "duration_raw": duration_raw,
+        },
+        "achievement": exg_entry.get("achievement") or "",
+        "workshop": {
+            "id": exg_entry.get("workshop_id") or "",
+            "url": exg_entry.get("workshop_url") or "",
+        },
+    }
+
 def get_mysql_map_translations(map_keys):
     global MYSQL_MAPS_CACHE, MYSQL_MAPS_CACHE_LOADED_AT
     if not map_keys:
@@ -1703,16 +1803,6 @@ def fetch_exg_data_from_api():
                         if map_name_zh:
                             server_obj['map_cn'] = map_name_zh
                             server_obj['map_tw'] = convert_to_traditional(map_name_zh)
-                    if maplist_entry and is_exg_cd_map(map_name):
-                        server_obj['map_exg'] = {
-                            "name_zh": maplist_entry.get("name_zh", ""),
-                            "difficulty": maplist_entry.get("difficulty", ""),
-                            "tags": maplist_entry.get("tags", []),
-                            "cooldown": maplist_entry.get("cooldown", {}),
-                            "achievement": maplist_entry.get("achievement", ""),
-                            "workshop": maplist_entry.get("workshop", {}),
-                        }
-                    
                     servers.append(server_obj)
                     
                 except Exception as e:
@@ -1787,15 +1877,6 @@ def fetch_a2s_data(server_cfg, game_type='cs2'):
             if map_name_zh:
                 res['map_cn'] = map_name_zh
                 res['map_tw'] = convert_to_traditional(map_name_zh)
-        if maplist_entry and is_exg_cd_map(info.map_name):
-            res['map_exg'] = {
-                "name_zh": maplist_entry.get("name_zh", ""),
-                "difficulty": maplist_entry.get("difficulty", ""),
-                "tags": maplist_entry.get("tags", []),
-                "cooldown": maplist_entry.get("cooldown", {}),
-                "achievement": maplist_entry.get("achievement", ""),
-                "workshop": maplist_entry.get("workshop", {}),
-            }
         maybe_flush_map_translations()
             
     except Exception as e:
