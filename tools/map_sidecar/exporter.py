@@ -32,24 +32,25 @@ def atomic_write_json(path: str, payload: Any) -> None:
                 pass
 
 
+def export_time_json(settings: "Settings", logger: "logging.Logger") -> None:
+    payload = {"server_now_epoch": int(time.time())}
+    target_path = os.path.join(settings.project_root, "time.json")
+    atomic_write_json(target_path, payload)
+    logger.info("time.json exported")
+
+
 def export_map_index(settings: "Settings", logger: "logging.Logger", db: "MySQLClient") -> int:
     records = db.fetch_map_index()
-    payload = {
-        "generated_at_epoch": int(time.time()),
-        "maps": {},
-    }
-    for record in records:
-        payload["maps"][record.map_key] = {
-            "name_zh_cn": record.name_zh_cn or "",
-            "name_zh_tw": record.name_zh_tw or "",
-            "exg": {
-                "achievement": record.achievement,
-                "cooldown_end_epoch": record.cooldown_end_epoch,
-                "workshop_id": record.workshop_id,
-                "workshop_url": record.workshop_url,
-            },
+    payload: dict[str, dict[str, object]] = {}
+    for record in sorted(records, key=lambda item: item.map_key):
+        map_cn = record.name_zh_cn or record.map_key
+        payload[record.map_key] = {
+            "map_cn": map_cn,
+            "deadline": record.cooldown_end_epoch,
+            "achievement": record.achievement or "",
         }
     target_path = os.path.join(settings.project_root, "map_index.json")
     atomic_write_json(target_path, payload)
+    export_time_json(settings, logger)
     logger.info("map_index.json exported (%s maps)", len(records))
     return len(records)

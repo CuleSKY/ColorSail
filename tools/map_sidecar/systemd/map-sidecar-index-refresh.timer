@@ -1,9 +1,9 @@
 [Unit]
-Description=CS2ZE Map Sidecar - Refresh map_index.json every 10 minutes
+Description=CS2ZE Map Sidecar - Refresh map_index.json every 60 seconds
 
 [Timer]
-OnBootSec=3min
-OnUnitActiveSec=10min
+OnBootSec=45s
+OnUnitActiveSec=60s
 Unit=map-sidecar-index-refresh.service
 
 [Install]

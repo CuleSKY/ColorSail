@@ -16,7 +16,7 @@ from tools.map_sidecar.config import (
     validate_settings,
 )
 from tools.map_sidecar.db import MySQLClient
-from tools.map_sidecar.exporter import export_map_index
+from tools.map_sidecar.exporter import export_map_index, export_time_json
 from tools.map_sidecar.ingest_server import run_server
 from tools.map_sidecar.logging_utils import setup_logging
 from tools.map_sidecar.redis_cache import RedisCache
@@ -33,9 +33,11 @@ def run_refresh_index(settings, logger, db, cache) -> None:
     cached_stamp = cache.get(INDEX_STAMP_KEY)
     if stamp is None:
         logger.warning("Unable to determine DB change stamp")
+        export_time_json(settings, logger)
         return
     if cached_stamp and str(stamp) == cached_stamp:
         logger.info("map_index.json up-to-date (stamp %s)", stamp)
+        export_time_json(settings, logger)
         return
     export_map_index(settings, logger, db)
     cache.set(INDEX_STAMP_KEY, str(stamp))

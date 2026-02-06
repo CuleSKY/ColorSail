@@ -9,9 +9,14 @@ try:
     from zoneinfo import ZoneInfo
 except ImportError:  # pragma: no cover
     from backports.zoneinfo import ZoneInfo  # type: ignore
+try:
+    from opencc import OpenCC
+except ImportError:  # pragma: no cover
+    OpenCC = None  # type: ignore
 
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
 MAP_KEY_RE = re.compile(r"^[a-z0-9_]+$")
+OPENCC_S2T = OpenCC("s2t") if OpenCC else None
 
 
 def normalize_map_key(raw: str | None) -> Optional[str]:
@@ -35,21 +40,9 @@ def normalize_map_key(raw: str | None) -> Optional[str]:
 def convert_to_traditional(text: str) -> str:
     if not text:
         return ""
-    fallback_map = str.maketrans({
-        "汉": "漢",
-        "龙": "龍",
-        "门": "門",
-        "风": "風",
-        "画": "畫",
-        "楼": "樓",
-        "体": "體",
-        "云": "雲",
-        "战": "戰",
-        "峡": "峽",
-        "岛": "島",
-        "台": "臺",
-    })
-    return str(text).translate(fallback_map)
+    if not OPENCC_S2T:
+        raise RuntimeError("OpenCC s2t is required for zh_tw conversion")
+    return OPENCC_S2T.convert(str(text))
 
 
 def parse_beijing_time(value: str) -> Optional[int]:
@@ -63,6 +56,10 @@ def parse_beijing_time(value: str) -> Optional[int]:
         "%Y/%m/%d %H:%M",
         "%Y-%m-%d %H:%M:%S",
         "%Y/%m/%d %H:%M:%S",
+        "%m/%d/%Y, %I:%M:%S %p",
+        "%m/%d/%Y, %I:%M %p",
+        "%m/%d/%Y %I:%M:%S %p",
+        "%m/%d/%Y %I:%M %p",
     ]
     for pattern in patterns:
         try:
@@ -79,6 +76,28 @@ def parse_beijing_time(value: str) -> Optional[int]:
             int(month),
             int(day),
             int(hour),
+            int(minute),
+            int(second or 0),
+            tzinfo=BEIJING_TZ,
+        )
+        return int(dt.timestamp())
+    match = re.search(
+        r"(\d{1,2})/(\d{1,2})/(\d{4}),?\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?\s*([AaPp][Mm])",
+        cleaned,
+    )
+    if match:
+        month, day, year, hour, minute, second, meridiem = match.groups()
+        hour_int = int(hour)
+        meridiem = meridiem.lower()
+        if meridiem == "pm" and hour_int != 12:
+            hour_int += 12
+        if meridiem == "am" and hour_int == 12:
+            hour_int = 0
+        dt = datetime(
+            int(year),
+            int(month),
+            int(day),
+            hour_int,
             int(minute),
             int(second or 0),
             tzinfo=BEIJING_TZ,

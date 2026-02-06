@@ -14,7 +14,6 @@ from typing import Iterable, Optional
 
 from tools.map_sidecar.config import (
     EXG_LAST_INGEST_KEY,
-    INDEX_STAMP_KEY,
     IngestSettings,
     load_ingest_settings,
     load_settings,
@@ -22,7 +21,7 @@ from tools.map_sidecar.config import (
     validate_settings,
 )
 from tools.map_sidecar.db import MySQLClient
-from tools.map_sidecar.exporter import atomic_write_json, export_map_index
+from tools.map_sidecar.exporter import atomic_write_json
 from tools.map_sidecar.logging_utils import setup_logging
 from tools.map_sidecar.redis_cache import RedisCache
 from tools.map_sidecar.utils import convert_to_traditional, normalize_map_key, parse_beijing_time
@@ -40,6 +39,12 @@ def _empty_to_none(value: str | None) -> str | None:
 def _validate_records(payload: dict) -> list[dict]:
     if not isinstance(payload, dict):
         raise ValueError("Payload must be a JSON object")
+    source = payload.get("source")
+    if not isinstance(source, str) or not source.strip():
+        raise ValueError("Payload source must be a non-empty string")
+    fetched_at_epoch = payload.get("fetched_at_epoch")
+    if not isinstance(fetched_at_epoch, int):
+        raise ValueError("Payload fetched_at_epoch must be an integer")
     records = payload.get("records")
     if not isinstance(records, list) or not records:
         raise ValueError("Payload records must be a non-empty list")
@@ -84,8 +89,12 @@ def _validate_records(payload: dict) -> list[dict]:
         if not isinstance(workshop, dict):
             raise ValueError(f"Record {idx} workshop must be an object")
         workshop_id_raw = workshop.get("id")
+        if workshop_id_raw is None or (isinstance(workshop_id_raw, str) and not workshop_id_raw.strip()):
+            workshop_id_raw = "0"
         if not isinstance(workshop_id_raw, str):
             raise ValueError(f"Record {idx} workshop.id must be a string")
+        if not workshop_id_raw.isdigit():
+            raise ValueError(f"Record {idx} workshop.id must be numeric")
         workshop_url = workshop.get("url")
         if not isinstance(workshop_url, str):
             raise ValueError(f"Record {idx} workshop.url must be a string")
@@ -95,12 +104,17 @@ def _validate_records(payload: dict) -> list[dict]:
             raise ValueError(f"Record {idx} achievement must be a string")
 
         name_zh_cn = _empty_to_none(name_zh)
-        name_zh_tw = convert_to_traditional(name_zh_cn) if name_zh_cn else None
+        try:
+            name_zh_tw = convert_to_traditional(name_zh_cn) if name_zh_cn else None
+        except RuntimeError as exc:
+            raise ValueError(f"Record {idx} zh_tw conversion failed: {exc}") from exc
         duration_raw = _empty_to_none(duration_raw)
         deadline = _empty_to_none(deadline)
         cooldown_end_epoch = parse_beijing_time(deadline) if deadline else None
+        if deadline and cooldown_end_epoch is None:
+            raise ValueError(f"Record {idx} cooldown.deadline parse failed: {deadline}")
         achievement = _empty_to_none(achievement)
-        workshop_id = int(workshop_id_raw) if workshop_id_raw.isdigit() else None
+        workshop_id = None if workshop_id_raw == "0" else int(workshop_id_raw)
         workshop_url = _empty_to_none(workshop_url)
 
         cleaned.append(
@@ -154,14 +168,18 @@ def _process_records(
             changed = True
 
     if changed:
-        export_map_index(settings, logger, db)
-        stamp = db.get_change_stamp()
-        if stamp is not None:
-            cache.set(INDEX_STAMP_KEY, str(stamp))
+        logger.info("EXG ingest updated DB; exporter will refresh on next timer tick")
     else:
         logger.info("EXG ingest completed with no changes")
     _write_normalized_maplist(settings, logger, raw_records)
     return changed
+
+
+def _safe_cache_set(cache: RedisCache, logger: logging.Logger, key: str, value: str) -> None:
+    try:
+        cache.set(key, value)
+    except Exception as exc:
+        logger.warning("Redis write failed for %s: %s", key, exc)
 
 
 def _client_allowed(
@@ -257,7 +275,12 @@ class IngestHandler(BaseHTTPRequestHandler):
                 self.server.cache,
                 payload.get("records", []),
             )
-            self.server.cache.set(EXG_LAST_INGEST_KEY, str(int(time.time())))
+            _safe_cache_set(
+                self.server.cache,
+                self.server.logger,
+                EXG_LAST_INGEST_KEY,
+                str(int(time.time())),
+            )
         except Exception as exc:
             self.server.logger.error("Ingest processing failed: %s", exc)
             _json_response(self, 500, {"error": "ingest_failed"})
