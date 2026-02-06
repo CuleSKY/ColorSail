@@ -297,10 +297,24 @@
               <div class="sub-row" v-for="(sub, idx) in subscriptions" :key="idx">
                 <div class="sub-col-info">
                   <div class="sub-map-key">{{ sub.map }}</div>
-                  <div class="sub-map-val" v-if="isChineseLang && getMapTranslation(sub.map)">{{ getMapTranslation(sub.map) }}</div>
+                  <div class="sub-map-val" v-if="isChineseLang && getMapIndexDisplayName(sub.map)">{{ getMapIndexDisplayName(sub.map) }}</div>
                   <div class="sub-comms">{{ formatSubComms(sub.comms) }}</div>
                 </div>
-                <button class="btn-unsub" @click="removeSubscription(idx)">{{ t('unsubscribe') }}</button>
+                <div class="sub-actions">
+                  <div
+                    v-if="exgStatusByIndex[idx]"
+                    :class="['exg-pill', exgStatusByIndex[idx].state === 'available' ? 'exg-pill--green' : 'exg-pill--red']"
+                  >
+                    <template v-if="exgStatusByIndex[idx].state === 'cooldown'">
+                      <span class="exg-pill-text">{{ exgStatusByIndex[idx].prefix }}</span>
+                      <span class="exg-pill-date" :title="exgStatusByIndex[idx].tooltip">{{ exgStatusByIndex[idx].date }}</span>
+                    </template>
+                    <template v-else>
+                      <span class="exg-pill-text">{{ exgStatusByIndex[idx].label }}</span>
+                    </template>
+                  </div>
+                  <button class="btn-unsub" @click="removeSubscription(idx)">{{ t('unsubscribe') }}</button>
+                </div>
               </div>
             </div>
             <div v-else style="text-align: center; padding: 40px; color: var(--text-secondary);">
@@ -373,6 +387,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { buildMapSearchIndex, createOpenCCConverter, formatExgDate, formatExgDateTime, getExgStatusState, normalizeSearchText, scoreSearchEntry, shouldShowExgStatus, stripBracketSegments, validateMapIndexEntry } from './mapSearchUtils';
 
 const props = defineProps({
   initialConfig: {
@@ -448,6 +463,7 @@ const showProfileMenu = ref(false);
 const viewMode = ref('list');
 const isDark = ref(window.matchMedia('(prefers-color-scheme: dark)').matches);
 const isMobile = ref(window.innerWidth <= 768);
+const viewportWidth = ref(window.innerWidth);
 const isEditMode = ref(false);
 const sidebarWasAutoExpandedForReorder = ref(false);
 const sortByPlayers = ref(false);
@@ -471,6 +487,9 @@ const topCommunity = ref(null);
 
 const subSearchQuery = ref('');
 const mapTranslations = ref({});
+const mapIndex = ref({});
+const mapSearchIndex = ref([]);
+const mapIndexConverter = createOpenCCConverter();
 const searchResults = ref([]);
 const selectedMap = ref(null);
 const newSubComms = ref(['all']);
@@ -618,7 +637,10 @@ const updateFavicon = () => {
 };
 
 watch(curLang, () => document.title = t('app_title'), { immediate: true });
-const handleResize = () => isMobile.value = window.innerWidth <= 768;
+const handleResize = () => {
+  viewportWidth.value = window.innerWidth;
+  isMobile.value = window.innerWidth <= 768;
+};
 
 const handleGlobalClick = (e) => {
   const target = e.target;
@@ -761,6 +783,7 @@ onMounted(async () => {
 
   await loadLanguage();
   await loadTranslations();
+  await loadMapIndex();
   await fetchConfig();
   if ((initialView === 'map_sub' || initialView === 'stats' || initialView === 'feedback') && !isLoggedIn.value) {
     curView.value = 'servers';
@@ -777,6 +800,12 @@ onMounted(async () => {
   }
   if (embedMode) {
     sendEmbedReady();
+  }
+});
+
+watch(curLang, () => {
+  if (subSearchQuery.value) {
+    searchMaps();
   }
 });
 
@@ -1000,7 +1029,24 @@ const loadTranslations = async () => {
   } catch (e) {}
 };
 
-const normalizeSearchText = (value) => (value || '').toString().toLowerCase().replace(/\s+/g, '');
+const loadMapIndex = async () => {
+  try {
+    const res = await fetch('/map_index.json');
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    mapIndex.value = data && typeof data === 'object' ? data : {};
+    Object.entries(mapIndex.value).forEach(([key, entry]) => {
+      validateMapIndexEntry(key, entry);
+    });
+    mapSearchIndex.value = buildMapSearchIndex(mapIndex.value, mapIndexConverter);
+  } catch (e) {
+    mapIndex.value = {};
+    mapSearchIndex.value = [];
+  }
+};
+
 const normalizeMapKey = (value) => {
   if (!value) return '';
   let mapKey = value.toString().trim().toLowerCase();
@@ -1044,22 +1090,84 @@ const getServerMapTranslation = (serverEntry) => {
   return '';
 };
 
+const getMapIndexEntry = (mapName) => {
+  if (!mapName) return null;
+  if (mapIndex.value[mapName]) return mapIndex.value[mapName];
+  const normalizedKey = normalizeMapKey(mapName);
+  if (normalizedKey && mapIndex.value[normalizedKey]) return mapIndex.value[normalizedKey];
+  return null;
+};
+
+const getMapIndexDisplayName = (mapName) => {
+  const entry = getMapIndexEntry(mapName);
+  if (!entry || !entry.map_cn) return '';
+  const cleaned = stripBracketSegments(entry.map_cn);
+  if (curLang.value === 'zh-TW') {
+    return mapIndexConverter ? mapIndexConverter(cleaned) : cleaned;
+  }
+  if (curLang.value === 'zh-CN') return cleaned;
+  return '';
+};
+
+const exgPrefixes = ['ze_', 'mg_', 'surf_', 'kz_'];
+const getExgStatus = (sub) => {
+  if (!sub) return null;
+  const mapKey = sub.map || '';
+  const comms = sub.comms || [];
+  const shouldShow = shouldShowExgStatus({
+    mapKey,
+    comms,
+    viewportWidth: viewportWidth.value,
+    prefixes: exgPrefixes
+  });
+  if (!shouldShow) return null;
+  const entry = getMapIndexEntry(mapKey);
+  if (!entry) return null;
+  const hasDeadline = Object.prototype.hasOwnProperty.call(entry, 'deadline');
+  const hasDuration = Object.prototype.hasOwnProperty.call(entry, 'duration_raw');
+  if (!hasDeadline && !hasDuration) return null;
+  const deadline = hasDeadline ? entry.deadline : null;
+  const durationRaw = hasDuration ? entry.duration_raw : '';
+  const state = getExgStatusState(deadline, durationRaw);
+  if (state === 'cooldown' && deadline !== null && deadline !== undefined) {
+    const date = formatExgDate(deadline);
+    const datetime = formatExgDateTime(deadline);
+    const cooldownText = formatTemplate(t('map.exg.cooldown_until'), { date });
+    const prefix = cooldownText.replace(date, '').trim();
+    return {
+      state,
+      prefix,
+      date,
+      tooltip: formatTemplate(t('map.exg.cooldown_tooltip'), { datetime })
+    };
+  }
+  if (state === 'available') {
+    return { state, label: t('map.exg.available') };
+  }
+  return { state, label: t('map.exg.not_available') };
+};
+const exgStatusByIndex = computed(() => subscriptions.value.map(sub => getExgStatus(sub)));
+
 const searchMaps = () => {
   if (!subSearchQuery.value) {
     searchResults.value = [];
     return;
   }
-  const q = normalizeSearchText(subSearchQuery.value);
-  const res = [];
-  for (const [k, v] of Object.entries(mapTranslations.value)) {
-    const zhCn = v.zh_cn || '';
-    const zhTw = v.zh_tw || '';
-    if (normalizeSearchText(k).includes(q) || normalizeSearchText(zhCn).includes(q) || normalizeSearchText(zhTw).includes(q)) {
-      res.push({ key: k, val: curLang.value === 'zh-TW' ? (zhTw || zhCn) : zhCn });
-      if (res.length > 20) break;
-    }
+  const query = subSearchQuery.value.trim();
+  if (!query) {
+    searchResults.value = [];
+    return;
   }
-  searchResults.value = res;
+  const matches = [];
+  mapSearchIndex.value.forEach((entry) => {
+    const score = scoreSearchEntry(entry, query);
+    if (score > 0) {
+      const displayName = isChineseLang.value ? (curLang.value === 'zh-TW' ? entry.mapTw : entry.mapCn) : '';
+      matches.push({ key: entry.key, val: displayName, score });
+    }
+  });
+  matches.sort((a, b) => (b.score - a.score) || a.key.localeCompare(b.key));
+  searchResults.value = matches.slice(0, 20);
 };
 
 const selectMapToSub = (m) => {
