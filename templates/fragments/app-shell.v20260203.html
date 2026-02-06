@@ -325,7 +325,7 @@
           </div>
         </div>
 
-        <div v-if="exgTooltip.visible" class="exg-tooltip" :style="{ top: `${exgTooltip.top}px`, left: `${exgTooltip.left}px` }">{{ exgTooltip.text }}</div>
+        <div v-if="exgTooltip.visible" ref="exgTooltipRef" class="exg-tooltip" :style="{ top: `${exgTooltip.top}px`, left: `${exgTooltip.left}px` }">{{ exgTooltip.text }}</div>
 
         <div v-if="curView === 'stats'" class="animate-enter">
           <div v-if="isLoggedIn" class="stats-dashboard">

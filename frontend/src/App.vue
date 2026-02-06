@@ -331,6 +331,7 @@
 
         <div
           v-if="exgTooltip.visible"
+          ref="exgTooltipRef"
           class="exg-tooltip"
           :style="{ top: `${exgTooltip.top}px`, left: `${exgTooltip.left}px` }"
         >
@@ -500,6 +501,7 @@ const topCommunity = ref(null);
 const subSearchQuery = ref('');
 const mapTranslations = ref({});
 const mapIndex = ref({});
+const mapExgIndex = ref({});
 const mapSearchIndex = ref([]);
 const mapIndexConverter = createOpenCCConverter();
 const searchResults = ref([]);
@@ -515,6 +517,7 @@ const exgTooltip = ref({
   top: 0,
   left: 0
 });
+const exgTooltipRef = ref(null);
 
 const draggedIndex = ref(null);
 const dragOverIndex = ref(null);
@@ -668,25 +671,32 @@ const showExgTooltip = (event, datetime) => {
   const target = event?.currentTarget;
   if (!target || typeof target.getBoundingClientRect !== 'function') return;
   const rect = target.getBoundingClientRect();
-  const padding = 8;
-  const maxWidth = 220;
-  const tooltipOffset = 6;
-  const estimatedHeight = 28;
-  const centeredLeft = rect.left + rect.width / 2 - maxWidth / 2;
-  const left = Math.min(
-    Math.max(padding, centeredLeft),
-    window.innerWidth - maxWidth - padding
-  );
-  const preferredTop = rect.bottom + tooltipOffset;
-  const top = preferredTop + estimatedHeight > window.innerHeight - padding
-    ? Math.max(padding, rect.top - tooltipOffset - estimatedHeight)
-    : preferredTop;
   exgTooltip.value = {
     visible: true,
     text: datetime,
-    top,
-    left
+    top: 0,
+    left: 0
   };
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      const tooltipEl = exgTooltipRef.value;
+      if (!tooltipEl) return;
+      const tooltipRect = tooltipEl.getBoundingClientRect();
+      const padding = 8;
+      const tooltipOffset = 8;
+      const centeredLeft = rect.left + rect.width / 2 - tooltipRect.width / 2;
+      const left = Math.min(
+        Math.max(padding, centeredLeft),
+        window.innerWidth - tooltipRect.width - padding
+      );
+      const top = Math.max(padding, rect.top - tooltipRect.height - tooltipOffset);
+      exgTooltip.value = {
+        ...exgTooltip.value,
+        top,
+        left
+      };
+    });
+  });
 };
 
 const hideExgTooltip = () => {
@@ -1098,6 +1108,23 @@ const loadMapIndex = async () => {
   }
 };
 
+const loadMapExgIndex = async (mapKeys) => {
+  if (!Array.isArray(mapKeys) || mapKeys.length === 0) {
+    mapExgIndex.value = {};
+    return;
+  }
+  try {
+    const params = new URLSearchParams();
+    mapKeys.forEach((key) => params.append('map', key));
+    const res = await fetch(`/api/map_exg?${params.toString()}`);
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    mapExgIndex.value = data && typeof data === 'object' ? data : {};
+  } catch (e) {}
+};
+
 const normalizeMapKey = (value) => {
   if (!value) return '';
   let mapKey = value.toString().trim().toLowerCase();
@@ -1111,6 +1138,23 @@ const normalizeMapKey = (value) => {
   }
   return mapKey;
 };
+
+const subscriptionMapKeys = computed(() => {
+  const keys = new Set();
+  subscriptions.value.forEach((sub) => {
+    const normalized = normalizeMapKey(sub?.map);
+    if (normalized) keys.add(normalized);
+  });
+  return Array.from(keys).sort();
+});
+
+let lastExgRequestKey = '';
+watch(subscriptionMapKeys, (keys) => {
+  const requestKey = keys.join('|');
+  if (requestKey === lastExgRequestKey) return;
+  lastExgRequestKey = requestKey;
+  loadMapExgIndex(keys);
+}, { immediate: true });
 
 const getMapTranslationEntry = (mapName, serverEntry) => {
   if (!mapName) return { zh_cn: '', zh_tw: '' };
@@ -1128,16 +1172,16 @@ const getMapTranslationEntry = (mapName, serverEntry) => {
 
 const getMapTranslation = (mapName) => {
   const entry = getMapTranslationEntry(mapName);
-  if (curLang.value === 'zh-TW') return entry.zh_tw || entry.zh_cn || '';
-  if (curLang.value === 'zh-CN') return entry.zh_cn || '';
+  if (curLang.value === 'zh-TW') return stripBracketSegments(entry.zh_tw || entry.zh_cn || '');
+  if (curLang.value === 'zh-CN') return stripBracketSegments(entry.zh_cn || '');
   return '';
 };
 
 const getServerMapTranslation = (serverEntry) => {
   if (!serverEntry) return '';
   const entry = getMapTranslationEntry(serverEntry.map, serverEntry);
-  if (curLang.value === 'zh-TW') return entry.zh_tw || entry.zh_cn || '';
-  if (curLang.value === 'zh-CN') return entry.zh_cn || '';
+  if (curLang.value === 'zh-TW') return stripBracketSegments(entry.zh_tw || entry.zh_cn || '');
+  if (curLang.value === 'zh-CN') return stripBracketSegments(entry.zh_cn || '');
   return '';
 };
 
@@ -1160,29 +1204,25 @@ const getMapIndexDisplayName = (mapName) => {
   return '';
 };
 
-const exgPrefixes = ['ze_', 'mg_', 'surf_', 'kz_'];
 const getExgStatus = (sub) => {
   if (!sub) return null;
-  const mapKey = sub.map || '';
+  const mapKey = normalizeMapKey(sub.map || '');
   const comms = sub.comms || [];
   const shouldShow = shouldShowExgStatus({
     mapKey,
     comms,
-    viewportWidth: viewportWidth.value,
-    prefixes: exgPrefixes
+    viewportWidth: viewportWidth.value
   });
   if (!shouldShow) return null;
-  const entry = getMapIndexEntry(mapKey);
+  const entry = mapExgIndex.value[mapKey];
   if (!entry) return null;
-  const hasDeadline = Object.prototype.hasOwnProperty.call(entry, 'deadline');
-  const hasDuration = Object.prototype.hasOwnProperty.call(entry, 'duration_raw');
-  if (!hasDeadline && !hasDuration) return null;
-  const deadline = hasDeadline ? entry.deadline : null;
-  const durationRaw = hasDuration ? entry.duration_raw : '';
+  const cooldown = entry.cooldown || {};
+  const deadline = cooldown.deadline ?? entry.deadline ?? null;
+  const durationRaw = cooldown.duration_raw ?? entry.duration_raw ?? '';
   if ((deadline === null || deadline === undefined) && (durationRaw === null || durationRaw === undefined)) {
     return null;
   }
-  const state = getExgStatusState(deadline, durationRaw);
+  const state = entry.exg_status || getExgStatusState(deadline, durationRaw);
   if (state === 'cooldown' && deadline !== null && deadline !== undefined) {
     const date = formatExgDate(deadline);
     const datetime = formatExgDateTime(deadline);
