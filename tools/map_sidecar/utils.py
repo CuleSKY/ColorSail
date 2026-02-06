@@ -56,6 +56,10 @@ def parse_beijing_time(value: str) -> Optional[int]:
         "%Y/%m/%d %H:%M",
         "%Y-%m-%d %H:%M:%S",
         "%Y/%m/%d %H:%M:%S",
+        "%m/%d/%Y, %I:%M:%S %p",
+        "%m/%d/%Y, %I:%M %p",
+        "%m/%d/%Y %I:%M:%S %p",
+        "%m/%d/%Y %I:%M %p",
     ]
     for pattern in patterns:
         try:
@@ -72,6 +76,28 @@ def parse_beijing_time(value: str) -> Optional[int]:
             int(month),
             int(day),
             int(hour),
+            int(minute),
+            int(second or 0),
+            tzinfo=BEIJING_TZ,
+        )
+        return int(dt.timestamp())
+    match = re.search(
+        r"(\d{1,2})/(\d{1,2})/(\d{4}),?\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?\s*([AaPp][Mm])",
+        cleaned,
+    )
+    if match:
+        month, day, year, hour, minute, second, meridiem = match.groups()
+        hour_int = int(hour)
+        meridiem = meridiem.lower()
+        if meridiem == "pm" and hour_int != 12:
+            hour_int += 12
+        if meridiem == "am" and hour_int == 12:
+            hour_int = 0
+        dt = datetime(
+            int(year),
+            int(month),
+            int(day),
+            hour_int,
             int(minute),
             int(second or 0),
             tzinfo=BEIJING_TZ,
