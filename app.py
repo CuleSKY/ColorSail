@@ -1442,7 +1442,11 @@ def get_mysql_map_exg_entries(map_keys):
 def build_exg_payload(map_cn, exg_entry):
     cooldown_end_epoch = exg_entry.get("cooldown_end_epoch")
     duration_raw = exg_entry.get("duration_raw")
-    if cooldown_end_epoch is None and duration_raw is None:
+    if cooldown_end_epoch is not None:
+        pass
+    elif duration_raw == "0分":
+        pass
+    elif duration_raw is None:
         return None
     return {
         "name_zh": map_cn or "",
