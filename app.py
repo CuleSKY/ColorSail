@@ -888,10 +888,9 @@ def apply_mysql_map_translations(servers_by_cid, use_map_index_fallback=False):
             if exg_entry is None:
                 updated_servers.append(updated)
                 continue
-            if is_exg_cd_map(map_key):
-                exg_payload = build_exg_payload(map_cn, exg_entry)
-                if exg_payload:
-                    updated["map_exg"] = exg_payload
+            exg_payload = build_exg_payload(map_cn, exg_entry)
+            if exg_payload:
+                updated["map_exg"] = exg_payload
             updated_servers.append(updated)
         translated[cid] = updated_servers
     return translated, db_failed
@@ -1443,11 +1442,13 @@ def build_exg_payload(map_cn, exg_entry):
     cooldown_end_epoch = exg_entry.get("cooldown_end_epoch")
     duration_raw = exg_entry.get("duration_raw")
     if cooldown_end_epoch is not None:
-        pass
+        exg_status = "cooldown"
     elif duration_raw == "0分":
-        pass
+        exg_status = "not_available"
     elif duration_raw is None:
         return None
+    else:
+        exg_status = "available"
     return {
         "name_zh": map_cn or "",
         "difficulty": "",
@@ -1456,6 +1457,8 @@ def build_exg_payload(map_cn, exg_entry):
             "deadline": cooldown_end_epoch,
             "duration_raw": duration_raw,
         },
+        "exg_status": exg_status,
+        "available_on_exg": exg_status == "available",
         "achievement": exg_entry.get("achievement") or "",
         "workshop": {
             "id": exg_entry.get("workshop_id") or "",
@@ -2609,6 +2612,32 @@ def proxy_to_watcher(path, method):
 def get_translations():
     refresh_local_caches()
     return make_json_response(MAP_TRANS_CACHE)
+
+@app.route('/api/map_exg')
+def get_map_exg_payload():
+    raw_keys = request.args.getlist('map')
+    if not raw_keys:
+        return make_json_response({})
+    map_keys = sorted({normalize_map_name(key) or str(key).strip() for key in raw_keys if key})
+    if not map_keys:
+        return make_json_response({})
+    exg_entries, _ = get_mysql_map_exg_entries(map_keys)
+    if not exg_entries:
+        return make_json_response({})
+    translations, _ = get_mysql_map_translations(map_keys)
+    payload = {}
+    for map_key in map_keys:
+        exg_entry = exg_entries.get(map_key)
+        if not exg_entry:
+            continue
+        map_cn = ""
+        trans_entry = translations.get(map_key) if translations else None
+        if trans_entry:
+            map_cn, _ = resolve_mysql_map_translation(map_key, trans_entry)
+        exg_payload = build_exg_payload(map_cn, exg_entry)
+        if exg_payload:
+            payload[map_key] = exg_payload
+    return set_no_store(make_json_response(payload))
 
 @app.route('/map_translations.json')
 def get_public_translations():

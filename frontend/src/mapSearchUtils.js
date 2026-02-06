@@ -164,17 +164,11 @@ export const validateMapIndexEntry = (mapKey, entry, warn = console.warn) => {
   if (entry.deadline !== undefined && entry.deadline !== null && typeof entry.deadline !== 'number') {
     warn?.(`[map_index] deadline should be number|null for ${mapKey}`);
   }
-  if (!Object.prototype.hasOwnProperty.call(entry, 'duration_raw')) {
-    warn?.(`[map_index] duration_raw missing for ${mapKey}`);
-  }
 };
 
-export const shouldShowExgStatus = ({ mapKey, comms, viewportWidth, prefixes }) => {
+export const shouldShowExgStatus = ({ mapKey, comms, viewportWidth }) => {
   if (!mapKey) return false;
   if (typeof viewportWidth === 'number' && viewportWidth < 768) return false;
-  const key = mapKey.toString().toLowerCase();
-  const allowedPrefixes = Array.isArray(prefixes) && prefixes.length > 0 ? prefixes : ['ze_', 'mg_', 'surf_', 'kz_'];
-  if (!allowedPrefixes.some(prefix => key.startsWith(prefix))) return false;
   if (!Array.isArray(comms)) return false;
   return comms.includes('all') || comms.some((cid) => cid.toString().toLowerCase() === 'exg');
 };
