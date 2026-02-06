@@ -1,4 +1,3 @@
-import json
 import os
 import time
 from datetime import datetime
@@ -23,13 +22,6 @@ from app import (
     PRIME_USERS_SET,
     _write_prime_users_locked,
 )
-from modules.autojoin_store import (
-    fetch_autojoin_application,
-    fetch_autojoin_applications,
-    sanitize_autojoin_html,
-    update_autojoin_application_status,
-)
-
 _ADMIN_INITIALIZED = False
 
 
@@ -77,7 +69,7 @@ def create_admin_app():
 
     @app.route('/')
     def admin_root():
-        return admin_applications()
+        return redirect(url_for('admin_prime'))
 
     @app.route('/admin/prime')
     def admin_prime():
@@ -163,65 +155,6 @@ def create_admin_app():
         reason = "removed" if removed else "not_found"
         log_prime_audit("REMOVE", admin_id, target_id, "OK", reason)
         return redirect(url_for('admin_prime'))
-
-    @app.route('/admin/applications')
-    def admin_applications():
-        applications = []
-        for row in fetch_autojoin_applications():
-            created_at = int(row['created_at'] or 0)
-            reviewed_at = int(row['reviewed_at'] or 0) if row['reviewed_at'] else 0
-            applications.append({
-                "id": row['id'],
-                "steam_id": row['steam_id'] or "",
-                "status": row['status'] or "pending",
-                "created_at": created_at,
-                "created_at_human": datetime.utcfromtimestamp(created_at).strftime('%Y-%m-%d %H:%M:%S UTC') if created_at else "Unknown",
-                "reviewed_at_human": datetime.utcfromtimestamp(reviewed_at).strftime('%Y-%m-%d %H:%M:%S UTC') if reviewed_at else "",
-            })
-        return render_template('admin_applications.html', applications=applications)
-
-    @app.route('/admin/applications/<int:app_id>')
-    def admin_application_detail(app_id):
-        row = fetch_autojoin_application(app_id)
-        if not row:
-            abort(404)
-        images = []
-        try:
-            images = json.loads(row['images_json'] or "[]")
-        except Exception:
-            images = []
-        sanitized_html = sanitize_autojoin_html(row['html'] or "")
-        created_at = int(row['created_at'] or 0)
-        reviewed_at = int(row['reviewed_at'] or 0) if row['reviewed_at'] else 0
-        application = {
-            "id": row['id'],
-            "steam_id": row['steam_id'] or "",
-            "status": row['status'] or "pending",
-            "html": sanitized_html,
-            "images": images,
-            "created_at_human": datetime.utcfromtimestamp(created_at).strftime('%Y-%m-%d %H:%M:%S UTC') if created_at else "Unknown",
-            "reviewed_at_human": datetime.utcfromtimestamp(reviewed_at).strftime('%Y-%m-%d %H:%M:%S UTC') if reviewed_at else "",
-            "reviewed_by": row['reviewed_by'] or "",
-            "reject_reason": row['reject_reason'] or "",
-            "admin_note": row['admin_note'] or "",
-        }
-        return render_template('admin_application_detail.html', application=application)
-
-    @app.route('/admin/applications/<int:app_id>/approve', methods=['POST'])
-    def admin_application_approve(app_id):
-        reviewed_by = _get_cf_access_email() or "admin"
-        update_autojoin_application_status(app_id, "approved", reviewed_by)
-        return redirect(url_for('admin_application_detail', app_id=app_id))
-
-    @app.route('/admin/applications/<int:app_id>/reject', methods=['POST'])
-    def admin_application_reject(app_id):
-        reviewed_by = _get_cf_access_email() or "admin"
-        reason = request.form.get('reject_reason', '').strip()
-        note = request.form.get('admin_note', '').strip()
-        if not reason:
-            return make_response("Reject reason required", 400)
-        update_autojoin_application_status(app_id, "rejected", reviewed_by, reject_reason=reason, admin_note=note)
-        return redirect(url_for('admin_application_detail', app_id=app_id))
 
     return app
 

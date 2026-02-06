@@ -16,7 +16,7 @@ python -m playwright install --with-deps chromium
 
 ## Deployment notes
 
-See `docs/autojoin_v2_deploy.md` for AutoJoin v2 deployment requirements and WebSocket proxying notes.
+AutoJoin is implemented outside the website backend (client/standalone service). The website backend does not host AutoJoin.
 
 ## Map translation auto-fill
 
@@ -256,7 +256,4 @@ Caching guidance:
 ## Required environment variables
 
 - `CS2ZE_BASE_URL` (optional, default `http://localhost:5000`)
-- `CS2ZE_SESSION_COOKIE` (required for Prime/AutoJoin watcher access)
-  - Example: `CS2ZE_SESSION_COOKIE="session=YOUR_SESSION_COOKIE"`
-  - Use the `session` cookie value from a logged-in browser session.
 - `CS2ZE_TIMEOUT` (optional, request timeout in seconds, default `6`)

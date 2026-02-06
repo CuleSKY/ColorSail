@@ -30,30 +30,6 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 import a2s
 from apscheduler.schedulers.background import BackgroundScheduler
 from concurrent.futures import ThreadPoolExecutor
-from modules.autojoin_store import (
-    sanitize_autojoin_html,
-    create_autojoin_application,
-    update_autojoin_application_status,
-    fetch_autojoin_applications,
-    fetch_autojoin_application,
-    get_autojoin_enabled,
-)
-try:
-    from autojoin_blueprint import (
-        AutoJoinHub,
-        EventRateLimiter,
-        WatcherConfig,
-        create_autojoin_blueprint,
-        register_autojoin_ws,
-    )
-    AUTOJOIN_AVAILABLE = True
-except ModuleNotFoundError:
-    AutoJoinHub = None
-    EventRateLimiter = None
-    WatcherConfig = None
-    create_autojoin_blueprint = None
-    register_autojoin_ws = None
-    AUTOJOIN_AVAILABLE = False
 try:
     from opencc import OpenCC
 except Exception:
@@ -1672,22 +1648,6 @@ def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS player_stats (timestamp INTEGER, community TEXT, count INTEGER)''')
-    c.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS autojoin_applications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            steam_id TEXT,
-            html TEXT,
-            images_json TEXT,
-            status TEXT,
-            created_at INTEGER,
-            reviewed_at INTEGER,
-            reviewed_by TEXT,
-            reject_reason TEXT,
-            admin_note TEXT
-        )
-        '''
-    )
     conn.commit()
     conn.close()
 
@@ -2035,11 +1995,9 @@ def steam_status():
 def api_me():
     steam_id = session.get('steam_id')
     logged_in = is_logged_in()
-    autojoin_enabled = get_autojoin_enabled(steam_id) if logged_in else False
     return set_no_store(make_json_response({
         "logged_in": logged_in,
-        "steam_id": steam_id if logged_in else None,
-        "autojoin_enabled": autojoin_enabled
+        "steam_id": steam_id if logged_in else None
     }))
 
 @app.route('/auth/me')
@@ -2080,23 +2038,6 @@ def auth_debug_cookie():
         path="/"
     )
     return set_no_store(resp)
-
-@app.route('/api/autojoin/apply', methods=['POST'])
-def autojoin_apply():
-    origin_denied = require_valid_origin()
-    if origin_denied:
-        return origin_denied
-    if not is_logged_in():
-        return make_response("Unauthorized", 401)
-    payload = request.get_json(silent=True) or {}
-    html = payload.get('html', '')
-    images = payload.get('images') or []
-    if not isinstance(html, str) or not isinstance(images, list):
-        return make_response("Invalid request", 400)
-    if len(images) > 8:
-        return make_response("Too many images", 400)
-    app_id = create_autojoin_application(session.get('steam_id'), html, images)
-    return make_json_response({"ok": True, "id": app_id})
 
 @app.route('/api/steam/logout', methods=['POST'])
 def steam_logout():
@@ -2328,70 +2269,6 @@ def proxy_to_watcher(path, method):
     except Exception:
         return make_json_response({"ok": False, "error": "invalid watcher response"}, status=502)
     return make_json_response(data, status=resp.status_code)
-
-def require_prime():
-    if not is_prime_user():
-        return make_response("Forbidden", 403)
-    return None
-
-if AUTOJOIN_AVAILABLE:
-    autojoin_hub = AutoJoinHub()
-    autojoin_limiter = EventRateLimiter()
-    autojoin_cfg = WatcherConfig(
-        cn_url=WATCHER_CN_URL,
-        us_url=WATCHER_US_URL,
-        shared_token=os.environ.get('WATCHER_SHARED_TOKEN'),
-        hmac_secret=WATCHER_HMAC_SECRET,
-        allowed_ids=WATCHER_ALLOWED_IDS or None,
-    )
-    app.register_blueprint(create_autojoin_blueprint(autojoin_cfg, autojoin_hub, autojoin_limiter, is_prime_user))
-    register_autojoin_ws(sock, autojoin_hub)
-
-    @app.route('/api/autojoin/join', methods=['POST'])
-    def autojoin_join():
-        origin_denied = require_valid_origin()
-        if origin_denied:
-            return origin_denied
-        denied = require_prime()
-        if denied:
-            return denied
-        return proxy_to_watcher('/v1/autojoin/join', 'POST')
-
-    @app.route('/api/autojoin/poll')
-    def autojoin_poll():
-        denied = require_prime()
-        if denied:
-            return denied
-        return proxy_to_watcher('/v1/autojoin/poll', 'GET')
-
-    @app.route('/api/autojoin/report', methods=['POST'])
-    def autojoin_report():
-        origin_denied = require_valid_origin()
-        if origin_denied:
-            return origin_denied
-        denied = require_prime()
-        if denied:
-            return denied
-        return proxy_to_watcher('/v1/autojoin/report', 'POST')
-
-    @app.route('/api/autojoin/leave', methods=['POST'])
-    def autojoin_leave():
-        origin_denied = require_valid_origin()
-        if origin_denied:
-            return origin_denied
-        denied = require_prime()
-        if denied:
-            return denied
-        return proxy_to_watcher('/v1/autojoin/leave', 'POST')
-
-    @app.route('/api/autojoin/targets')
-    def autojoin_targets():
-        denied = require_prime()
-        if denied:
-            return denied
-        return proxy_to_watcher('/v1/targets', 'GET')
-else:
-    print("[AutoJoin] autojoin_blueprint not available; AutoJoin features disabled.")
 
 @app.route('/api/map_translations')
 def get_translations():
