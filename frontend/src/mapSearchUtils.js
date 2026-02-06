@@ -176,5 +176,5 @@ export const shouldShowExgStatus = ({ mapKey, comms, viewportWidth, prefixes }) 
   const allowedPrefixes = Array.isArray(prefixes) && prefixes.length > 0 ? prefixes : ['ze_', 'mg_', 'surf_', 'kz_'];
   if (!allowedPrefixes.some(prefix => key.startsWith(prefix))) return false;
   if (!Array.isArray(comms)) return false;
-  return comms.includes('all') || comms.includes('EXG');
+  return comms.includes('all') || comms.some((cid) => cid.toString().toLowerCase() === 'exg');
 };
