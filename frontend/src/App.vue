@@ -303,15 +303,17 @@
                 <div class="sub-actions">
                   <div
                     v-if="exgStatusByIndex[idx]"
-                    :class="['exg-pill', exgStatusByIndex[idx].state === 'available' ? 'exg-pill--green' : 'exg-pill--red']"
+                    :class="[
+                      'exg-pill',
+                      exgStatusByIndex[idx].state === 'available' ? 'exg-pill--green' : 'exg-pill--red',
+                      exgStatusByIndex[idx].state === 'cooldown' ? 'exg-pill--cooldown' : ''
+                    ]"
+                    @mouseenter="exgStatusByIndex[idx].state === 'cooldown' && showExgTooltip($event, exgStatusByIndex[idx].datetime)"
+                    @mouseleave="hideExgTooltip"
                   >
                     <template v-if="exgStatusByIndex[idx].state === 'cooldown'">
                       <span class="exg-pill-text">{{ exgStatusByIndex[idx].prefix }}</span>
-                      <span
-                        class="exg-pill-date"
-                        @mouseenter="showExgTooltip($event, exgStatusByIndex[idx].datetime)"
-                        @mouseleave="hideExgTooltip"
-                      >{{ exgStatusByIndex[idx].date }}</span>
+                      <span class="exg-pill-date">{{ exgStatusByIndex[idx].date }}</span>
                     </template>
                     <template v-else>
                       <span class="exg-pill-text">{{ exgStatusByIndex[idx].label }}</span>
@@ -329,14 +331,16 @@
           </div>
         </div>
 
-        <div
-          v-if="exgTooltip.visible"
-          ref="exgTooltipRef"
-          class="exg-tooltip"
-          :style="{ top: `${exgTooltip.top}px`, left: `${exgTooltip.left}px` }"
-        >
-          {{ exgTooltip.text }}
-        </div>
+        <Teleport to="body">
+          <div
+            v-if="exgTooltip.visible"
+            ref="exgTooltipRef"
+            class="exg-tooltip"
+            :style="{ top: `${exgTooltip.top}px`, left: `${exgTooltip.left}px` }"
+          >
+            {{ exgTooltip.text }}
+          </div>
+        </Teleport>
 
         <div v-show="curView === 'stats'" class="animate-enter">
           <div v-if="isLoggedIn" class="stats-dashboard">
@@ -1806,7 +1810,7 @@ const submitFeedback = () => {
 </script>
 
 <style scoped>
-.exg-pill-date {
+.exg-pill--cooldown {
   cursor: help;
 }
 
