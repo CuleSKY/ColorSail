@@ -1,0 +1,2 @@
+2026-02-04 22:52:12 [ERROR] map_sidecar: OVERSEAS_INGEST_URL is required; INGEST_TOKEN is required
+2026-02-05 01:37:34 [ERROR] map_sidecar: Pipeline failed: BrowserType.launch: Failed to launch chromium because executable doesn't exist at \usr\bin\chromium-browser
