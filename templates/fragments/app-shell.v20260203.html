@@ -297,10 +297,24 @@
               <div class="sub-row" v-for="(sub, idx) in subscriptions" :key="idx">
                 <div class="sub-col-info">
                   <div class="sub-map-key">{{ sub.map }}</div>
-                  <div class="sub-map-val" v-if="isChineseLang && getMapTranslation(sub.map)">{{ getMapTranslation(sub.map) }}</div>
+                  <div class="sub-map-val" v-if="isChineseLang && getMapIndexDisplayName(sub.map)">{{ getMapIndexDisplayName(sub.map) }}</div>
                   <div class="sub-comms">{{ formatSubComms(sub.comms) }}</div>
                 </div>
-                <button class="btn-unsub" @click="removeSubscription(idx)">{{ t('unsubscribe') }}</button>
+                <div class="sub-actions">
+                  <div
+                    v-if="exgStatusByIndex[idx]"
+                    :class="['exg-pill', exgStatusByIndex[idx].state === 'available' ? 'exg-pill--green' : 'exg-pill--red']"
+                  >
+                    <template v-if="exgStatusByIndex[idx].state === 'cooldown'">
+                      <span class="exg-pill-text">{{ exgStatusByIndex[idx].prefix }}</span>
+                      <span class="exg-pill-date" :title="exgStatusByIndex[idx].tooltip">{{ exgStatusByIndex[idx].date }}</span>
+                    </template>
+                    <template v-else>
+                      <span class="exg-pill-text">{{ exgStatusByIndex[idx].label }}</span>
+                    </template>
+                  </div>
+                  <button class="btn-unsub" @click="removeSubscription(idx)">{{ t('unsubscribe') }}</button>
+                </div>
               </div>
             </div>
             <div v-else style="text-align: center; padding: 40px; color: var(--text-secondary);">
