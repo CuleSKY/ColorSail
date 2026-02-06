@@ -6,7 +6,7 @@ This sidecar owns **all write paths** for map metadata, exports, and workshop im
 
 ### Overseas host (ingest + exports)
 - Runs the HTTP ingest server (receives EXG payloads from CN).
-- Runs poller/export jobs via systemd timers.
+- Runs exporter jobs via systemd timers (map_index.json + time.json).
 - **Does not** fetch EXG HTML directly.
 
 ### CN host (EXG fetcher)
@@ -121,7 +121,7 @@ Ingest endpoint (wrong token -> 401):
 curl -i -X POST https://www.cs2ze.org/sidecar/exg/ingest \
   -H 'Authorization: Bearer WRONG_TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{"records":[]}'
+  -d '{"source":"exg_maplist","fetched_at_epoch":1710000000,"records":[]}'
 ```
 
 Ingest endpoint (correct token -> 200):
@@ -168,7 +168,9 @@ sudo systemctl enable --now exg-fetcher-cn.timer
 
 ## Notes
 
-- `map_translations.json` and `map_index.json` are written atomically to the project root.
+- `map_index.json` is exported only after successful MySQL updates via the `map-sidecar-index-refresh.timer` (ingest does not export immediately).
+- `map_index.json` and `time.json` are written atomically to the project root by the exporter timer.
+- `map_translations.json` is deprecated and should not be used as the primary lookup path.
 - `static/data/maplist_normalized.json` is the authoritative normalized EXG maplist consumed by the main site.
 - EXG HTML is retained under `tools/map_sidecar/debug/exg_html/` on the **CN fetcher** when `DEBUG=true` or parsing fails; files older than `RETENTION_HOURS` are deleted automatically.
 - Workshop images are saved as lowercase `<map_key>.jpg` under `<PROJECT_ROOT>/<STATIC_DIR_NAME>/maps/`.

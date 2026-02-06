@@ -148,7 +148,10 @@ def parse_maplist(html: str) -> List[dict]:
         map_key = normalize_map_key(map_raw)
         if not map_key:
             continue
-        cooldown_epoch = parse_beijing_time(cooldown_raw or "")
+        cooldown_raw_clean = (cooldown_raw or "").strip()
+        cooldown_epoch = parse_beijing_time(cooldown_raw_clean)
+        if cooldown_raw_clean and cooldown_epoch is None and cooldown_raw_clean not in {"无", "無", "-", "N/A"}:
+            raise MaplistParseError(f"Invalid cooldown deadline: {cooldown_raw_clean}")
         workshop_id, workshop_url = _parse_workshop(workshop_raw or "")
         name_zh_cn = name_raw.strip() if name_raw else None
         record = {

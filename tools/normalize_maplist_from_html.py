@@ -31,9 +31,9 @@ def split_tags(tag_cell: str) -> List[str]:
 
 def workshop_id_from_url(url: str) -> str:
     if not url:
-        return ""
+        return "0"
     m = re.search(r"(\d{8,})", url)
-    return m.group(1) if m else ""
+    return m.group(1) if m else "0"
 
 @dataclass
 class MapEntry:

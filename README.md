@@ -20,9 +20,8 @@ See `docs/autojoin_v2_deploy.md` for AutoJoin v2 deployment requirements and Web
 
 ## Map translation auto-fill
 
-- Map translation entries are stored in `map_translations.json` (keys are normalized map names, values include `zh_cn` and `zh_tw`).
-- The backend auto-creates empty entries for any map seen from community/A2S/EXG responses, and fills missing `zh_cn`/`zh_tw` when EXG provides `Status.MapDisplayName`.
-- Traditional Chinese conversion uses OpenCC (`opencc-python-reimplemented`) when available, with a lightweight fallback if OpenCC is unavailable.
+- `map_translations.json` is **deprecated** and no longer the primary path for map lookups.
+- Traditional Chinese (`zh_tw`) is derived from Simplified (`zh_cn`) via OpenCC (`opencc-python-reimplemented`).
 
 ## EXG CN fetcher self-check
 
@@ -39,6 +38,139 @@ python -m tools.map_sidecar.sidecar cn-fetch
 ```
 
 Check `journalctl` for a success log entry if running under systemd.
+
+## Map sidecar pipeline (EXG → MySQL → exports)
+
+### Data flow (authoritative order)
+
+```
+EXG (authoritative) → CN fetcher → overseas ingest → MySQL (authoritative snapshot)
+→ exporter (systemd timer) → map_index.json + time.json
+```
+
+- EXG is the sole authority for cooldown deadlines and map metadata.
+- MySQL stores **only the latest EXG calibration snapshot**.
+- Redis is best-effort cache only; Redis failures must not break ingest.
+- `map_index.json` is for user search only and must be `dict[map_key]` with `map_cn`, `deadline`, `achievement`.
+- `map_cn` defaults to `zh_cn` (fallback to map key). `zh_tw` is derived via OpenCC and is not used for index lookups.
+
+### Module responsibilities (old + current, preserved)
+
+- **EXG fetcher (CN)**: `tools/map_sidecar/cn_fetcher.py` (Playwright fetch + HTML parse) and legacy `tools/map_sidecar/exg_cn_pipeline.py` / `tools/map_sidecar/exg_maplist.py`.
+- **Normalize / convert**: `tools/normalize_maplist_from_html.py` (HTML → normalized records) and CN fetcher parsing helpers.
+- **CN → overseas ingest client**: `tools/map_sidecar/cn_fetcher.py` / `tools/map_sidecar/exg_cn_pipeline.py` (`post_payload`/`post_normalized_payload`).
+- **Overseas ingest server**: `tools/map_sidecar/ingest_server.py` (schema validation + MySQL write).
+- **MySQL write module**: `tools/map_sidecar/db.py`.
+- **map_index/time exporter**: `tools/map_sidecar/exporter.py` + `tools/map_sidecar/sidecar.py` (`refresh-index`).
+
+### Cooldown normalization rules (strict)
+
+- EXG `deadline` is parsed in **Asia/Shanghai**.
+- Cooldown stored as **epoch seconds (UTC, int)** in MySQL (`cooldown_end_epoch`).
+- `deadline == null` is only allowed when EXG explicitly has no cooldown.
+- Parse failures must return **400** in ingest (never write null on parse failure).
+
+### Frontend time calibration
+
+- Exporter also writes `time.json` as `{ "server_now_epoch": <int> }`.
+- Frontend must use `time.json` for cooldown countdowns (not `Date.now()`).
+
+### Environment variables
+
+**Overseas ingest + exporter**
+- `PROJECT_ROOT` (default: `/opt/1panel/www/sites/www.cs2ze.org/NERV_CS2ZE`)
+- `MYSQL_HOST`, `MYSQL_PORT` (default `3306`), `MYSQL_DB`, `MYSQL_USER`, `MYSQL_PASSWORD`
+- `REDIS_URL` (preferred) or `REDIS_HOST` + `REDIS_PORT` + `REDIS_PASSWORD`
+- `MAIN_SERVERS_JSON_URL` (default: `https://www.cs2ze.org/servers.json`)
+- `STATIC_DIR_NAME` (default: `static`)
+- `MAP_SIDECAR_LOG_DIR` (default: `<PROJECT_ROOT>/logs`)
+- Ingest server: `INGEST_TOKEN`, `INGEST_BIND_HOST`, `INGEST_BIND_PORT`, `INGEST_ALLOWLIST`, `INGEST_MAX_BYTES`, `INGEST_REQUEST_TIMEOUT_SECONDS`
+- `EXG_HEALTH_MAX_AGE_SECONDS` (default: `7200`)
+
+**CN fetcher**
+- `PROJECT_ROOT` (default: current working directory)
+- `EXG_MAPLIST_URL` (default: `https://list.darkrp.cn:9000/serverlist/cs2maplist`)
+- `OVERSEAS_INGEST_URL`
+- `INGEST_TOKEN`
+- `FETCH_TIMEOUT_SECONDS` (default: `15`)
+- `RETENTION_HOURS` (default: `72`)
+- `DEBUG` (optional)
+
+### systemd examples (exporter timer)
+
+```ini
+[Unit]
+Description=CS2ZE Map Sidecar - Refresh map_index.json every 60 seconds
+
+[Timer]
+OnBootSec=45s
+OnUnitActiveSec=60s
+Unit=map-sidecar-index-refresh.service
+```
+
+```ini
+[Unit]
+Description=CS2ZE Map Sidecar - Refresh map_index.json if DB changed
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/1panel/www/sites/www.cs2ze.org/NERV_CS2ZE
+EnvironmentFile=/etc/default/map-sidecar
+ExecStart=/opt/1panel/www/sites/www.cs2ze.org/NERV_CS2ZE/.venv/bin/python -m tools.map_sidecar.sidecar refresh-index
+```
+
+### Common errors & remediation
+
+- **Redis NOAUTH / connection errors**: ingest should still return 200; Redis failures only log warnings.
+- **400 schema errors**: payload must include `source`, `fetched_at_epoch` (int), and `records[]` schema.
+- **workshop.id** must be a string; use `"0"` when unavailable.
+- **`deadline == null` semantics**: only allowed when EXG explicitly reports no cooldown; parse failures must not write null.
+
+### Data examples
+
+**records payload**
+```json
+{
+  "source": "exg_maplist",
+  "fetched_at_epoch": 1710000000,
+  "records": [
+    {
+      "map": "de_dust2",
+      "name_zh": "沙漠2",
+      "difficulty": "未标注",
+      "tags": [],
+      "cooldown": {
+        "duration_raw": "60",
+        "deadline": "2024/03/10 12:00"
+      },
+      "achievement": "Win 10 rounds",
+      "workshop": {
+        "id": "123456789",
+        "url": "https://steamcommunity.com/sharedfiles/filedetails/?id=123456789"
+      }
+    }
+  ]
+}
+```
+
+**map_index.json**
+```json
+{
+  "de_dust2": {
+    "map_cn": "沙漠2",
+    "deadline": 1710043200,
+    "achievement": "Win 10 rounds"
+  }
+}
+```
+
+**time.json**
+```json
+{
+  "server_now_epoch": 1710000123
+}
+```
 
 ## Admin notes
 
