@@ -127,9 +127,8 @@ export const scoreSearchEntry = (entry, query) => {
 
 export const getExgStatusState = (deadline, durationRaw) => {
   if (deadline !== null && deadline !== undefined) return 'cooldown';
-  const duration = durationRaw == null ? '' : String(durationRaw).trim();
-  if (duration) return 'available';
-  return 'not_available';
+  if (durationRaw === '0分') return 'not_available';
+  return 'available';
 };
 
 export const formatExgDate = (timestampSec) => {
