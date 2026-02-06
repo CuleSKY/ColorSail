@@ -301,23 +301,25 @@
                   <div class="sub-comms">{{ formatSubComms(sub.comms) }}</div>
                 </div>
                 <div class="sub-actions">
-                  <div
-                    v-if="exgStatusByIndex[idx]"
-                    :class="[
-                      'exg-pill',
-                      exgStatusByIndex[idx].state === 'available' ? 'exg-pill--green' : 'exg-pill--red',
-                      exgStatusByIndex[idx].state === 'cooldown' ? 'exg-pill--cooldown' : ''
-                    ]"
-                    @mouseenter="exgStatusByIndex[idx].state === 'cooldown' && showExgTooltip($event, exgStatusByIndex[idx].datetime)"
-                    @mouseleave="hideExgTooltip"
-                  >
-                    <template v-if="exgStatusByIndex[idx].state === 'cooldown'">
-                      <span class="exg-pill-text">{{ exgStatusByIndex[idx].prefix }}</span>
-                      <span class="exg-pill-date">{{ exgStatusByIndex[idx].date }}</span>
-                    </template>
-                    <template v-else>
-                      <span class="exg-pill-text">{{ exgStatusByIndex[idx].label }}</span>
-                    </template>
+                  <div v-if="exgStatusByIndex[idx]" class="exg-status-stack">
+                    <div
+                      v-if="exgStatusByIndex[idx].state === 'available'"
+                      class="exg-available-text"
+                    >
+                      {{ exgStatusByIndex[idx].label }}
+                    </div>
+                    <div
+                      v-else-if="exgStatusByIndex[idx].state === 'cooldown'"
+                      class="exg-cooldown-text"
+                      @mouseenter="showExgTooltip($event, exgStatusByIndex[idx].datetime)"
+                      @mouseleave="hideExgTooltip"
+                    >
+                      <div class="exg-cooldown-label">{{ exgStatusByIndex[idx].prefix }}</div>
+                      <div class="exg-cooldown-time">{{ exgStatusByIndex[idx].datetimeDisplay }}</div>
+                    </div>
+                    <div v-else class="exg-unavailable-text">
+                      {{ exgStatusByIndex[idx].label }}
+                    </div>
                   </div>
                   <button class="btn-unsub" @click="removeSubscription(idx)">{{ t('unsubscribe') }}</button>
                 </div>
@@ -1230,13 +1232,15 @@ const getExgStatus = (sub) => {
   if (state === 'cooldown' && deadline !== null && deadline !== undefined) {
     const date = formatExgDate(deadline);
     const datetime = formatExgDateTime(deadline);
+    const datetimeDisplay = datetime.replace(' - ', ' ');
     const cooldownText = formatTemplate(t('map.exg.cooldown_until'), { date });
     const prefix = cooldownText.replace(date, '').trim();
     return {
       state,
       prefix,
       date,
-      datetime
+      datetime,
+      datetimeDisplay
     };
   }
   if (state === 'available') {
@@ -1810,8 +1814,45 @@ const submitFeedback = () => {
 </script>
 
 <style scoped>
-.exg-pill--cooldown {
+.exg-status-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.exg-available-text {
+  color: var(--status-online);
+  font-size: 12px;
+  font-weight: 600;
+  background: none;
+  border: none;
+}
+
+.exg-unavailable-text {
+  color: var(--status-offline);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.exg-cooldown-text {
+  color: var(--status-offline);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
   cursor: help;
+}
+
+.exg-cooldown-label {
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+.exg-cooldown-time {
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .exg-tooltip {
