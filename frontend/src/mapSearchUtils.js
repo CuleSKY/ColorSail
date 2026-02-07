@@ -181,7 +181,7 @@ export const getExgStatusState = (
   nowSec = Math.floor(Date.now() / 1000),
   durationRaw = null
 ) => {
-  if (deadline !== null && deadline !== undefined && deadline > nowSec) return 'cooldown';
+  if (deadline !== null && deadline !== undefined) return 'cooldown';
   if (deadline === null || deadline === undefined) {
     if (durationRaw === '0分') return 'not_available';
     if (durationRaw !== null && durationRaw !== undefined && durationRaw !== '0分') return 'available';
