@@ -783,14 +783,16 @@ watch(curView, (nextView, prevView) => {
         mapCooldownLatestScrollTop = mapCooldownScrollRef.value.scrollTop || 0;
       }
       setupMapCooldownResizeObserver();
+      setupMapCooldownContainerObserver();
       scheduleMapCooldownPrefixRebuild();
-      scheduleMapCooldownRaf();
+      clampMapCooldownScrollTop({ force: true });
     });
   }
   if (prevView === 'map_cooldown' && nextView !== 'map_cooldown') {
     stopMapCooldownTimer();
     resetMapCooldownScrollState();
     teardownMapCooldownResizeObserver();
+    teardownMapCooldownContainerObserver();
   }
 });
 watch([isLoggedIn, curView], () => {
@@ -815,7 +817,7 @@ const handleResize = () => {
     mapCooldownLatestScrollTop = mapCooldownScrollRef.value?.scrollTop || mapCooldownLatestScrollTop;
     nextTick(() => {
       scheduleMapCooldownPrefixRebuild();
-      scheduleMapCooldownRaf();
+      clampMapCooldownScrollTop({ force: true });
     });
   }
 };
@@ -1034,6 +1036,7 @@ onUnmounted(() => {
   stopMapCooldownTimer();
   resetMapCooldownScrollState();
   teardownMapCooldownResizeObserver();
+  teardownMapCooldownContainerObserver();
   if (mapCooldownSearchTimer) {
     clearTimeout(mapCooldownSearchTimer);
     mapCooldownSearchTimer = null;
@@ -1412,6 +1415,7 @@ const mapCooldownMaxRendered = 160;
 const mapCooldownFastSpeedThresholdHigh = 2.5;
 const mapCooldownFastSpeedThresholdLow = 1.2;
 const mapCooldownScrollIdleMs = 180;
+const mapCooldownDebug = false;
 const mapCooldownWinStart = ref(0);
 const mapCooldownWinEnd = ref(0);
 const mapCooldownTopSpacerPx = ref(0);
@@ -1438,6 +1442,8 @@ let mapCooldownBuildId = 0;
 let mapCooldownPendingModes = new Set();
 let mapCooldownSearchTimer = null;
 let mapCooldownHighlightTimer = null;
+let mapCooldownContainerResizeObserver = null;
+let mapCooldownLastNonZeroViewportHeight = mapCooldownEstimatedRowHeight;
 const mapCooldownHeightByKey = new Map();
 const mapCooldownRowElByKey = new Map();
 
@@ -1524,25 +1530,32 @@ const mapCooldownAvailabilityLabel = (availability) => {
 };
 const updateMapCooldownVisibleRows = () => {
   const total = mapCooldownRows.value.length;
+  const rowHeight = getMapCooldownRowHeight();
+  const totalHeight = total * rowHeight;
+  mapCooldownTotalHeight.value = totalHeight;
   if (total === 0) {
     mapCooldownWinStart.value = 0;
     mapCooldownWinEnd.value = 0;
     mapCooldownVisibleRows.value = [];
     mapCooldownTopSpacerPx.value = 0;
     mapCooldownBottomSpacerPx.value = 0;
-    mapCooldownTotalHeight.value = 0;
     return;
   }
-  let start = Math.max(0, Math.min(mapCooldownWinStart.value, total));
-  let end = Math.max(start, Math.min(mapCooldownWinEnd.value, total));
+  let start = Math.max(0, Math.min(mapCooldownWinStart.value, total - 1));
+  let end = Math.max(start + 1, Math.min(mapCooldownWinEnd.value, total));
   if (end <= start) {
+    start = Math.min(Math.max(start, 0), total - 1);
     end = Math.min(start + 1, total);
   }
   mapCooldownWinStart.value = start;
   mapCooldownWinEnd.value = end;
-  mapCooldownVisibleRows.value = mapCooldownRows.value.slice(start, end);
-  mapCooldownTopSpacerPx.value = mapCooldownPrefixSums[start] || 0;
-  mapCooldownBottomSpacerPx.value = Math.max(0, mapCooldownTotalHeight.value - (mapCooldownPrefixSums[end] || 0));
+  const nextVisibleRows = mapCooldownRows.value.slice(start, end);
+  if (mapCooldownDebug && total > 0 && nextVisibleRows.length === 0) {
+    console.log('[mapcd] visible rows empty with non-zero total', { total, start, end });
+  }
+  mapCooldownVisibleRows.value = nextVisibleRows;
+  mapCooldownTopSpacerPx.value = start * rowHeight;
+  mapCooldownBottomSpacerPx.value = Math.max(0, totalHeight - end * rowHeight);
 };
 
 const openMapCooldownSuggestions = () => {
@@ -1614,17 +1627,18 @@ const onMapCooldownSearchKeydown = (event) => {
   }
 };
 
-const getMapCooldownRowHeight = (key) => mapCooldownHeightByKey.get(key) ?? mapCooldownEstimatedRowHeight;
+const getMapCooldownRowHeight = () => mapCooldownEstimatedRowHeight;
 
 const rebuildMapCooldownPrefixSums = () => {
-  const keys = mapCooldownKeysAll.value;
-  const nextPrefix = new Array(keys.length + 1);
+  const total = mapCooldownRows.value.length;
+  const rowHeight = getMapCooldownRowHeight();
+  const nextPrefix = new Array(total + 1);
   nextPrefix[0] = 0;
-  for (let i = 0; i < keys.length; i += 1) {
-    nextPrefix[i + 1] = nextPrefix[i] + getMapCooldownRowHeight(keys[i]);
+  for (let i = 0; i < total; i += 1) {
+    nextPrefix[i + 1] = nextPrefix[i] + rowHeight;
   }
   mapCooldownPrefixSums = nextPrefix;
-  mapCooldownTotalHeight.value = nextPrefix[nextPrefix.length - 1] || 0;
+  mapCooldownTotalHeight.value = total * rowHeight;
 };
 
 const captureMapCooldownAnchor = () => {
@@ -1635,7 +1649,7 @@ const captureMapCooldownAnchor = () => {
   const startIndex = Math.min(Math.max(0, mapCooldownWinStart.value), keys.length - 1);
   const anchorKey = keys[startIndex];
   if (!anchorKey) return null;
-  const anchorTop = mapCooldownPrefixSums[startIndex] || 0;
+  const anchorTop = startIndex * getMapCooldownRowHeight();
   return {
     key: anchorKey,
     startIndex,
@@ -1653,7 +1667,7 @@ const applyMapCooldownAnchor = (anchor) => {
     anchorIndex = keys.indexOf(anchor.key);
   }
   if (anchorIndex < 0) return;
-  const anchorTop = mapCooldownPrefixSums[anchorIndex] || 0;
+  const anchorTop = anchorIndex * getMapCooldownRowHeight();
   const desired = anchorTop + anchor.offset;
   const maxScrollTop = Math.max(0, mapCooldownTotalHeight.value - scrollEl.clientHeight);
   mapCooldownIsApplyingScrollAdjust = true;
@@ -1667,13 +1681,6 @@ const scheduleMapCooldownPrefixRebuild = () => {
   const anchor = captureMapCooldownAnchor();
   mapCooldownPrefixRafId = window.requestAnimationFrame(() => {
     mapCooldownPrefixRafId = 0;
-    const keys = mapCooldownKeysAll.value;
-    const keySet = new Set(keys);
-    Array.from(mapCooldownHeightByKey.keys()).forEach((key) => {
-      if (!keySet.has(key)) {
-        mapCooldownHeightByKey.delete(key);
-      }
-    });
     rebuildMapCooldownPrefixSums();
     const scrollEl = mapCooldownScrollRef.value;
     if (scrollEl) {
@@ -1691,26 +1698,66 @@ const scheduleMapCooldownPrefixRebuild = () => {
   });
 };
 
+const getMapCooldownViewportHeight = (scrollEl) => {
+  const rawHeight = scrollEl?.clientHeight ?? 0;
+  if (rawHeight > 0) {
+    mapCooldownLastNonZeroViewportHeight = rawHeight;
+    return rawHeight;
+  }
+  if (mapCooldownDebug && mapCooldownLastNonZeroViewportHeight > 0) {
+    console.log('[mapcd] viewport height is 0, reusing last value');
+  }
+  return Math.max(1, mapCooldownLastNonZeroViewportHeight || 1);
+};
+
+const clampMapCooldownScrollTop = ({ force = false } = {}) => {
+  const scrollEl = mapCooldownScrollRef.value;
+  const totalRows = mapCooldownRows.value.length;
+  const rowHeight = getMapCooldownRowHeight();
+  const viewportHeight = getMapCooldownViewportHeight(scrollEl);
+  const totalHeight = totalRows * rowHeight;
+  const maxScrollTop = Math.max(0, totalHeight - viewportHeight);
+  if (scrollEl && scrollEl.scrollTop > maxScrollTop) {
+    if (mapCooldownDebug) {
+      console.log('[mapcd] scrollTop clamped', { from: scrollEl.scrollTop, to: maxScrollTop });
+    }
+    mapCooldownIsApplyingScrollAdjust = true;
+    scrollEl.scrollTop = maxScrollTop;
+    mapCooldownIsApplyingScrollAdjust = false;
+  }
+  const scrollTop = scrollEl ? scrollEl.scrollTop : mapCooldownLatestScrollTop;
+  mapCooldownLatestScrollTop = scrollTop;
+  updateMapCooldownWindow(scrollTop, { force });
+};
+
 const updateMapCooldownWindow = (scrollTop, { force = false } = {}) => {
   const total = mapCooldownRows.value.length;
+  const rowHeight = getMapCooldownRowHeight() || 1;
+  const scrollEl = mapCooldownScrollRef.value;
+  const viewportHeight = getMapCooldownViewportHeight(scrollEl);
+  const totalHeight = total * rowHeight;
+  mapCooldownTotalHeight.value = totalHeight;
+  const maxScrollTop = Math.max(0, totalHeight - viewportHeight);
+  const scrollTopClamped = Math.min(Math.max(scrollTop, 0), maxScrollTop);
+  if (mapCooldownDebug && scrollTop !== scrollTopClamped) {
+    console.log('[mapcd] scrollTop clamped in window', { from: scrollTop, to: scrollTopClamped });
+  }
   if (total === 0) {
     mapCooldownWinStart.value = 0;
     mapCooldownWinEnd.value = 0;
     updateMapCooldownVisibleRows();
     return;
   }
-  const scrollEl = mapCooldownScrollRef.value;
-  const viewportHeight = scrollEl?.clientHeight || 0;
-  const rowHeight = mapCooldownEstimatedRowHeight || 1;
   const baseRows = Math.max(1, Math.ceil(viewportHeight / rowHeight));
   const overscanRows = Math.min(120, Math.max(30, Math.ceil(baseRows * 1.2)));
-  const renderCount = Math.min(mapCooldownMaxRendered, baseRows + overscanRows * 2);
-  const anchorIndex = Math.floor((scrollTop + viewportHeight / 2) / rowHeight);
+  const renderCount = Math.min(mapCooldownMaxRendered, Math.max(baseRows, baseRows + overscanRows * 2));
+  const anchorIndex = Math.floor((scrollTopClamped + viewportHeight / 2) / rowHeight);
   const maxStart = Math.max(0, total - renderCount);
   let startIndex = Math.min(Math.max(anchorIndex - Math.floor(renderCount / 2), 0), maxStart);
   let endIndex = Math.min(total, startIndex + renderCount);
-  if (endIndex <= startIndex) {
-    endIndex = Math.min(total, startIndex + 1);
+  if (total > 0 && endIndex <= startIndex) {
+    startIndex = Math.min(Math.max(startIndex, 0), total - 1);
+    endIndex = Math.min(total, startIndex + renderCount);
   }
   if (!force && startIndex === mapCooldownWinStart.value && endIndex === mapCooldownWinEnd.value) {
     return;
@@ -1875,6 +1922,26 @@ const teardownMapCooldownResizeObserver = () => {
   mapCooldownRowElByKey.clear();
 };
 
+const setupMapCooldownContainerObserver = () => {
+  if (mapCooldownContainerResizeObserver) return;
+  const scrollEl = mapCooldownScrollRef.value;
+  if (!scrollEl) return;
+  mapCooldownContainerResizeObserver = new ResizeObserver(() => {
+    const viewportHeight = scrollEl.clientHeight || 0;
+    if (viewportHeight === 0 && mapCooldownDebug) {
+      console.log('[mapcd] container resize to 0 height');
+    }
+    clampMapCooldownScrollTop({ force: true });
+  });
+  mapCooldownContainerResizeObserver.observe(scrollEl);
+};
+
+const teardownMapCooldownContainerObserver = () => {
+  if (!mapCooldownContainerResizeObserver) return;
+  mapCooldownContainerResizeObserver.disconnect();
+  mapCooldownContainerResizeObserver = null;
+};
+
 const ensureMapCooldownWorker = () => {
   if (mapCooldownWorker) return;
   mapCooldownWorker = new Worker(new URL('./workers/mapCooldown.worker.ts', import.meta.url), { type: 'module' });
@@ -1906,6 +1973,9 @@ const ensureMapCooldownWorker = () => {
         mapCooldownNeedsRebuild.value = false;
       }
       scheduleMapCooldownPrefixRebuild();
+      nextTick(() => {
+        clampMapCooldownScrollTop({ force: true });
+      });
       return;
     }
     if (data.type === 'ERROR') {
@@ -2019,20 +2089,20 @@ watch([mapIndex, curLang], () => {
 watch(coolingOnly, () => {
   resetMapCooldownScrollState();
   resetMapCooldownFeedState();
-  if (mapCooldownScrollRef.value) {
-    mapCooldownScrollRef.value.scrollTop = 0;
-  }
-  mapCooldownLatestScrollTop = 0;
   mapCooldownHeightByKey.clear();
   nextTick(() => {
     setupMapCooldownResizeObserver();
+    setupMapCooldownContainerObserver();
     scheduleMapCooldownPrefixRebuild();
-    scheduleMapCooldownRaf();
+    clampMapCooldownScrollTop({ force: true });
   });
 });
 
 watch(mapCooldownRows, () => {
   scheduleMapCooldownPrefixRebuild();
+  nextTick(() => {
+    clampMapCooldownScrollTop({ force: true });
+  });
   if (mapCooldownHighlightKey.value) {
     const stillExists = mapCooldownRows.value.some((row) => row.key === mapCooldownHighlightKey.value);
     if (!stillExists) {
