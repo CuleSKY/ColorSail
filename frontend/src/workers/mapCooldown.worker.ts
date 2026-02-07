@@ -119,6 +119,7 @@ const buildRows = (payload: any, buildId?: number) => {
 
 self.onmessage = (event: MessageEvent) => {
   const { data } = event || {};
+  console.log('[mapcd-worker] got', data?.type);
   if (!data || data.type !== 'BUILD') return;
   const buildId = data.payload?.buildId;
   try {

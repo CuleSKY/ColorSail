@@ -471,7 +471,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, isProxy, nextTick, onMounted, onUnmounted, ref, toRaw, watch } from 'vue';
 import { buildMapSearchIndex, createOpenCCConverter, formatExgDate, formatExgDateTime, getExgStatusState, normalizeSearchText, scoreSearchEntry, shouldShowExgStatus, stripBracketSegments, validateMapIndexEntry } from './mapSearchUtils';
 
 const props = defineProps({
@@ -1687,7 +1687,9 @@ const teardownMapCooldownResizeObserver = () => {
 const ensureMapCooldownWorker = () => {
   if (mapCooldownWorker) return;
   mapCooldownWorker = new Worker(new URL('./workers/mapCooldown.worker.ts', import.meta.url), { type: 'module' });
+  console.log('[mapcd] worker creating');
   mapCooldownWorker.onmessage = (event) => {
+    console.log('[mapcd] worker message', event?.data?.type, event?.data);
     const { data } = event || {};
     if (!data) return;
     const payload = data.payload || {};
@@ -1721,6 +1723,8 @@ const ensureMapCooldownWorker = () => {
       mapCooldownPendingModes.clear();
     }
   };
+  mapCooldownWorker.onerror = (event) => console.error('[mapcd] worker error', event);
+  mapCooldownWorker.onmessageerror = (event) => console.error('[mapcd] worker messageerror', event);
 };
 
 const requestMapCooldownBuild = ({ reason = 'update' } = {}) => {
@@ -1731,16 +1735,28 @@ const requestMapCooldownBuild = ({ reason = 'update' } = {}) => {
   mapCooldownPendingModes = new Set(['showAll', 'coolingOnly']);
   mapCooldownIsBuilding.value = true;
   mapCooldownBuildProgress.value = { done: 0, total: 0 };
+  const mode = 'showAll';
+  const mapIndexValue = mapIndex.value || {};
+  const mapIndexIsProxy = isProxy(mapIndexValue);
+  console.log('[mapcd] posting BUILD', {
+    mode,
+    locale: mapCooldownLocale.value,
+    timeZone: mapCooldownTimeZone.value,
+    nowEpochSec: mapCooldownNowEpoch.value,
+    mapIndexKeys: Object.keys(mapIndexValue).length
+  });
+  console.log('[mapcd] mapIndex isProxy', mapIndexIsProxy);
+  const plainMapIndex = JSON.parse(JSON.stringify(mapIndexIsProxy ? toRaw(mapIndexValue) : mapIndexValue));
   mapCooldownWorker.postMessage({
     type: 'BUILD',
     payload: {
       buildId: mapCooldownBuildId,
-      mapIndex: mapIndex.value || {},
+      mapIndex: plainMapIndex,
       nowEpochSec: mapCooldownNowEpoch.value,
       locale: mapCooldownLocale.value,
       timeZone: mapCooldownTimeZone.value,
       rowHeight: mapCooldownEstimatedRowHeight,
-      mode: 'showAll',
+      mode,
       prefixes: ['ze_', 'bhop_', 'kz_', 'mg_', 'surf_'],
       availabilityLabels: {
         available: t('available'),
