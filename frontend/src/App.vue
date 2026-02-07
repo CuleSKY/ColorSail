@@ -1348,8 +1348,6 @@ const mapCooldownIsBuilding = ref(false);
 const mapCooldownBuildProgress = ref({ done: 0, total: 0 });
 const mapCooldownEstimatedRowHeight = 68;
 const mapCooldownMaxRendered = 160;
-const mapCooldownOverscanBase = 20;
-const mapCooldownOverscanFast = 8;
 const mapCooldownFastSpeedThresholdHigh = 2.5;
 const mapCooldownFastSpeedThresholdLow = 1.2;
 const mapCooldownScrollIdleMs = 180;
@@ -1362,13 +1360,16 @@ const mapCooldownTotalHeight = ref(0);
 const mapCooldownFreshKeys = ref(new Set());
 let mapCooldownTimer = null;
 let mapCooldownScrollRafId = 0;
+let mapCooldownScrollPending = false;
 let mapCooldownLatestScrollTop = 0;
 let mapCooldownLastScrollTop = 0;
 let mapCooldownLastTimestamp = 0;
 let mapCooldownLastChangeTs = 0;
+let mapCooldownLastSpeed = 0;
 let mapCooldownIsApplyingScrollAdjust = false;
 let mapCooldownFreshTimer = null;
 let mapCooldownResizeObserver = null;
+let mapCooldownIdleTimer = null;
 let mapCooldownPrefixRafId = 0;
 let mapCooldownPrefixSums = [0];
 let mapCooldownWorker = null;
@@ -1488,27 +1489,11 @@ const scheduleMapCooldownPrefixRebuild = () => {
     }
     applyMapCooldownAnchor(anchor);
     const scrollTop = mapCooldownScrollRef.value?.scrollTop ?? mapCooldownLatestScrollTop;
-    updateMapCooldownWindow(scrollTop);
+    updateMapCooldownWindow(scrollTop, { force: true });
   });
 };
 
-const findMapCooldownIndexForOffset = (offset) => {
-  const prefix = mapCooldownPrefixSums;
-  if (prefix.length <= 1) return 0;
-  let low = 0;
-  let high = prefix.length - 1;
-  while (low < high) {
-    const mid = Math.floor((low + high) / 2);
-    if (prefix[mid] <= offset) {
-      low = mid + 1;
-    } else {
-      high = mid;
-    }
-  }
-  return Math.min(Math.max(0, low - 1), prefix.length - 2);
-};
-
-const updateMapCooldownWindow = (scrollTop) => {
+const updateMapCooldownWindow = (scrollTop, { force = false } = {}) => {
   const total = mapCooldownRows.value.length;
   if (total === 0) {
     mapCooldownWinStart.value = 0;
@@ -1518,19 +1503,19 @@ const updateMapCooldownWindow = (scrollTop) => {
   }
   const scrollEl = mapCooldownScrollRef.value;
   const viewportHeight = scrollEl?.clientHeight || 0;
-  const overscan = mapCooldownIsFastScrolling.value ? mapCooldownOverscanFast : mapCooldownOverscanBase;
-  const baseStart = findMapCooldownIndexForOffset(scrollTop);
-  const baseEnd = findMapCooldownIndexForOffset(scrollTop + viewportHeight);
-  let startIndex = Math.max(0, baseStart - overscan);
-  let endIndex = Math.min(total, baseEnd + 1 + overscan);
-  if (endIndex - startIndex > mapCooldownMaxRendered) {
-    endIndex = Math.min(total, startIndex + mapCooldownMaxRendered);
-  }
-  if (startIndex >= total) {
-    startIndex = Math.max(0, total - 1);
-  }
+  const rowHeight = mapCooldownEstimatedRowHeight || 1;
+  const baseRows = Math.max(1, Math.ceil(viewportHeight / rowHeight));
+  const overscanRows = Math.min(120, Math.max(30, Math.ceil(baseRows * 1.2)));
+  const renderCount = Math.min(mapCooldownMaxRendered, baseRows + overscanRows * 2);
+  const anchorIndex = Math.floor((scrollTop + viewportHeight / 2) / rowHeight);
+  const maxStart = Math.max(0, total - renderCount);
+  let startIndex = Math.min(Math.max(anchorIndex - Math.floor(renderCount / 2), 0), maxStart);
+  let endIndex = Math.min(total, startIndex + renderCount);
   if (endIndex <= startIndex) {
     endIndex = Math.min(total, startIndex + 1);
+  }
+  if (!force && startIndex === mapCooldownWinStart.value && endIndex === mapCooldownWinEnd.value) {
+    return;
   }
   mapCooldownWinStart.value = startIndex;
   mapCooldownWinEnd.value = endIndex;
@@ -1538,8 +1523,12 @@ const updateMapCooldownWindow = (scrollTop) => {
 };
 
 const scheduleMapCooldownRaf = () => {
+  mapCooldownScrollPending = true;
   if (mapCooldownScrollRafId) return;
-  mapCooldownScrollRafId = window.requestAnimationFrame(function scrollTick(timestamp) {
+  mapCooldownScrollRafId = window.requestAnimationFrame((timestamp) => {
+    mapCooldownScrollRafId = 0;
+    if (!mapCooldownScrollPending) return;
+    mapCooldownScrollPending = false;
     const now = timestamp || performance.now();
     const scrollEl = mapCooldownScrollRef.value;
     const scrollTop = scrollEl ? scrollEl.scrollTop : mapCooldownLatestScrollTop;
@@ -1550,32 +1539,34 @@ const scheduleMapCooldownRaf = () => {
     const dtMs = Math.max(1, now - (mapCooldownLastTimestamp || now));
     const delta = Math.abs(scrollTop - mapCooldownLastScrollTop);
     const speed = delta / dtMs;
+    mapCooldownLastSpeed = speed;
     if (delta > 0) {
       mapCooldownLastChangeTs = now;
+      if (mapCooldownIdleTimer) {
+        clearTimeout(mapCooldownIdleTimer);
+      }
+      mapCooldownIdleTimer = setTimeout(() => {
+        mapCooldownIdleTimer = null;
+        if (
+          mapCooldownIsFastScrolling.value &&
+          !mapCooldownScrollPending &&
+          mapCooldownLastSpeed < mapCooldownFastSpeedThresholdLow
+        ) {
+          mapCooldownIsFastScrolling.value = false;
+          if (mapCooldownPendingRebuild.value) {
+            buildCooldownRows({ rebuildAll: false, reason: 'scroll-idle' });
+            mapCooldownPendingRebuild.value = false;
+            scheduleMapCooldownPrefixRebuild();
+          }
+        }
+      }, mapCooldownScrollIdleMs);
     }
     if (!mapCooldownIsFastScrolling.value && speed > mapCooldownFastSpeedThresholdHigh) {
       mapCooldownIsFastScrolling.value = true;
     }
-    if (
-      mapCooldownIsFastScrolling.value &&
-      speed < mapCooldownFastSpeedThresholdLow &&
-      now - mapCooldownLastChangeTs > mapCooldownScrollIdleMs
-    ) {
-      mapCooldownIsFastScrolling.value = false;
-      if (mapCooldownPendingRebuild.value) {
-        buildCooldownRows({ rebuildAll: false, reason: 'scroll-idle' });
-        mapCooldownPendingRebuild.value = false;
-        scheduleMapCooldownPrefixRebuild();
-      }
-    }
     mapCooldownLastScrollTop = scrollTop;
     mapCooldownLastTimestamp = now;
     updateMapCooldownWindow(scrollTop);
-    if (now - mapCooldownLastChangeTs > mapCooldownScrollIdleMs && speed < mapCooldownFastSpeedThresholdLow) {
-      mapCooldownScrollRafId = 0;
-      return;
-    }
-    mapCooldownScrollRafId = window.requestAnimationFrame(scrollTick);
   });
 };
 
@@ -1584,17 +1575,23 @@ const resetMapCooldownScrollState = () => {
   mapCooldownLastScrollTop = 0;
   mapCooldownLastTimestamp = 0;
   mapCooldownLastChangeTs = 0;
+  mapCooldownLastSpeed = 0;
   mapCooldownIsFastScrolling.value = false;
   mapCooldownPendingRebuild.value = false;
   if (mapCooldownScrollRafId) {
     cancelAnimationFrame(mapCooldownScrollRafId);
     mapCooldownScrollRafId = 0;
   }
+  mapCooldownScrollPending = false;
   mapCooldownIsApplyingScrollAdjust = false;
   mapCooldownFreshKeys.value = new Set();
   if (mapCooldownFreshTimer) {
     clearTimeout(mapCooldownFreshTimer);
     mapCooldownFreshTimer = null;
+  }
+  if (mapCooldownIdleTimer) {
+    clearTimeout(mapCooldownIdleTimer);
+    mapCooldownIdleTimer = null;
   }
   if (mapCooldownPrefixRafId) {
     cancelAnimationFrame(mapCooldownPrefixRafId);
@@ -1612,11 +1609,6 @@ const onMapCooldownScroll = (event) => {
 const resetMapCooldownFeedState = () => {
   mapCooldownWinStart.value = 0;
   mapCooldownWinEnd.value = Math.min(mapCooldownMaxRendered, mapCooldownRows.value.length);
-  mapCooldownTopSpacerPx.value = 0;
-  mapCooldownBottomSpacerPx.value = Math.max(
-    0,
-    mapCooldownTotalHeight.value - (mapCooldownPrefixSums[mapCooldownWinEnd.value] || 0)
-  );
   updateMapCooldownVisibleRows();
 };
 
@@ -2587,7 +2579,7 @@ const submitFeedback = () => {
   position: relative;
   height: 70vh;
   overflow-y: auto;
-  contain: content;
+  contain: layout paint;
 }
 
 .mapcd-edge-fade {
