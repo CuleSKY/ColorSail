@@ -395,6 +395,49 @@
 
         <div v-show="curView === 'map_cooldown'" class="animate-enter">
           <div class="mapcd-page">
+            <div class="mapcd-search" @click.stop>
+              <div class="mapcd-search-input-wrap">
+                <input
+                  class="mapcd-search-input"
+                  type="text"
+                  v-model="mapCooldownQueryInput"
+                  :placeholder="isChineseLang ? '搜索地图或成就…' : 'Search maps or achievements…'"
+                  @focus="openMapCooldownSuggestions"
+                  @keydown="onMapCooldownSearchKeydown"
+                >
+                <button
+                  v-if="mapCooldownQueryInput"
+                  class="mapcd-search-clear"
+                  type="button"
+                  @click.stop="clearMapCooldownSearch"
+                  aria-label="Clear"
+                >
+                  ×
+                </button>
+              </div>
+              <div v-if="mapCooldownShowSuggestions" class="mapcd-suggestions" @mousedown.prevent>
+                <div
+                  class="mapcd-suggestion"
+                  v-for="(item, index) in mapCooldownSuggestions"
+                  :key="item.key"
+                  :class="{ 'is-active': index === mapCooldownSuggestionIndex }"
+                  @mouseenter="mapCooldownSuggestionIndex = index"
+                  @mouseleave="mapCooldownSuggestionIndex = -1"
+                  @click="selectMapCooldownSuggestion(item)"
+                >
+                  <div class="mapcd-suggestion-main">
+                    <div class="mapcd-suggestion-line1">{{ item.mapLine1 }}</div>
+                    <div class="mapcd-suggestion-line2" :class="{ 'is-empty': !item.mapLine2 }">
+                      {{ item.mapLine2 || '\u00A0' }}
+                    </div>
+                  </div>
+                  <div class="mapcd-suggestion-tag">{{ mapCooldownAvailabilityLabel(item.availability) }}</div>
+                </div>
+              </div>
+              <div v-else-if="mapCooldownSearchQueryTrimmed && mapCooldownFilteredRows.length === 0" class="mapcd-search-empty">
+                无匹配结果
+              </div>
+            </div>
             <div class="mapcd-toolbar">
               <div class="mapcd-toolbar-left">{{ t('mapcd') }}</div>
               <div class="mapcd-toolbar-right">
@@ -419,7 +462,11 @@
                   <div class="mapcd-top-spacer" :style="{ height: `${mapCooldownTopSpacerPx}px` }"></div>
                   <div
                     class="mapcd-row"
-                    :class="{ 'is-fast': mapCooldownIsFastScrolling, 'is-fresh': isMapCooldownRowFresh(row.key) }"
+                    :class="{
+                      'is-fast': mapCooldownIsFastScrolling,
+                      'is-fresh': isMapCooldownRowFresh(row.key),
+                      'is-highlight': row.key === mapCooldownHighlightKey
+                    }"
                     v-for="row in mapCooldownVisibleRows"
                     :key="row.key"
                     :data-key="row.key"
@@ -446,7 +493,7 @@
                     </div>
                   </div>
                   <div class="mapcd-bottom-spacer" :style="{ height: `${mapCooldownBottomSpacerPx}px` }"></div>
-                  <div v-if="mapCooldownRows.length === 0 && !mapCooldownIsBuilding" class="mapcd-empty">
+                  <div v-if="mapCooldownRows.length === 0 && !mapCooldownIsBuilding && !mapCooldownSearchQueryTrimmed" class="mapcd-empty">
                     {{ t('no_data') }}
                   </div>
                   <div class="mapcd-edge-fade mapcd-edge-fade--top"></div>
@@ -987,6 +1034,14 @@ onUnmounted(() => {
   stopMapCooldownTimer();
   resetMapCooldownScrollState();
   teardownMapCooldownResizeObserver();
+  if (mapCooldownSearchTimer) {
+    clearTimeout(mapCooldownSearchTimer);
+    mapCooldownSearchTimer = null;
+  }
+  if (mapCooldownHighlightTimer) {
+    clearTimeout(mapCooldownHighlightTimer);
+    mapCooldownHighlightTimer = null;
+  }
 });
 
 const toggleLangMenu = () => {
@@ -1034,6 +1089,7 @@ const closeDropdowns = () => {
   showLangMenu.value = false;
   showSubPopover.value = false;
   showProfileMenu.value = false;
+  mapCooldownSuggestionsOpen.value = false;
 };
 
 const toggleViewMode = () => {
@@ -1340,6 +1396,11 @@ const mapCooldownScrollRef = ref(null);
 const coolingOnly = ref(true);
 const mapCooldownRowsCooling = ref([]);
 const mapCooldownRowsAll = ref([]);
+const mapCooldownQueryInput = ref('');
+const mapCooldownSearchQuery = ref('');
+const mapCooldownSuggestionsOpen = ref(false);
+const mapCooldownSuggestionIndex = ref(-1);
+const mapCooldownHighlightKey = ref('');
 const mapCooldownNowEpoch = ref(Math.floor(Date.now() / 1000));
 const mapCooldownNeedsRebuild = ref(true);
 const mapCooldownIsFastScrolling = ref(false);
@@ -1375,6 +1436,8 @@ let mapCooldownPrefixSums = [0];
 let mapCooldownWorker = null;
 let mapCooldownBuildId = 0;
 let mapCooldownPendingModes = new Set();
+let mapCooldownSearchTimer = null;
+let mapCooldownHighlightTimer = null;
 const mapCooldownHeightByKey = new Map();
 const mapCooldownRowElByKey = new Map();
 
@@ -1391,8 +1454,74 @@ const mapCooldownProgressText = computed(() => {
 });
 const mapCooldownToggleLabel = computed(() => (coolingOnly.value ? '显示全部' : '仅显示冷却中地图'));
 
-const mapCooldownRows = computed(() => (coolingOnly.value ? mapCooldownRowsCooling.value : mapCooldownRowsAll.value));
+const mapCooldownSearchQueryTrimmed = computed(() => mapCooldownSearchQuery.value.trim());
+const mapCooldownBaseRows = computed(() => (coolingOnly.value ? mapCooldownRowsCooling.value : mapCooldownRowsAll.value));
+const mapCooldownFilteredRows = computed(() => {
+  const baseRows = mapCooldownBaseRows.value;
+  const query = mapCooldownSearchQueryTrimmed.value;
+  if (!query) return baseRows;
+  const isAsciiQuery = /[A-Za-z0-9_]/.test(query);
+  if (isAsciiQuery) {
+    const lower = query.toLowerCase();
+    return baseRows.filter((row) => (row.searchKeyLower || '').includes(lower));
+  }
+  return baseRows.filter((row) => (row.searchKey || '').includes(query));
+});
+const mapCooldownRows = computed(() => mapCooldownFilteredRows.value);
 const mapCooldownKeysAll = computed(() => mapCooldownRows.value.map((row) => row.key));
+const mapCooldownSuggestions = computed(() => {
+  const query = mapCooldownSearchQueryTrimmed.value;
+  const rows = mapCooldownFilteredRows.value;
+  if (!query || rows.length === 0) return [];
+  const isAsciiQuery = /[A-Za-z0-9_]/.test(query);
+  const queryLower = isAsciiQuery ? query.toLowerCase() : query;
+  const top = [];
+  const scoreRow = (row) => {
+    let score = 0;
+    const key = row.key || '';
+    const mapLine2 = row.mapLine2 || '';
+    if (isAsciiQuery) {
+      if (key.toLowerCase().startsWith(queryLower)) score += 100;
+      if (mapLine2 && mapLine2.toLowerCase().startsWith(queryLower)) score += 60;
+      if ((row.searchKeyLower || '').includes(queryLower)) score += 40;
+    } else {
+      if (key.startsWith(query)) score += 100;
+      if (mapLine2 && mapLine2.startsWith(query)) score += 60;
+      if ((row.searchKey || '').includes(query)) score += 40;
+    }
+    if (row.availability === 'cooling') score += 10;
+    return score;
+  };
+  const compare = (a, b) => {
+    if (a.score !== b.score) return b.score - a.score;
+    const aDeadline = a.row.deadlineEpochSec ?? Number.POSITIVE_INFINITY;
+    const bDeadline = b.row.deadlineEpochSec ?? Number.POSITIVE_INFINITY;
+    if (aDeadline !== bDeadline) return aDeadline - bDeadline;
+    return a.row.key.localeCompare(b.row.key);
+  };
+  rows.forEach((row) => {
+    const scored = { row, score: scoreRow(row) };
+    if (top.length === 0) {
+      top.push(scored);
+      return;
+    }
+    let insertAt = top.findIndex((item) => compare(scored, item) < 0);
+    if (insertAt === -1) insertAt = top.length;
+    top.splice(insertAt, 0, scored);
+    if (top.length > 8) top.pop();
+  });
+  return top.slice(0, 8).map((item) => item.row);
+});
+const mapCooldownShowSuggestions = computed(() => {
+  if (!mapCooldownSuggestionsOpen.value) return false;
+  if (!mapCooldownSearchQueryTrimmed.value) return false;
+  return mapCooldownSuggestions.value.length > 0;
+});
+const mapCooldownAvailabilityLabel = (availability) => {
+  if (availability === 'cooling') return '冷却中';
+  if (availability === 'available') return '可用';
+  return '不可用';
+};
 const updateMapCooldownVisibleRows = () => {
   const total = mapCooldownRows.value.length;
   if (total === 0) {
@@ -1414,6 +1543,75 @@ const updateMapCooldownVisibleRows = () => {
   mapCooldownVisibleRows.value = mapCooldownRows.value.slice(start, end);
   mapCooldownTopSpacerPx.value = mapCooldownPrefixSums[start] || 0;
   mapCooldownBottomSpacerPx.value = Math.max(0, mapCooldownTotalHeight.value - (mapCooldownPrefixSums[end] || 0));
+};
+
+const openMapCooldownSuggestions = () => {
+  mapCooldownSuggestionsOpen.value = true;
+};
+
+const clearMapCooldownSearch = () => {
+  mapCooldownQueryInput.value = '';
+  mapCooldownSearchQuery.value = '';
+  mapCooldownSuggestionsOpen.value = false;
+  mapCooldownSuggestionIndex.value = -1;
+};
+
+const setMapCooldownHighlight = (key) => {
+  mapCooldownHighlightKey.value = key;
+  if (mapCooldownHighlightTimer) {
+    clearTimeout(mapCooldownHighlightTimer);
+  }
+  mapCooldownHighlightTimer = setTimeout(() => {
+    mapCooldownHighlightKey.value = '';
+    mapCooldownHighlightTimer = null;
+  }, 320);
+};
+
+const selectMapCooldownSuggestion = (row) => {
+  if (!row) return;
+  const idx = mapCooldownFilteredRows.value.findIndex((item) => item.key === row.key);
+  if (idx < 0) return;
+  const scrollEl = mapCooldownScrollRef.value;
+  if (scrollEl) {
+    const scrollTop = idx * mapCooldownEstimatedRowHeight;
+    scrollEl.scrollTo({ top: scrollTop, behavior: 'auto' });
+    mapCooldownLatestScrollTop = scrollTop;
+    scheduleMapCooldownRaf();
+  }
+  setMapCooldownHighlight(row.key);
+  mapCooldownSuggestionsOpen.value = false;
+  mapCooldownSuggestionIndex.value = -1;
+};
+
+const onMapCooldownSearchKeydown = (event) => {
+  const { key } = event;
+  if (key === 'Escape') {
+    mapCooldownSuggestionsOpen.value = false;
+    mapCooldownSuggestionIndex.value = -1;
+    return;
+  }
+  const suggestions = mapCooldownSuggestions.value;
+  if (!suggestions.length) return;
+  if (key === 'ArrowDown') {
+    event.preventDefault();
+    mapCooldownSuggestionsOpen.value = true;
+    mapCooldownSuggestionIndex.value = (mapCooldownSuggestionIndex.value + 1) % suggestions.length;
+    return;
+  }
+  if (key === 'ArrowUp') {
+    event.preventDefault();
+    mapCooldownSuggestionsOpen.value = true;
+    mapCooldownSuggestionIndex.value =
+      mapCooldownSuggestionIndex.value <= 0 ? suggestions.length - 1 : mapCooldownSuggestionIndex.value - 1;
+    return;
+  }
+  if (key === 'Enter') {
+    event.preventDefault();
+    const target = mapCooldownSuggestionIndex.value >= 0
+      ? suggestions[mapCooldownSuggestionIndex.value]
+      : suggestions[0];
+    selectMapCooldownSuggestion(target);
+  }
 };
 
 const getMapCooldownRowHeight = (key) => mapCooldownHeightByKey.get(key) ?? mapCooldownEstimatedRowHeight;
@@ -1788,6 +1986,25 @@ const toggleMapCooldownMode = () => {
   coolingOnly.value = !coolingOnly.value;
 };
 
+watch(mapCooldownQueryInput, (value) => {
+  if (mapCooldownSearchTimer) {
+    clearTimeout(mapCooldownSearchTimer);
+  }
+  mapCooldownSearchTimer = setTimeout(() => {
+    mapCooldownSearchQuery.value = value;
+    mapCooldownSuggestionsOpen.value = true;
+    mapCooldownSuggestionIndex.value = -1;
+    mapCooldownSearchTimer = null;
+  }, 100);
+});
+
+watch(mapCooldownSearchQueryTrimmed, (value) => {
+  if (!value) {
+    mapCooldownSuggestionsOpen.value = false;
+    mapCooldownSuggestionIndex.value = -1;
+  }
+});
+
 watch([mapIndex, curLang], () => {
   mapCooldownNeedsRebuild.value = true;
   if (curView.value === 'map_cooldown') {
@@ -1816,6 +2033,12 @@ watch(coolingOnly, () => {
 
 watch(mapCooldownRows, () => {
   scheduleMapCooldownPrefixRebuild();
+  if (mapCooldownHighlightKey.value) {
+    const stillExists = mapCooldownRows.value.some((row) => row.key === mapCooldownHighlightKey.value);
+    if (!stillExists) {
+      mapCooldownHighlightKey.value = '';
+    }
+  }
 }, { immediate: true });
 
 const getExgStatus = (sub) => {
@@ -2506,6 +2729,134 @@ const submitFeedback = () => {
   gap: 10px;
 }
 
+.mapcd-search {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mapcd-search-input-wrap {
+  position: relative;
+}
+
+.mapcd-search-input {
+  width: 100%;
+  height: 38px;
+  padding: 0 36px 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--mapcd-surface-border);
+  background: rgba(128, 128, 128, 0.08);
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.mapcd-search-input:focus {
+  border-color: rgba(120, 160, 255, 0.45);
+  box-shadow: 0 0 0 2px rgba(120, 160, 255, 0.18);
+  background: rgba(128, 128, 128, 0.12);
+}
+
+.mapcd-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(128, 128, 128, 0.12);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.mapcd-search-clear:hover {
+  background: rgba(128, 128, 128, 0.2);
+  color: var(--text-primary);
+}
+
+.mapcd-suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(128, 128, 128, 0.18);
+  background: var(--mapcd-surface-bg);
+  box-shadow: var(--shadow);
+  z-index: 6;
+  overflow: hidden;
+}
+
+.mapcd-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  min-height: 48px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.mapcd-suggestion:hover,
+.mapcd-suggestion.is-active {
+  background: rgba(120, 160, 255, 0.12);
+}
+
+.mapcd-suggestion-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mapcd-suggestion-line1 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mapcd-suggestion-line2 {
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-height: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mapcd-suggestion-line2.is-empty {
+  visibility: hidden;
+}
+
+.mapcd-suggestion-tag {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, 0.12);
+  white-space: nowrap;
+}
+
+.mapcd-search-empty {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding-left: 4px;
+}
+
 .mapcd-toolbar {
   display: flex;
   align-items: center;
@@ -2641,6 +2992,11 @@ const submitFeedback = () => {
 
 .mapcd-row:hover {
   background: rgba(128, 128, 128, 0.08);
+}
+
+.mapcd-row.is-highlight {
+  background: rgba(120, 160, 255, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(120, 160, 255, 0.32);
 }
 
 .mapcd-row:last-of-type {
