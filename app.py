@@ -2154,6 +2154,7 @@ def flush_map_translations_after_request(response):
 @app.route('/')
 @app.route('/servers')
 @app.route('/map-sub')
+@app.route('/map-cooldown')
 @app.route('/stats')
 @app.route('/feedback')
 def index():
@@ -2177,6 +2178,7 @@ def index():
         '/': 'servers',
         '/servers': 'servers',
         '/map-sub': 'map_sub',
+        '/map-cooldown': 'map_cooldown',
         '/stats': 'stats',
         '/feedback': 'feedback'
     }
