@@ -2718,7 +2718,8 @@ const submitFeedback = () => {
   --mapcd-surface-radius: 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
+  padding: 16px;
 }
 
 .mapcd-search {
@@ -2808,10 +2809,13 @@ const submitFeedback = () => {
 
 .mapcd-toolbar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  height: 48px;
+  background: transparent;
+  margin-bottom: 12px;
 }
 
 .mapcd-toolbar-left {
@@ -2838,7 +2842,7 @@ const submitFeedback = () => {
 }
 
 .mapcd-container {
-  padding: 14px;
+  padding: 8px 14px 14px;
   background: var(--mapcd-surface-bg);
   border: 1px solid var(--mapcd-surface-border);
   border-radius: var(--mapcd-surface-radius);
