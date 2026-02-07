@@ -292,7 +292,9 @@
               </div>
             </div>
 
-            <h3 class="sub-table-title">{{ t('my_subs') }}</h3>
+            <div style="border-top:1px solid var(--card-border); margin: 30px 0;"></div>
+
+            <h3 style="margin-bottom:16px; opacity:0.8">{{ t('my_subs') }}</h3>
             <div class="sub-table" v-if="subscriptions.length > 0">
               <div class="sub-row" v-for="(sub, idx) in subscriptions" :key="idx">
                 <div class="sub-col-info">
@@ -410,7 +412,7 @@
               <div class="mapcd-divider"></div>
 
               <div class="mapcd-header-slot">
-                <div class="sub-table-title mapcd-title-pos">
+                <div class="mapcd-section-title mapcd-title-pos">
                   {{ isAllMapsMode ? t('mapcd_title_all') : t('mapcd_title_cooldown') }}
                   <span v-if="mapCooldownIsBuilding" class="mapcd-preparing">
                     {{ isChineseLang ? '准备中…' : 'Preparing…' }}{{ mapCooldownProgressText }}
@@ -2683,14 +2685,13 @@ const submitFeedback = () => {
 
 .mapcd-search-area {
   margin-top: 58px;
-  margin-bottom: 45px !important;
+  margin-bottom: 45px;
 }
 
 .mapcd-divider {
   height: 1px;
   background: var(--card-border);
-  margin: 0 !important;
-  padding: 0 !important;
+  margin: 0;
 }
 
 .mapcd-header-slot {
@@ -2704,11 +2705,10 @@ const submitFeedback = () => {
   position: absolute;
   bottom: 30px;
   left: 0;
-  margin: 0 !important;
+  right: 0;
 }
 
-.sub-table-title {
-  margin-bottom: 16px;
+.mapcd-section-title {
   font-size: 18px;
   font-weight: 600;
   opacity: 0.8;
