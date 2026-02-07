@@ -56,6 +56,15 @@
         <div class="tooltip" v-if="isCollapsed">{{ t('sub_menu') }}</div>
       </div>
 
+      <div class="nav-item" @click="goToView('map_cooldown')" v-if="hasFeature('map_cd')" :class="{active: curView === 'map_cooldown'}">
+        <div class="icon-svg" v-html="icons.map"></div>
+        <div v-if="!isCollapsed" style="display:flex; flex-direction:column; justify-content:center; line-height:1.2;">
+          <span>{{ t('mapcd') }}</span>
+          <span style="font-size: 10px; opacity: 0.7;">{{ t('exg_only') }}</span>
+        </div>
+        <div class="tooltip" v-if="isCollapsed">{{ t('mapcd') }}</div>
+      </div>
+
       <div class="nav-item" v-if="isLoggedIn" :class="{active: curView === 'stats', disabled: !isLoggedIn}" @click="goToView('stats')">
         <div class="icon-svg" v-html="icons.stats"></div>
         <div v-if="!isCollapsed" style="display:flex; flex-direction:column; justify-content:center; line-height:1.2;">
@@ -69,14 +78,6 @@
         <div class="icon-svg" v-html="icons.feedback"></div>
         <span v-if="!isCollapsed">{{ t('feedback') }}</span>
         <div class="tooltip" v-if="isCollapsed">{{ t('feedback') }}</div>
-      </div>
-      <div class="nav-item" @click="openMapLink" v-if="hasFeature('map_cd')">
-        <div class="icon-svg" v-html="icons.map"></div>
-        <div v-if="!isCollapsed" style="display:flex; flex-direction:column; justify-content:center; line-height:1.2;">
-          <span>{{ t('mapcd') }}</span>
-          <span style="font-size: 10px; opacity: 0.7;">{{ t('exg_only') }}</span>
-        </div>
-        <div class="tooltip" v-if="isCollapsed">{{ t('mapcd') }}</div>
       </div>
 
       <div style="margin-top: auto; padding: 10px;">
@@ -96,6 +97,7 @@
             <div class="header-logo"><img :src="currentLogoPath" alt="Logo"></div>
             <h1 v-if="curView === 'servers'">{{ t('app_title') }}</h1>
             <h1 v-if="curView === 'map_sub'">{{ t('sub_menu') }}</h1>
+            <h1 v-if="curView === 'map_cooldown'">{{ t('mapcd') }}</h1>
             <h1 v-if="curView === 'stats'">{{ t('stats') }}</h1>
             <h1 v-if="curView === 'feedback'">{{ t('feedback') }}</h1>
           </div>
@@ -304,20 +306,20 @@
                   <div v-if="exgStatusByIndex[idx]" class="exg-status-stack">
                     <div
                       v-if="exgStatusByIndex[idx].state === 'available'"
-                      class="exg-available-text"
+                      class="exg-pill exg-pill--available"
                     >
                       {{ exgStatusByIndex[idx].label }}
                     </div>
                     <div
                       v-else-if="exgStatusByIndex[idx].state === 'cooldown'"
-                      class="exg-cooldown-text"
-                      @mouseenter="showExgTooltip($event, exgStatusByIndex[idx].datetime)"
+                      class="exg-pill exg-pill--cooldown"
+                      @mouseenter="showExgTooltip($event, exgStatusByIndex[idx].tooltipText)"
                       @mouseleave="hideExgTooltip"
                     >
-                      <div class="exg-cooldown-label">{{ exgStatusByIndex[idx].prefix }}</div>
-                      <div class="exg-cooldown-time">{{ exgStatusByIndex[idx].datetimeDisplay }}</div>
+                      <div class="exg-pill-line1">{{ exgStatusByIndex[idx].prefix }}</div>
+                      <div class="exg-pill-line2">{{ exgStatusByIndex[idx].datetimeDisplay }}</div>
                     </div>
-                    <div v-else class="exg-unavailable-text">
+                    <div v-else class="exg-pill exg-pill--unavailable">
                       {{ exgStatusByIndex[idx].label }}
                     </div>
                   </div>
@@ -391,6 +393,44 @@
           </div>
         </div>
 
+        <div v-show="curView === 'map_cooldown'" class="animate-enter">
+          <div class="mapcd-container">
+            <div class="mapcd-table">
+              <div class="mapcd-header">
+                <div class="mapcd-cell mapcd-col-map">{{ t('map') }}</div>
+                <div class="mapcd-cell mapcd-col-ach">{{ t('achievement') }}</div>
+                <div class="mapcd-cell mapcd-col-deadline">{{ t('cooldown_deadline') }}</div>
+                <div class="mapcd-cell mapcd-col-length">{{ t('cooldown_length') }}</div>
+                <div class="mapcd-cell mapcd-col-availability">{{ t('exg_availability') }}</div>
+              </div>
+              <div class="mapcd-body">
+                <div class="mapcd-row" v-for="row in mapCooldownRows" :key="row.key">
+                  <div class="mapcd-cell mapcd-col-map">
+                    <div class="mapcd-map-key">{{ row.key }}</div>
+                    <div v-if="isChineseLang && row.displayName" class="mapcd-map-cn">{{ row.displayName }}</div>
+                  </div>
+                  <div class="mapcd-cell mapcd-col-ach">{{ row.achievement || '-' }}</div>
+                  <div class="mapcd-cell mapcd-col-deadline">{{ row.deadlineDisplay }}</div>
+                  <div class="mapcd-cell mapcd-col-length">{{ row.durationDisplay }}</div>
+                  <div class="mapcd-cell mapcd-col-availability">
+                    <span
+                      class="mapcd-availability"
+                      :class="row.availabilityState === 'available' ? 'is-available' : 'is-cooldown'"
+                      :title="row.availabilityState === 'available' ? t('available') : t('unavailable')"
+                    >
+                      <span v-if="row.availabilityState === 'available'" v-html="icons.check"></span>
+                      <span v-else v-html="icons.cross"></span>
+                    </span>
+                  </div>
+                </div>
+                <div v-if="mapCooldownRows.length === 0" class="mapcd-empty">
+                  {{ t('no_data') }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div v-show="curView === 'feedback'" class="animate-enter">
           <div class="feedback-panel">
             <h3>{{ t('feedback_dev_title') }}</h3>
@@ -406,7 +446,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { buildMapSearchIndex, createOpenCCConverter, formatExgDate, formatExgDateTime, getExgStatusState, normalizeSearchText, scoreSearchEntry, shouldShowExgStatus, stripBracketSegments, validateMapIndexEntry } from './mapSearchUtils';
+import { buildMapSearchIndex, createOpenCCConverter, formatExgDate, formatExgDateTime, formatLocalDateTime, getExgStatusState, normalizeSearchText, scoreSearchEntry, shouldShowExgStatus, stripBracketSegments, validateMapIndexEntry } from './mapSearchUtils';
 
 const props = defineProps({
   initialConfig: {
@@ -433,14 +473,16 @@ const ICONS = {
   drag: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0-6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0-6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0-6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0-6a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" fill="currentColor"/></svg>`,
   bell: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z" fill="currentColor"/></svg>`,
   trash: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/></svg>`,
-  search_sub: `<svg width="24" height="24" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 2.5a7.5 7.5 0 0 1 5.964 12.048l4.743 4.745a1 1 0 0 1-1.32 1.497l-.094-.083-4.745-4.743A7.5 7.5 0 1 1 10 2.5Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z" fill="currentColor"/></svg>`
+  search_sub: `<svg width="24" height="24" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 2.5a7.5 7.5 0 0 1 5.964 12.048l4.743 4.745a1 1 0 0 1-1.32 1.497l-.094-.083-4.745-4.743A7.5 7.5 0 1 1 10 2.5Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z" fill="currentColor"/></svg>`,
+  check: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3.5 8.5l2.5 2.5 6-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  cross: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`
 };
 const icons = ICONS;
 
 const LOGO_PATHS = { B: '/static/nerv_logo.png', W: '/static/nerv_logo.png' };
 const FAVICON_PATHS = { light: '/static/nerv_logo.png', dark: '/static/nerv_logo.png' };
 const STEAM_LOGO_PATH = '/static/steam_logo.svg';
-const VIEW_ROUTES = { servers: '/', map_sub: '/map-sub', stats: '/stats', feedback: '/feedback' };
+const VIEW_ROUTES = { servers: '/', map_sub: '/map-sub', map_cooldown: '/map-cooldown', stats: '/stats', feedback: '/feedback' };
 const INITIAL_CONFIG = props.initialConfig || [];
 
 const communities = ref(Array.isArray(INITIAL_CONFIG) ? INITIAL_CONFIG : []);
@@ -468,7 +510,7 @@ const paramTheme = urlParams.get('theme');
 const paramTab = urlParams.get('tab');
 const paramDense = urlParams.get('dense');
 const initialView = document.body.dataset.initialView || 'servers';
-const allowedTabs = new Set(['servers', 'map_sub', 'stats', 'feedback']);
+const allowedTabs = new Set(['servers', 'map_sub', 'map_cooldown', 'stats', 'feedback']);
 const resolvedView = allowedTabs.has(paramTab) ? paramTab : initialView;
 const curView = ref(resolvedView);
 const toastMsg = ref('');
@@ -1014,11 +1056,6 @@ const goToView = (view) => {
   curView.value = view;
 };
 
-const openMapLink = () => {
-  const comm = communities.value.find(c => c.features.includes('map_cd'));
-  window.open((comm && comm.map_url) ? comm.map_url : 'https://list.darkrp.cn:9000/serverlist/cs2maplist', '_blank');
-};
-
 const goToSubPage = () => {
   goToView('map_sub');
   showSubPopover.value = false;
@@ -1210,6 +1247,88 @@ const getMapIndexDisplayName = (mapName) => {
   return '';
 };
 
+const durationRawToSeconds = (raw) => {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw === 'number' && !Number.isNaN(raw)) return raw;
+  const text = raw.toString().trim();
+  if (!text) return null;
+  if (/^\d+$/.test(text)) return Number(text);
+  const matches = Array.from(text.matchAll(/(\d+)\s*(天|小时|時|时|分钟|分|秒)/g));
+  if (matches.length === 0) return null;
+  let total = 0;
+  matches.forEach((match) => {
+    const value = Number(match[1]);
+    const unit = match[2];
+    if (Number.isNaN(value)) return;
+    if (unit === '天') total += value * 86400;
+    else if (unit === '小时' || unit === '時' || unit === '时') total += value * 3600;
+    else if (unit === '分钟' || unit === '分') total += value * 60;
+    else if (unit === '秒') total += value;
+  });
+  return total;
+};
+
+const formatDurationHuman = (seconds, lang) => {
+  if (seconds === null || seconds === undefined || Number.isNaN(seconds)) return '-';
+  const total = Math.max(0, Math.floor(seconds));
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  const isZh = (lang || '').startsWith('zh');
+  const parts = [];
+  if (days) parts.push(isZh ? `${days}天` : `${days}d`);
+  if (hours) parts.push(isZh ? `${hours}小时` : `${hours}h`);
+  if (minutes) parts.push(isZh ? `${minutes}分` : `${minutes}m`);
+  if (secs || parts.length === 0) parts.push(isZh ? `${secs}秒` : `${secs}s`);
+  return isZh ? parts.join('') : parts.join(' ');
+};
+
+const formatDeadlineLocal = (epochSec) => {
+  if (!epochSec) return '-';
+  try {
+    return new Intl.DateTimeFormat(curLang.value, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }).format(new Date(epochSec * 1000));
+  } catch (e) {
+    return formatLocalDateTime(epochSec);
+  }
+};
+
+const ensureCooldownPrefix = (text) => {
+  if (!text) return text;
+  if (text.endsWith(':') || text.endsWith('：')) return text;
+  return `${text}${isChineseLang.value ? '：' : ':'}`;
+};
+
+const mapCooldownRows = computed(() => {
+  const prefixes = ['ze_', 'bhop_', 'kz_', 'mg_', 'surf_'];
+  const entries = Object.entries(mapIndex.value || {});
+  return entries
+    .filter(([key]) => prefixes.some(prefix => key.startsWith(prefix)))
+    .map(([key, entry]) => {
+      const data = entry && typeof entry === 'object' ? entry : {};
+      const deadline = typeof data.deadline === 'number' ? data.deadline : null;
+      const durationRaw = typeof data.duration_raw === 'string' ? data.duration_raw : '';
+      const durationSec = durationRawToSeconds(durationRaw);
+      const availabilityState = getExgStatusState(deadline, durationSec);
+      return {
+        key,
+        displayName: getMapIndexDisplayName(key),
+        achievement: typeof data.achievement === 'string' ? data.achievement : '',
+        deadlineDisplay: deadline ? formatDeadlineLocal(deadline) : '-',
+        durationDisplay: formatDurationHuman(durationSec, curLang.value),
+        availabilityState
+      };
+    })
+    .sort((a, b) => a.key.localeCompare(b.key));
+});
+
 const getExgStatus = (sub) => {
   if (!sub) return null;
   const mapKey = normalizeMapKey(sub.map || '');
@@ -1225,22 +1344,25 @@ const getExgStatus = (sub) => {
   const cooldown = entry.cooldown || {};
   const deadline = cooldown.deadline ?? entry.deadline ?? null;
   const durationRaw = cooldown.duration_raw ?? entry.duration_raw ?? '';
+  const durationSec = durationRawToSeconds(durationRaw);
   if ((deadline === null || deadline === undefined) && (durationRaw === null || durationRaw === undefined)) {
     return null;
   }
-  const state = entry.exg_status || getExgStatusState(deadline, durationRaw);
+  const state = entry.exg_status || getExgStatusState(deadline, durationSec);
   if (state === 'cooldown' && deadline !== null && deadline !== undefined) {
     const date = formatExgDate(deadline);
     const datetime = formatExgDateTime(deadline);
     const datetimeDisplay = datetime.replace(' - ', ' ');
     const cooldownText = formatTemplate(t('map.exg.cooldown_until'), { date });
-    const prefix = cooldownText.replace(date, '').trim();
+    const prefix = ensureCooldownPrefix(cooldownText.replace(date, '').trim());
+    const tooltipText = formatTemplate(t('map.exg.cooldown_tooltip'), { datetime: datetimeDisplay });
     return {
       state,
       prefix,
       date,
       datetime,
-      datetimeDisplay
+      datetimeDisplay,
+      tooltipText
     };
   }
   if (state === 'available') {
@@ -1822,35 +1944,52 @@ const submitFeedback = () => {
   text-align: center;
 }
 
-.exg-available-text {
-  color: var(--status-online);
-  font-size: 12px;
-  font-weight: 600;
-  background: none;
-  border: none;
-}
-
-.exg-unavailable-text {
-  color: var(--status-offline);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.exg-cooldown-text {
-  color: var(--status-offline);
+.exg-pill {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 2px;
+  min-height: 38px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  transition: background 0.2s ease;
+}
+
+.exg-pill--available {
+  color: var(--status-online);
+  background: rgba(32, 201, 151, 0.12);
+}
+
+.exg-pill--available:hover {
+  background: rgba(32, 201, 151, 0.18);
+}
+
+.exg-pill--cooldown {
+  color: var(--status-offline);
+  background: rgba(255, 92, 92, 0.12);
   cursor: help;
 }
 
-.exg-cooldown-label {
+.exg-pill--cooldown:hover {
+  background: rgba(255, 92, 92, 0.18);
+}
+
+.exg-pill--unavailable {
+  color: var(--status-offline);
+  background: rgba(255, 92, 92, 0.08);
+}
+
+.exg-pill-line1 {
   font-size: 11px;
   opacity: 0.75;
 }
 
-.exg-cooldown-time {
+.exg-pill-line2 {
   font-size: 12px;
   font-weight: 600;
 }
@@ -1867,5 +2006,105 @@ const submitFeedback = () => {
   font-size: 12px;
   white-space: nowrap;
   pointer-events: none;
+}
+
+.mapcd-container {
+  padding: 10px 4px;
+}
+
+.mapcd-table {
+  border-radius: 14px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+  overflow: auto;
+  max-height: 72vh;
+}
+
+.mapcd-header,
+.mapcd-row {
+  display: grid;
+  grid-template-columns: 1.6fr 1.2fr 1.2fr 0.9fr 0.5fr;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+}
+
+.mapcd-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--card-border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.mapcd-row {
+  border-bottom: 1px solid var(--card-border);
+  font-size: 13px;
+  color: var(--text-primary);
+  transition: background 0.2s ease;
+}
+
+.mapcd-row:hover {
+  background: rgba(128, 128, 128, 0.08);
+}
+
+.mapcd-row:last-child {
+  border-bottom: none;
+}
+
+.mapcd-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mapcd-col-ach,
+.mapcd-col-deadline,
+.mapcd-col-length,
+.mapcd-col-availability {
+  align-items: flex-start;
+}
+
+.mapcd-col-availability {
+  align-items: center;
+}
+
+.mapcd-map-key {
+  font-weight: 600;
+}
+
+.mapcd-map-cn {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.mapcd-availability {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(128, 128, 128, 0.08);
+}
+
+.mapcd-availability.is-available {
+  color: var(--status-online);
+  background: rgba(32, 201, 151, 0.16);
+}
+
+.mapcd-availability.is-cooldown {
+  color: var(--status-offline);
+  background: rgba(255, 92, 92, 0.16);
+}
+
+.mapcd-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-secondary);
 }
 </style>
