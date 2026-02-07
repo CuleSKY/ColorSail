@@ -410,41 +410,72 @@
                 <div class="mapcd-cell mapcd-col-availability">{{ t('exg_availability') }}</div>
               </div>
               <div class="mapcd-body" ref="mapCooldownScrollRef" @scroll="onMapCooldownScroll">
-                <div class="mapcd-spacer" :style="{ height: `${mapCooldownSpacerHeight}px` }"></div>
-                <div class="mapcd-virtual" :style="{ transform: `translate3d(0, ${mapCooldownTranslateY}px, 0)` }">
-                  <div class="mapcd-row" :class="{ 'is-fast': mapCooldownIsFastScrolling }" v-for="poolIndex in mapCooldownPoolIndices" :key="poolIndex">
-                    <template v-if="mapCooldownVisibleRows[poolIndex]">
-                      <template v-if="mapCooldownIsFastScrolling">
-                        <div class="mapcd-cell mapcd-cell--compact">
-                          <div class="mapcd-map-key mapcd-map-key--single">{{ mapCooldownVisibleRows[poolIndex].key }}</div>
-                          <span
-                            class="mapcd-fast-status"
-                            :class="mapCooldownVisibleRows[poolIndex].availabilityState === 'available' ? 'is-available' : 'is-cooldown'"
-                          ></span>
-                        </div>
-                      </template>
-                      <template v-else>
-                        <div class="mapcd-cell mapcd-col-map">
-                          <div class="mapcd-map-key">{{ mapCooldownVisibleRows[poolIndex].key }}</div>
-                          <div v-if="isChineseLang && mapCooldownVisibleRows[poolIndex].displayName" class="mapcd-map-cn">{{ mapCooldownVisibleRows[poolIndex].displayName }}</div>
-                        </div>
-                        <div class="mapcd-cell mapcd-col-ach">{{ mapCooldownVisibleRows[poolIndex].achievement || '-' }}</div>
-                        <div class="mapcd-cell mapcd-col-deadline">{{ mapCooldownVisibleRows[poolIndex].deadlineDisplay }}</div>
-                        <div class="mapcd-cell mapcd-col-length">{{ mapCooldownVisibleRows[poolIndex].durationDisplay }}</div>
-                        <div class="mapcd-cell mapcd-col-availability">
-                          <span
-                            class="mapcd-availability"
-                            :class="mapCooldownVisibleRows[poolIndex].availabilityState === 'available' ? 'is-available' : 'is-cooldown'"
-                            :title="mapCooldownVisibleRows[poolIndex].availabilityState === 'available' ? t('available') : t('unavailable')"
-                          >
-                            <span v-if="mapCooldownVisibleRows[poolIndex].availabilityState === 'available'" v-html="icons.check"></span>
-                            <span v-else v-html="icons.cross"></span>
-                          </span>
-                        </div>
-                      </template>
+                <template v-if="coolingOnly">
+                  <div class="mapcd-row" :class="{ 'is-fast': mapCooldownIsFastScrolling }" v-for="row in mapCooldownRowsCooling" :key="row.key">
+                    <template v-if="mapCooldownIsFastScrolling">
+                      <div class="mapcd-cell mapcd-cell--compact">
+                        <div class="mapcd-map-key mapcd-map-key--single">{{ row.key }}</div>
+                        <span
+                          class="mapcd-fast-status"
+                          :class="row.availabilityState === 'available' ? 'is-available' : 'is-cooldown'"
+                        ></span>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div class="mapcd-cell mapcd-col-map">
+                        <div class="mapcd-map-key">{{ row.key }}</div>
+                        <div v-if="isChineseLang && row.displayName" class="mapcd-map-cn">{{ row.displayName }}</div>
+                      </div>
+                      <div class="mapcd-cell mapcd-col-ach">{{ row.achievement || '-' }}</div>
+                      <div class="mapcd-cell mapcd-col-deadline">{{ row.deadlineDisplay }}</div>
+                      <div class="mapcd-cell mapcd-col-length">{{ row.durationDisplay }}</div>
+                      <div class="mapcd-cell mapcd-col-availability">
+                        <span
+                          class="mapcd-availability"
+                          :class="row.availabilityState === 'available' ? 'is-available' : 'is-cooldown'"
+                          :title="row.availabilityState === 'available' ? t('available') : t('unavailable')"
+                        >
+                          <span v-if="row.availabilityState === 'available'" v-html="icons.check"></span>
+                          <span v-else v-html="icons.cross"></span>
+                        </span>
+                      </div>
                     </template>
                   </div>
-                </div>
+                </template>
+                <template v-else>
+                  <div class="mapcd-top-spacer" :style="{ height: `${mapCooldownFeedTrimOffsetPx}px` }"></div>
+                  <div class="mapcd-row" :class="{ 'is-fast': mapCooldownIsFastScrolling }" v-for="row in mapCooldownFeedVisibleRows" :key="row.key">
+                    <template v-if="mapCooldownIsFastScrolling">
+                      <div class="mapcd-cell mapcd-cell--compact">
+                        <div class="mapcd-map-key mapcd-map-key--single">{{ row.key }}</div>
+                        <span
+                          class="mapcd-fast-status"
+                          :class="row.availabilityState === 'available' ? 'is-available' : 'is-cooldown'"
+                        ></span>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div class="mapcd-cell mapcd-col-map">
+                        <div class="mapcd-map-key">{{ row.key }}</div>
+                        <div v-if="isChineseLang && row.displayName" class="mapcd-map-cn">{{ row.displayName }}</div>
+                      </div>
+                      <div class="mapcd-cell mapcd-col-ach">{{ row.achievement || '-' }}</div>
+                      <div class="mapcd-cell mapcd-col-deadline">{{ row.deadlineDisplay }}</div>
+                      <div class="mapcd-cell mapcd-col-length">{{ row.durationDisplay }}</div>
+                      <div class="mapcd-cell mapcd-col-availability">
+                        <span
+                          class="mapcd-availability"
+                          :class="row.availabilityState === 'available' ? 'is-available' : 'is-cooldown'"
+                          :title="row.availabilityState === 'available' ? t('available') : t('unavailable')"
+                        >
+                          <span v-if="row.availabilityState === 'available'" v-html="icons.check"></span>
+                          <span v-else v-html="icons.cross"></span>
+                        </span>
+                      </div>
+                    </template>
+                  </div>
+                  <div ref="mapCooldownFeedSentinel" class="mapcd-feed-sentinel"></div>
+                </template>
                 <div v-if="mapCooldownRows.length === 0" class="mapcd-empty">
                   {{ t('no_data') }}
                 </div>
@@ -724,20 +755,22 @@ watch(curView, (nextView, prevView) => {
       buildCooldownRows({ rebuildAll: false });
     }
     resetMapCooldownScrollState();
+    resetMapCooldownFeedState();
     startMapCooldownTimer();
     nextTick(() => {
-      updateMapCooldownContainerHeight();
-      mapCooldownScrollTop.value = 0;
       if (mapCooldownScrollRef.value) {
         mapCooldownScrollRef.value.scrollTop = 0;
         mapCooldownLatestScrollTop = mapCooldownScrollRef.value.scrollTop || 0;
       }
-      startMapCooldownScrollLoop();
+      if (!coolingOnly.value) {
+        setupMapCooldownFeedObserver();
+      }
     });
   }
   if (prevView === 'map_cooldown' && nextView !== 'map_cooldown') {
     stopMapCooldownTimer();
     resetMapCooldownScrollState();
+    teardownMapCooldownFeedObserver();
   }
 });
 watch([isLoggedIn, curView], () => {
@@ -759,9 +792,12 @@ const handleResize = () => {
     exgTooltip.value = { ...exgTooltip.value, visible: false };
   }
   if (curView.value === 'map_cooldown') {
-    updateMapCooldownContainerHeight();
     mapCooldownLatestScrollTop = mapCooldownScrollRef.value?.scrollTop || mapCooldownLatestScrollTop;
-    startMapCooldownScrollLoop();
+    if (!coolingOnly.value) {
+      nextTick(() => {
+        setupMapCooldownFeedObserver();
+      });
+    }
   }
 };
 
@@ -978,6 +1014,7 @@ onUnmounted(() => {
   clearToastTimer();
   stopMapCooldownTimer();
   resetMapCooldownScrollState();
+  teardownMapCooldownFeedObserver();
 });
 
 const toggleLangMenu = () => {
@@ -1361,156 +1398,56 @@ const ensureCooldownPrefix = (text) => {
 };
 
 const mapCooldownScrollRef = ref(null);
+const mapCooldownFeedSentinel = ref(null);
 const coolingOnly = ref(true);
 const mapCooldownRowsCooling = ref([]);
 const mapCooldownRowsAll = ref([]);
-const mapCooldownScrollTop = ref(0);
-const mapCooldownContainerHeight = ref(0);
 const mapCooldownNowEpoch = ref(Math.floor(Date.now() / 1000));
 const mapCooldownNeedsRebuild = ref(true);
 const mapCooldownIsFastScrolling = ref(false);
 const mapCooldownPendingRebuild = ref(false);
 const mapCooldownRowHeight = 56;
-const mapCooldownOverscanBase = 30;
-const mapCooldownOverscanMedium = 16;
-const mapCooldownOverscanHigh = 8;
-const mapCooldownOverscanMax = mapCooldownOverscanBase;
+const mapCooldownPageSize = 60;
+const mapCooldownMaxRendered = 300;
 const mapCooldownFastSpeedThreshold = 2.0;
-const mapCooldownFasterSpeedThreshold = 5.0;
 const mapCooldownScrollIdleMs = 180;
-const mapCooldownMaxRenderedRows = 120;
-const mapCooldownOverscanMin = 8;
-const mapCooldownOverscan = ref(mapCooldownOverscanBase);
-const mapCooldownVisibleStartIndex = ref(0);
-const mapCooldownVisibleEndIndex = ref(0);
-const mapCooldownVisibleRows = ref([]);
-const mapCooldownPoolIndices = ref([]);
-const mapCooldownPerfDebug = false;
+const mapCooldownFeedVisibleCount = ref(mapCooldownPageSize);
+const mapCooldownFeedTrimCount = ref(0);
+const mapCooldownFeedTrimOffsetPx = ref(0);
 let mapCooldownTimer = null;
 let mapCooldownScrollRafId = 0;
-let mapCooldownScrollLoopRafId = 0;
 let mapCooldownLatestScrollTop = 0;
 let mapCooldownLastScrollTop = 0;
 let mapCooldownLastTimestamp = 0;
-let mapCooldownLastObservedScrollTop = 0;
-let mapCooldownLastScrollChangeTs = 0;
 let mapCooldownIdleTimer = null;
-let mapCooldownPrevFastState = false;
-let mapCooldownPrevOverscan = mapCooldownOverscanBase;
-let mapCooldownPrevRendered = 0;
+let mapCooldownFeedObserver = null;
 
 const mapCooldownRows = computed(() => (coolingOnly.value ? mapCooldownRowsCooling.value : mapCooldownRowsAll.value));
-const mapCooldownSpacerHeight = computed(() => mapCooldownRows.value.length * mapCooldownRowHeight);
-const mapCooldownTranslateY = computed(() => mapCooldownVisibleStartIndex.value * mapCooldownRowHeight);
-
-const updateMapCooldownContainerHeight = () => {
-  if (mapCooldownScrollRef.value) {
-    mapCooldownContainerHeight.value = mapCooldownScrollRef.value.clientHeight || 0;
-  }
-};
-
-const updateMapCooldownPool = (size) => {
-  if (mapCooldownPoolIndices.value.length === size) return;
-  mapCooldownPoolIndices.value = Array.from({ length: size }, (_, idx) => idx);
-};
-
-const logMapCooldownPerf = ({ overscan, isFast, rendered }) => {
-  if (!mapCooldownPerfDebug) return;
-  if (overscan !== mapCooldownPrevOverscan || isFast !== mapCooldownPrevFastState || rendered !== mapCooldownPrevRendered) {
-    mapCooldownPrevOverscan = overscan;
-    mapCooldownPrevFastState = isFast;
-    mapCooldownPrevRendered = rendered;
-    console.debug('[mapcd] overscan', overscan, 'fast', isFast, 'rendered', rendered);
-  }
-};
-
-const applyMapCooldownScrollUpdate = (timestamp) => {
-  const frameStart = performance.now();
-  const scrollEl = mapCooldownScrollRef.value;
-  // Read from the DOM each frame because scroll events can be throttled/coalesced.
-  const scrollTop = scrollEl ? scrollEl.scrollTop : mapCooldownLatestScrollTop;
-  const nextTimestamp = timestamp || performance.now();
-  if (!mapCooldownLastTimestamp) {
-    mapCooldownLastTimestamp = nextTimestamp;
-  }
-  const dtMs = Math.max(1, nextTimestamp - mapCooldownLastTimestamp);
-  const delta = Math.abs(scrollTop - mapCooldownLastScrollTop);
-  const speed = delta / dtMs;
-  let nextOverscan = mapCooldownOverscanBase;
-  if (speed > mapCooldownFasterSpeedThreshold) {
-    nextOverscan = mapCooldownOverscanHigh;
-  } else if (speed > mapCooldownFastSpeedThreshold) {
-    nextOverscan = mapCooldownOverscanMedium;
-  }
-  mapCooldownOverscan.value = Math.max(mapCooldownOverscanMin, Math.min(mapCooldownOverscanMax, nextOverscan));
-  const isFast = speed > mapCooldownFastSpeedThreshold;
-  mapCooldownIsFastScrolling.value = isFast;
-  mapCooldownScrollTop.value = scrollTop;
-  mapCooldownLastScrollTop = scrollTop;
-  mapCooldownLastTimestamp = nextTimestamp;
-
-  const baseHeight = mapCooldownContainerHeight.value || Math.round(window.innerHeight * 0.7);
-  const baseVisibleCount = Math.ceil(baseHeight / mapCooldownRowHeight);
-  const desiredVisibleCount = Math.min(baseVisibleCount + mapCooldownOverscan.value * 2, mapCooldownMaxRenderedRows);
-  const rowsLength = mapCooldownRows.value.length;
-  const maxStart = Math.max(0, rowsLength - desiredVisibleCount);
-  const nextStart = Math.min(maxStart, Math.max(0, Math.floor(scrollTop / mapCooldownRowHeight) - mapCooldownOverscan.value));
-  const nextEnd = Math.min(rowsLength, nextStart + desiredVisibleCount);
-  const actualCount = Math.max(0, nextEnd - nextStart);
-
-  mapCooldownVisibleStartIndex.value = nextStart;
-  mapCooldownVisibleEndIndex.value = nextEnd;
-  mapCooldownVisibleRows.value = mapCooldownRows.value.slice(nextStart, nextEnd);
-
-  const budgetExceeded = performance.now() - frameStart > 8;
-  updateMapCooldownPool(actualCount);
-  if (!budgetExceeded) {
-    logMapCooldownPerf({
-      overscan: mapCooldownOverscan.value,
-      isFast: mapCooldownIsFastScrolling.value,
-      rendered: actualCount
-    });
-  }
-};
+const mapCooldownFeedAllRows = computed(() => mapCooldownRowsAll.value);
+const mapCooldownFeedVisibleRows = computed(() => {
+  const total = mapCooldownFeedAllRows.value.length;
+  const end = Math.min(mapCooldownFeedVisibleCount.value, total);
+  const start = Math.min(mapCooldownFeedTrimCount.value, end);
+  return mapCooldownFeedAllRows.value.slice(start, end);
+});
 
 const scheduleMapCooldownRaf = () => {
   if (mapCooldownScrollRafId) return;
   mapCooldownScrollRafId = window.requestAnimationFrame((timestamp) => {
     mapCooldownScrollRafId = 0;
-    applyMapCooldownScrollUpdate(timestamp);
-  });
-};
-
-const stopMapCooldownScrollLoop = () => {
-  if (mapCooldownScrollLoopRafId) {
-    cancelAnimationFrame(mapCooldownScrollLoopRafId);
-    mapCooldownScrollLoopRafId = 0;
-  }
-  mapCooldownLastScrollChangeTs = 0;
-};
-
-const startMapCooldownScrollLoop = () => {
-  if (mapCooldownScrollLoopRafId) return;
-  mapCooldownLastObservedScrollTop = Number.NaN;
-  mapCooldownLastScrollChangeTs = performance.now();
-  const tick = (timestamp) => {
-    const now = timestamp || performance.now();
     const scrollEl = mapCooldownScrollRef.value;
-    const currentScrollTop = scrollEl ? scrollEl.scrollTop : mapCooldownLatestScrollTop;
-    if (currentScrollTop !== mapCooldownLastObservedScrollTop) {
-      mapCooldownLastObservedScrollTop = currentScrollTop;
-      mapCooldownLatestScrollTop = currentScrollTop;
-      mapCooldownLastScrollChangeTs = now;
-      applyMapCooldownScrollUpdate(now);
-      scheduleMapCooldownIdleReset();
+    const scrollTop = scrollEl ? scrollEl.scrollTop : mapCooldownLatestScrollTop;
+    const nextTimestamp = timestamp || performance.now();
+    if (!mapCooldownLastTimestamp) {
+      mapCooldownLastTimestamp = nextTimestamp;
     }
-    if (now - mapCooldownLastScrollChangeTs < mapCooldownScrollIdleMs) {
-      mapCooldownScrollLoopRafId = window.requestAnimationFrame(tick);
-    } else {
-      mapCooldownScrollLoopRafId = 0;
-    }
-  };
-  mapCooldownScrollLoopRafId = window.requestAnimationFrame(tick);
+    const dtMs = Math.max(1, nextTimestamp - mapCooldownLastTimestamp);
+    const delta = Math.abs(scrollTop - mapCooldownLastScrollTop);
+    const speed = delta / dtMs;
+    mapCooldownIsFastScrolling.value = speed > mapCooldownFastSpeedThreshold;
+    mapCooldownLastScrollTop = scrollTop;
+    mapCooldownLastTimestamp = nextTimestamp;
+  });
 };
 
 const clearMapCooldownIdleTimer = () => {
@@ -1528,7 +1465,6 @@ const scheduleMapCooldownIdleReset = () => {
       buildCooldownRows({ rebuildAll: false });
       mapCooldownPendingRebuild.value = false;
     }
-    scheduleMapCooldownRaf();
   }, mapCooldownScrollIdleMs);
 };
 
@@ -1536,34 +1472,94 @@ const resetMapCooldownScrollState = () => {
   mapCooldownLatestScrollTop = 0;
   mapCooldownLastScrollTop = 0;
   mapCooldownLastTimestamp = 0;
-  mapCooldownLastObservedScrollTop = 0;
-  mapCooldownLastScrollChangeTs = 0;
   mapCooldownIsFastScrolling.value = false;
-  mapCooldownOverscan.value = mapCooldownOverscanBase;
-  mapCooldownVisibleStartIndex.value = 0;
-  mapCooldownVisibleEndIndex.value = 0;
-  mapCooldownVisibleRows.value = [];
-  mapCooldownPoolIndices.value = [];
   mapCooldownPendingRebuild.value = false;
   if (mapCooldownScrollRafId) {
     cancelAnimationFrame(mapCooldownScrollRafId);
     mapCooldownScrollRafId = 0;
   }
-  stopMapCooldownScrollLoop();
   clearMapCooldownIdleTimer();
 };
 
 const onMapCooldownScroll = (event) => {
   const target = event?.target;
   mapCooldownLatestScrollTop = target?.scrollTop ?? mapCooldownScrollRef.value?.scrollTop ?? 0;
-  startMapCooldownScrollLoop();
+  scheduleMapCooldownRaf();
   scheduleMapCooldownIdleReset();
+};
+
+const resetMapCooldownFeedState = () => {
+  mapCooldownFeedVisibleCount.value = mapCooldownPageSize;
+  mapCooldownFeedTrimCount.value = 0;
+  mapCooldownFeedTrimOffsetPx.value = 0;
+};
+
+const ensureMapCooldownFeedBounds = () => {
+  const total = mapCooldownFeedAllRows.value.length;
+  mapCooldownFeedVisibleCount.value = Math.min(mapCooldownFeedVisibleCount.value, total);
+  mapCooldownFeedTrimCount.value = Math.min(mapCooldownFeedTrimCount.value, mapCooldownFeedVisibleCount.value);
+  mapCooldownFeedTrimOffsetPx.value = mapCooldownFeedTrimCount.value * mapCooldownRowHeight;
+};
+
+const trimMapCooldownFeed = (trimCount) => {
+  if (trimCount <= 0) return;
+  mapCooldownFeedTrimCount.value += trimCount;
+  const trimPx = trimCount * mapCooldownRowHeight;
+  mapCooldownFeedTrimOffsetPx.value += trimPx;
+  const scrollEl = mapCooldownScrollRef.value;
+  if (scrollEl) {
+    scrollEl.scrollTop += trimPx;
+    mapCooldownLatestScrollTop = scrollEl.scrollTop;
+  }
+};
+
+const maybeTrimMapCooldownFeed = () => {
+  const renderedCount = mapCooldownFeedVisibleCount.value - mapCooldownFeedTrimCount.value;
+  if (renderedCount > mapCooldownMaxRendered) {
+    trimMapCooldownFeed(renderedCount - mapCooldownMaxRendered);
+  }
+};
+
+const extendMapCooldownFeed = () => {
+  if (coolingOnly.value) return;
+  const total = mapCooldownFeedAllRows.value.length;
+  if (mapCooldownFeedVisibleCount.value >= total) return;
+  mapCooldownFeedVisibleCount.value = Math.min(total, mapCooldownFeedVisibleCount.value + mapCooldownPageSize);
+  nextTick(() => {
+    maybeTrimMapCooldownFeed();
+  });
+};
+
+const teardownMapCooldownFeedObserver = () => {
+  if (mapCooldownFeedObserver) {
+    mapCooldownFeedObserver.disconnect();
+    mapCooldownFeedObserver = null;
+  }
+};
+
+const setupMapCooldownFeedObserver = () => {
+  if (coolingOnly.value || mapCooldownFeedObserver) return;
+  const root = mapCooldownScrollRef.value;
+  const sentinel = mapCooldownFeedSentinel.value;
+  if (!root || !sentinel) return;
+  mapCooldownFeedObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          extendMapCooldownFeed();
+        }
+      });
+    },
+    { root, rootMargin: '600px 0px', threshold: 0 }
+  );
+  mapCooldownFeedObserver.observe(sentinel);
 };
 
 const buildCooldownRows = ({ rebuildAll = false } = {}) => {
   const prefixes = ['ze_', 'bhop_', 'kz_', 'mg_', 'surf_'];
   const entries = Object.entries(mapIndex.value || {});
   if (rebuildAll) {
+    const statusOrder = { cooldown: 0, available: 1, not_available: 2, hidden: 2 };
     mapCooldownRowsAll.value = entries
       .filter(([key]) => prefixes.some(prefix => key.startsWith(prefix)))
       .map(([key, entry]) => {
@@ -1581,7 +1577,11 @@ const buildCooldownRows = ({ rebuildAll = false } = {}) => {
           availabilityState
         };
       })
-      .sort((a, b) => a.key.localeCompare(b.key));
+      .sort((a, b) => {
+        const statusDiff = (statusOrder[a.availabilityState] ?? 3) - (statusOrder[b.availabilityState] ?? 3);
+        if (statusDiff !== 0) return statusDiff;
+        return a.key.localeCompare(b.key);
+      });
   }
   const nowEpoch = mapCooldownNowEpoch.value;
   mapCooldownRowsCooling.value = mapCooldownRowsAll.value
@@ -1620,16 +1620,24 @@ watch([mapIndex, mapTranslations, curLang], () => {
 
 watch(coolingOnly, () => {
   resetMapCooldownScrollState();
-  mapCooldownScrollTop.value = 0;
+  resetMapCooldownFeedState();
   if (mapCooldownScrollRef.value) {
     mapCooldownScrollRef.value.scrollTop = 0;
   }
   mapCooldownLatestScrollTop = 0;
-  scheduleMapCooldownRaf();
+  if (coolingOnly.value) {
+    teardownMapCooldownFeedObserver();
+  } else {
+    nextTick(() => {
+      setupMapCooldownFeedObserver();
+    });
+  }
 });
 
 watch(mapCooldownRows, () => {
-  scheduleMapCooldownRaf();
+  if (!coolingOnly.value) {
+    ensureMapCooldownFeedBounds();
+  }
 });
 
 const getExgStatus = (sub) => {
@@ -2347,17 +2355,13 @@ const submitFeedback = () => {
   contain: content;
 }
 
-.mapcd-spacer {
+.mapcd-top-spacer {
   width: 100%;
 }
 
-.mapcd-virtual {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  will-change: transform;
-  contain: content;
+.mapcd-feed-sentinel {
+  width: 100%;
+  height: 1px;
 }
 
 .mapcd-header,
@@ -2392,7 +2396,7 @@ const submitFeedback = () => {
   background: rgba(128, 128, 128, 0.08);
 }
 
-.mapcd-row:last-child {
+.mapcd-row:last-of-type {
   border-bottom: none;
 }
 
@@ -2401,6 +2405,7 @@ const submitFeedback = () => {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .mapcd-cell--compact {
