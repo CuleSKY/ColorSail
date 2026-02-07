@@ -4,11 +4,15 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Iterable, List, Optional
 
+import json
 import hashlib
+import logging
 
 import pymysql
 
 from tools.map_sidecar.config import Settings
+
+logger = logging.getLogger("map_sidecar")
 
 
 @dataclass
@@ -16,12 +20,40 @@ class MapRecord:
     map_key: str
     name_zh_cn: Optional[str]
     name_zh_tw: Optional[str]
+    aliases: List[str]
     achievement: Optional[str]
     cooldown_end_epoch: Optional[int]
     duration_raw: Optional[str]
     workshop_id: Optional[int]
     workshop_url: Optional[str]
     exg_supported: bool
+
+
+def parse_aliases(value: object) -> tuple[List[str], bool]:
+    if value is None:
+        return [], False
+    if isinstance(value, (list, tuple)):
+        data = list(value)
+    elif isinstance(value, (str, bytes, bytearray)):
+        try:
+            data = json.loads(value)
+        except Exception:
+            return [], True
+    else:
+        return [], True
+    if not isinstance(data, list):
+        return [], True
+    seen: set[str] = set()
+    normalized: List[str] = []
+    for item in data:
+        if not isinstance(item, str):
+            continue
+        cleaned = item.strip()
+        if not cleaned or cleaned in seen:
+            continue
+        seen.add(cleaned)
+        normalized.append(cleaned)
+    return normalized, False
 
 
 class MySQLClient:
@@ -139,7 +171,7 @@ class MySQLClient:
 
     def fetch_map_index(self) -> List[MapRecord]:
         sql = (
-            "SELECT m.map_key, m.name_zh_cn, m.name_zh_tw, "
+            "SELECT m.map_key, m.name_zh_cn, m.name_zh_tw, m.aliases, "
             "e.achievement, e.cooldown_end_epoch, e.duration_raw, e.workshop_id, e.workshop_url, "
             "e.map_key AS exg_map_key "
             "FROM maps m "
@@ -150,12 +182,20 @@ class MySQLClient:
                 cur.execute(sql)
                 rows = cur.fetchall()
         records: List[MapRecord] = []
+        warned_aliases: set[str] = set()
         for row in rows:
+            aliases, invalid = parse_aliases(row.get("aliases"))
+            if invalid:
+                map_key = row["map_key"]
+                if map_key not in warned_aliases:
+                    logger.warning("map_index aliases invalid for map_key=%s", map_key)
+                    warned_aliases.add(map_key)
             records.append(
                 MapRecord(
                     map_key=row["map_key"],
                     name_zh_cn=row.get("name_zh_cn"),
                     name_zh_tw=row.get("name_zh_tw"),
+                    aliases=aliases,
                     achievement=row.get("achievement"),
                     cooldown_end_epoch=row.get("cooldown_end_epoch"),
                     duration_raw=row.get("duration_raw"),
@@ -192,6 +232,7 @@ class MySQLClient:
                 f"{record.map_key}\x1f"
                 f"{record.name_zh_cn or ''}\x1f"
                 f"{record.name_zh_tw or ''}\x1f"
+                f"{','.join(record.aliases)}\x1f"
                 f"{record.achievement or ''}\x1f"
                 f"{record.cooldown_end_epoch or ''}\x1f"
                 f"{record.duration_raw or ''}\x1f"

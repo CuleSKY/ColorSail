@@ -76,6 +76,8 @@ def export_map_index(settings: "Settings", logger: "logging.Logger", db: "MySQLC
             entry["cooldown_end_epoch"] = record.cooldown_end_epoch
             entry["duration_raw"] = record.duration_raw
             entry["duration_sec"] = duration_sec
+        if record.aliases:
+            entry["aliases"] = record.aliases
         payload[record.map_key] = entry
     if unknown_duration_samples:
         logger.warning(
