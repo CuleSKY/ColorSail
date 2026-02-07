@@ -464,7 +464,7 @@
                         <div class="mapcd-map-key-row">
                           <div class="mapcd-map-key">{{ row.mapLine1 }}</div>
                         </div>
-                        <div class="mapcd-map-cn">{{ row.mapLine2 }}</div>
+                        <div v-if="isChineseLang && row.mapLine2" class="mapcd-map-cn">{{ row.mapLine2 }}</div>
                       </div>
                       <div class="mapcd-cell mapcd-col-ach">{{ row.achievement || '-' }}</div>
                       <div class="mapcd-cell mapcd-col-deadline">{{ row.deadlineText }}</div>
@@ -2714,10 +2714,18 @@ const submitFeedback = () => {
   pointer-events: none;
 }
 
+.sub-container {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
 .mapcd-page {
   --mapcd-surface-bg: var(--card-bg);
   --mapcd-surface-border: var(--card-border);
   --mapcd-surface-radius: 14px;
+  --mapcd-card-max: 980px;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -2726,9 +2734,12 @@ const submitFeedback = () => {
 
 .mapcd-content {
   width: 100%;
-  max-width: 1320px;
+  max-width: var(--mapcd-card-max);
   margin: 0 auto;
   padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .mapcd-search-row {
@@ -2737,7 +2748,6 @@ const submitFeedback = () => {
   align-items: center;
   height: 48px;
   margin-top: 12px;
-  margin-bottom: 16px;
 }
 
 .mapcd-search {
@@ -2827,30 +2837,29 @@ const submitFeedback = () => {
 
 .mapcd-search-wrap {
   width: 100%;
-  max-width: 720px;
+  max-width: var(--mapcd-card-max);
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
 .mapcd-container {
-  padding: 8px 0 0;
+  padding: 0;
   background: var(--mapcd-surface-bg);
-  border: 1px solid var(--mapcd-surface-border);
+  border: 1px solid color-mix(in srgb, var(--mapcd-surface-border) 60%, transparent 40%);
   border-radius: var(--mapcd-surface-radius);
-  box-shadow: var(--shadow);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
 }
 
 .mapcd-card-header {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  min-height: 44px;
-  margin: 0 14px 0;
-  padding: 12px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--mapcd-surface-bg) 92%, #ffffff 8%);
-  border: 1px solid color-mix(in srgb, var(--mapcd-surface-border) 70%, transparent 30%);
+  min-height: 48px;
+  padding: 10px 16px;
+  background: color-mix(in srgb, var(--mapcd-surface-bg) 94%, #ffffff 6%);
+  border-bottom: 1px solid color-mix(in srgb, var(--mapcd-surface-border) 55%, transparent 45%);
 }
 
 .mapcd-card-header-right {
@@ -2868,8 +2877,8 @@ const submitFeedback = () => {
   height: 34px;
   padding: 0 14px;
   border-radius: 9px;
-  border: 1px solid var(--mapcd-surface-border);
-  background: rgba(128, 128, 128, 0.08);
+  border: 1px solid color-mix(in srgb, var(--mapcd-surface-border) 70%, transparent 30%);
+  background: rgba(128, 128, 128, 0.06);
   color: var(--text-primary);
   font-size: 12px;
   font-weight: 600;
@@ -2892,8 +2901,8 @@ const submitFeedback = () => {
 }
 
 .mapcd-table {
-  margin: 12px 14px 14px;
-  border-radius: calc(var(--mapcd-surface-radius) - 2px);
+  margin: 0;
+  border-radius: 0 0 calc(var(--mapcd-surface-radius) - 2px) calc(var(--mapcd-surface-radius) - 2px);
   background: transparent;
   border: none;
   box-shadow: none;
@@ -2962,15 +2971,15 @@ const submitFeedback = () => {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: var(--mapcd-surface-bg);
-  border-bottom: 1px solid var(--mapcd-surface-border);
+  background: color-mix(in srgb, var(--mapcd-surface-bg) 96%, #ffffff 4%);
+  border-bottom: 1px solid color-mix(in srgb, var(--mapcd-surface-border) 50%, transparent 50%);
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
 }
 
 .mapcd-row {
-  border-bottom: 1px solid var(--mapcd-surface-border);
+  border-bottom: 1px solid color-mix(in srgb, var(--mapcd-surface-border) 35%, transparent 65%);
   font-size: 13px;
   color: var(--text-primary);
   transition: background 0.2s ease, opacity 160ms ease-out;
@@ -2980,7 +2989,7 @@ const submitFeedback = () => {
 }
 
 .mapcd-row:hover {
-  background: rgba(128, 128, 128, 0.08);
+  background: rgba(128, 128, 128, 0.05);
 }
 
 .mapcd-row.is-highlight {
@@ -3114,6 +3123,9 @@ const submitFeedback = () => {
 
 .mapcd-availability-icon svg {
   display: block;
+  margin: auto;
+  width: 14px;
+  height: 14px;
 }
 
 .mapcd-availability.is-available {
