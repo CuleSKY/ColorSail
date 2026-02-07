@@ -125,10 +125,16 @@ export const scoreSearchEntry = (entry, query) => {
   return score;
 };
 
-export const getExgStatusState = (deadline, durationRaw) => {
-  if (deadline !== null && deadline !== undefined) return 'cooldown';
-  if (durationRaw === '0分') return 'not_available';
-  return 'available';
+export const getExgStatusState = (deadline, durationSec, nowSec = Math.floor(Date.now() / 1000)) => {
+  if (deadline !== null && deadline !== undefined && deadline > nowSec) return 'cooldown';
+  if (deadline === null || deadline === undefined) {
+    if (durationSec === 0) return 'not_available';
+    if (typeof durationSec === 'number' && durationSec > 0) return 'available';
+    return 'hidden';
+  }
+  if (durationSec === 0) return 'not_available';
+  if (typeof durationSec === 'number' && durationSec > 0) return 'available';
+  return 'hidden';
 };
 
 export const formatExgDate = (timestampSec) => {
@@ -148,6 +154,17 @@ export const formatExgDateTime = (timestampSec) => {
   const minutes = String(date.getMinutes()).padStart(2, '0');
   const seconds = String(date.getSeconds()).padStart(2, '0');
   return `${year}/${month}/${day} - ${hours}:${minutes}:${seconds}`;
+};
+
+export const formatLocalDateTime = (timestampSec) => {
+  const date = new Date(timestampSec * 1000);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
 };
 
 export const validateMapIndexEntry = (mapKey, entry, warn = console.warn) => {
