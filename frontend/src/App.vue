@@ -313,8 +313,6 @@
                     <div
                       v-else-if="exgStatusByIndex[idx].state === 'cooldown'"
                       class="exg-pill exg-pill--cooldown"
-                      @mouseenter="showExgTooltip($event, exgStatusByIndex[idx].tooltipText)"
-                      @mouseleave="hideExgTooltip"
                     >
                       <div class="exg-pill-line1">{{ exgStatusByIndex[idx].prefix }}</div>
                       <div class="exg-pill-line2">{{ exgStatusByIndex[idx].datetimeDisplay }}</div>
@@ -334,17 +332,6 @@
             <div class="sub-test-btn" @click="testNotification">{{ t('test_notify') }}</div>
           </div>
         </div>
-
-        <Teleport to="body">
-          <div
-            v-if="exgTooltip.visible"
-            ref="exgTooltipRef"
-            class="exg-tooltip"
-            :style="{ top: `${exgTooltip.top}px`, left: `${exgTooltip.left}px` }"
-          >
-            {{ exgTooltip.text }}
-          </div>
-        </Teleport>
 
         <div v-show="curView === 'stats'" class="animate-enter">
           <div v-if="isLoggedIn" class="stats-dashboard">
@@ -412,11 +399,16 @@
               <div class="mapcd-divider"></div>
 
               <div class="mapcd-header-slot">
-                <div class="mapcd-section-title mapcd-title-pos">
-                  {{ isAllMapsMode ? t('mapcd_title_all') : t('mapcd_title_cooldown') }}
-                  <span v-if="mapCooldownIsBuilding" class="mapcd-preparing">
-                    {{ isChineseLang ? '准备中…' : 'Preparing…' }}{{ mapCooldownProgressText }}
-                  </span>
+                <div class="mapcd-header-row">
+                  <h3 class="mapcd-title">
+                    {{ isAllMapsMode ? t('mapcd_title_all') : t('mapcd_title_cooldown') }}
+                    <span v-if="mapCooldownIsBuilding" class="mapcd-preparing">
+                      {{ isChineseLang ? '准备中…' : 'Preparing…' }}{{ mapCooldownProgressText }}
+                    </span>
+                  </h3>
+                  <button class="mapcd-toggle-btn" type="button" @click="toggleMapCooldownMode">
+                    {{ isAllMapsMode ? t('mapcd_btn_only_cooldown','Show cooldown only') : t('mapcd_btn_show_all','Show all') }}
+                  </button>
                 </div>
               </div>
 
@@ -471,11 +463,6 @@
                     <div class="mapcd-edge-fade mapcd-edge-fade--bottom"></div>
                   </div>
                 </div>
-              </div>
-              <div class="mapcd-actions-row">
-                <button class="mapcd-toggle-btn" type="button" @click="toggleMapCooldownMode">
-                  {{ isAllMapsMode ? t('mapcd_btn_only_cooldown','Show cooldown only') : t('mapcd_btn_show_all','Show all') }}
-                </button>
               </div>
             </div>
           </div>
@@ -608,14 +595,6 @@ const subscriptions = ref([]);
 const lastNotifiedMaps = ref({});
 const hasNotification = typeof Notification !== 'undefined';
 const notificationPermission = ref(hasNotification ? Notification.permission : 'denied');
-const exgTooltip = ref({
-  visible: false,
-  text: '',
-  top: 0,
-  left: 0
-});
-const exgTooltipRef = ref(null);
-
 const draggedIndex = ref(null);
 const dragOverIndex = ref(null);
 
@@ -786,9 +765,6 @@ watch(curLang, () => document.title = t('app_title'), { immediate: true });
 const handleResize = () => {
   viewportWidth.value = window.innerWidth;
   isMobile.value = window.innerWidth <= 768;
-  if (isMobile.value) {
-    exgTooltip.value = { ...exgTooltip.value, visible: false };
-  }
   if (curView.value === 'map_cooldown') {
     mapCooldownLatestScrollTop = mapCooldownScrollRef.value?.scrollTop || mapCooldownLatestScrollTop;
     nextTick(() => {
@@ -796,44 +772,6 @@ const handleResize = () => {
       clampMapCooldownScrollTop({ force: true });
     });
   }
-};
-
-const showExgTooltip = (event, datetime) => {
-  if (!datetime || viewportWidth.value < 768) return;
-  const target = event?.currentTarget;
-  if (!target || typeof target.getBoundingClientRect !== 'function') return;
-  const textTarget = target.querySelector?.('.exg-pill-line2') || target.querySelector?.('.exg-pill-line1') || target;
-  const rect = textTarget.getBoundingClientRect();
-  exgTooltip.value = {
-    visible: true,
-    text: datetime,
-    top: 0,
-    left: 0
-  };
-  nextTick(() => {
-    requestAnimationFrame(() => {
-      const tooltipEl = exgTooltipRef.value;
-      if (!tooltipEl) return;
-      const tooltipRect = tooltipEl.getBoundingClientRect();
-      const padding = 8;
-      const tooltipOffset = 8;
-      const centeredLeft = rect.left + rect.width / 2 - tooltipRect.width / 2;
-      const left = Math.min(
-        Math.max(padding, centeredLeft),
-        window.innerWidth - tooltipRect.width - padding
-      );
-      const top = Math.max(padding, rect.top - tooltipRect.height - tooltipOffset);
-      exgTooltip.value = {
-        ...exgTooltip.value,
-        top,
-        left
-      };
-    });
-  });
-};
-
-const hideExgTooltip = () => {
-  exgTooltip.value = { ...exgTooltip.value, visible: false };
 };
 
 const handleGlobalClick = (e) => {
@@ -2601,76 +2539,52 @@ const submitFeedback = () => {
 </script>
 
 <style scoped>
-.exg-status-stack {
+.sub-container .exg-status-stack {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 8px;
   text-align: center;
 }
 
-.exg-pill {
+.sub-container .exg-pill {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  min-height: 38px;
-  padding: 6px 12px;
+  min-height: 0;
+  padding: 0;
   border: none;
-  border-radius: 999px;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
   font-size: 12px;
   font-weight: 600;
   text-align: center;
-  transition: background 0.2s ease;
 }
 
-.exg-pill--available {
+.sub-container .exg-pill--available {
   color: var(--status-online);
-  background: rgba(32, 201, 151, 0.12);
 }
 
-.exg-pill--available:hover {
-  background: rgba(32, 201, 151, 0.18);
+.sub-container .exg-pill--cooldown {
+  color: var(--accent);
 }
 
-.exg-pill--cooldown {
+.sub-container .exg-pill--unavailable {
   color: var(--status-offline);
-  background: rgba(255, 92, 92, 0.12);
-  cursor: help;
 }
 
-.exg-pill--cooldown:hover {
-  background: rgba(255, 92, 92, 0.18);
-}
-
-.exg-pill--unavailable {
-  color: var(--status-offline);
-  background: rgba(255, 92, 92, 0.08);
-}
-
-.exg-pill-line1 {
+.sub-container .exg-pill-line1 {
   font-size: 11px;
   opacity: 0.75;
 }
 
-.exg-pill-line2 {
+.sub-container .exg-pill-line2 {
   font-size: 12px;
   font-weight: 600;
-}
-
-.exg-tooltip {
-  position: fixed;
-  z-index: 999;
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  box-shadow: var(--shadow);
-  color: var(--text-primary);
-  font-size: 12px;
-  white-space: nowrap;
-  pointer-events: none;
 }
 
 .sub-container {
@@ -2713,23 +2627,22 @@ const submitFeedback = () => {
 }
 
 .mapcd-view .mapcd-header-slot {
-  height: 72px;
-  position: relative;
-  margin: 0 !important;
-  padding: 0 !important;
+  margin: 16px 0 12px;
+  padding: 0;
 }
 
-.mapcd-view .mapcd-title-pos {
-  position: absolute;
-  bottom: 16px;
-  left: 0;
-  right: 0;
+.mapcd-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-.mapcd-section-title {
+.mapcd-title {
+  margin: 0;
   font-size: 18px;
-  font-weight: 600;
-  opacity: 0.8;
+  font-weight: 700;
+  opacity: 0.9;
 }
 
 .mapcd-search-row {
@@ -2859,12 +2772,6 @@ const submitFeedback = () => {
   gap: 12px;
   flex-wrap: wrap;
   justify-content: flex-end;
-}
-
-.mapcd-actions-row {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
 }
 
 .mapcd-toggle-btn {
