@@ -400,6 +400,9 @@
                 <input type="checkbox" v-model="coolingOnly">
                 <span>{{ coolingOnly ? (isChineseLang ? '仅冷却中' : 'Cooling only') : (isChineseLang ? '显示全部' : 'Show all') }}</span>
               </label>
+              <div v-if="mapCooldownIsBuilding" class="mapcd-preparing">
+                {{ isChineseLang ? '准备中…' : 'Preparing…' }}{{ mapCooldownProgressText }}
+              </div>
             </div>
             <div class="mapcd-table">
               <div class="mapcd-header">
@@ -421,30 +424,30 @@
                 >
                   <div class="mapcd-cell mapcd-col-map">
                     <div class="mapcd-map-key-row">
-                      <div class="mapcd-map-key">{{ row.key }}</div>
+                      <div class="mapcd-map-key">{{ row.mapLine1 }}</div>
                       <span
                         class="mapcd-fast-status"
-                        :class="row.availabilityState === 'available' ? 'is-available' : 'is-cooldown'"
+                        :class="row.availability === 'available' ? 'is-available' : 'is-cooldown'"
                       ></span>
                     </div>
-                    <div v-if="isChineseLang && row.displayName" class="mapcd-map-cn">{{ row.displayName }}</div>
+                    <div class="mapcd-map-cn">{{ row.mapLine2 }}</div>
                   </div>
                   <div class="mapcd-cell mapcd-col-ach">{{ row.achievement || '-' }}</div>
-                  <div class="mapcd-cell mapcd-col-deadline">{{ row.deadlineDisplay }}</div>
-                  <div class="mapcd-cell mapcd-col-length">{{ row.durationDisplay }}</div>
+                  <div class="mapcd-cell mapcd-col-deadline">{{ row.deadlineText }}</div>
+                  <div class="mapcd-cell mapcd-col-length">{{ row.durationText }}</div>
                   <div class="mapcd-cell mapcd-col-availability">
                     <span
                       class="mapcd-availability"
-                      :class="row.availabilityState === 'available' ? 'is-available' : 'is-cooldown'"
-                      :title="mapCooldownIsFastScrolling ? '' : (row.availabilityState === 'available' ? t('available') : t('unavailable'))"
+                      :class="row.availability === 'available' ? 'is-available' : 'is-cooldown'"
+                      :title="mapCooldownIsFastScrolling ? '' : row.availabilityTitle"
                     >
-                      <span v-if="row.availabilityState === 'available'" class="mapcd-availability-icon" v-html="icons.check"></span>
+                      <span v-if="row.availability === 'available'" class="mapcd-availability-icon" v-html="icons.check"></span>
                       <span v-else class="mapcd-availability-icon" v-html="icons.cross"></span>
                     </span>
                   </div>
                 </div>
                 <div class="mapcd-bottom-spacer" :style="{ height: `${mapCooldownBottomSpacerPx}px` }"></div>
-                <div v-if="mapCooldownRows.length === 0" class="mapcd-empty">
+                <div v-if="mapCooldownRows.length === 0 && !mapCooldownIsBuilding" class="mapcd-empty">
                   {{ t('no_data') }}
                 </div>
                 <div class="mapcd-edge-fade mapcd-edge-fade--top"></div>
@@ -719,10 +722,10 @@ watch(curView, (nextView, prevView) => {
   if (nextView === 'map_cooldown') {
     mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
     if (mapCooldownNeedsRebuild.value) {
-      buildCooldownRows({ rebuildAll: true });
+      buildCooldownRows({ rebuildAll: true, reason: 'enter-view' });
       mapCooldownNeedsRebuild.value = false;
     } else {
-      buildCooldownRows({ rebuildAll: false });
+      buildCooldownRows({ rebuildAll: false, reason: 'enter-view' });
     }
     resetMapCooldownScrollState();
     resetMapCooldownFeedState();
@@ -1306,39 +1309,6 @@ const getMapIndexDisplayName = (mapName) => {
   return '';
 };
 
-const epochFmtCache = new Map();
-const durFmtCache = new Map();
-
-const formatEpochLocal = (epochSec) => {
-  if (!epochSec) return '-';
-  if (epochFmtCache.has(epochSec)) return epochFmtCache.get(epochSec);
-  const date = new Date(epochSec * 1000);
-  const pad = (val) => String(val).padStart(2, '0');
-  const value = `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-  epochFmtCache.set(epochSec, value);
-  return value;
-};
-
-const formatDurationHuman = (seconds, lang) => {
-  if (seconds === null || seconds === undefined || Number.isNaN(seconds)) return '-';
-  const cacheKey = `${lang || ''}:${seconds}`;
-  if (durFmtCache.has(cacheKey)) return durFmtCache.get(cacheKey);
-  const total = Math.max(0, Math.floor(seconds));
-  const days = Math.floor(total / 86400);
-  const hours = Math.floor((total % 86400) / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  const secs = total % 60;
-  const isZh = (lang || '').startsWith('zh');
-  const parts = [];
-  if (days) parts.push(isZh ? `${days}天` : `${days}d`);
-  if (hours) parts.push(isZh ? `${hours}小时` : `${hours}h`);
-  if (minutes) parts.push(isZh ? `${minutes}分钟` : `${minutes}m`);
-  if (total < 60 || parts.length === 0) parts.push(isZh ? `${secs}秒` : `${secs}s`);
-  const value = isZh ? parts.join('') : parts.join(' ');
-  durFmtCache.set(cacheKey, value);
-  return value;
-};
-
 const durationRawToSeconds = (raw) => {
   if (raw === null || raw === undefined) return null;
   if (typeof raw === 'number' && !Number.isNaN(raw)) return raw;
@@ -1374,6 +1344,8 @@ const mapCooldownNowEpoch = ref(Math.floor(Date.now() / 1000));
 const mapCooldownNeedsRebuild = ref(true);
 const mapCooldownIsFastScrolling = ref(false);
 const mapCooldownPendingRebuild = ref(false);
+const mapCooldownIsBuilding = ref(false);
+const mapCooldownBuildProgress = ref({ done: 0, total: 0 });
 const mapCooldownEstimatedRowHeight = 68;
 const mapCooldownMaxRendered = 160;
 const mapCooldownOverscanBase = 20;
@@ -1399,8 +1371,23 @@ let mapCooldownFreshTimer = null;
 let mapCooldownResizeObserver = null;
 let mapCooldownPrefixRafId = 0;
 let mapCooldownPrefixSums = [0];
+let mapCooldownWorker = null;
+let mapCooldownBuildId = 0;
+let mapCooldownPendingModes = new Set();
 const mapCooldownHeightByKey = new Map();
 const mapCooldownRowElByKey = new Map();
+
+const mapCooldownLocale = computed(() => {
+  const lang = curLang.value || 'en-US';
+  return lang === 'en' ? 'en-US' : lang;
+});
+const mapCooldownTimeZone = ref(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+const mapCooldownProgressText = computed(() => {
+  const { done, total } = mapCooldownBuildProgress.value || {};
+  if (!total) return '';
+  const pct = Math.min(100, Math.round((done / total) * 100));
+  return ` ${pct}%`;
+});
 
 const mapCooldownRows = computed(() => (coolingOnly.value ? mapCooldownRowsCooling.value : mapCooldownRowsAll.value));
 const mapCooldownKeysAll = computed(() => mapCooldownRows.value.map((row) => row.key));
@@ -1575,7 +1562,7 @@ const scheduleMapCooldownRaf = () => {
     ) {
       mapCooldownIsFastScrolling.value = false;
       if (mapCooldownPendingRebuild.value) {
-        buildCooldownRows({ rebuildAll: false });
+        buildCooldownRows({ rebuildAll: false, reason: 'scroll-idle' });
         mapCooldownPendingRebuild.value = false;
         scheduleMapCooldownPrefixRebuild();
       }
@@ -1697,39 +1684,76 @@ const teardownMapCooldownResizeObserver = () => {
   mapCooldownRowElByKey.clear();
 };
 
-const buildCooldownRows = ({ rebuildAll = false } = {}) => {
-  const prefixes = ['ze_', 'bhop_', 'kz_', 'mg_', 'surf_'];
-  const entries = Object.entries(mapIndex.value || {});
-  if (rebuildAll) {
-    const statusOrder = { cooldown: 0, available: 1, not_available: 2, hidden: 2 };
-    mapCooldownRowsAll.value = entries
-      .filter(([key]) => prefixes.some(prefix => key.startsWith(prefix)))
-      .map(([key, entry]) => {
-        const data = entry && typeof entry === 'object' ? entry : {};
-        const deadline = typeof data.deadline === 'number' ? data.deadline : null;
-        const durationSec = typeof data.duration_sec === 'number' ? data.duration_sec : null;
-        const availabilityState = getExgStatusState(deadline, durationSec, mapCooldownNowEpoch.value);
-        return {
-          key,
-          deadline,
-          displayName: getMapIndexDisplayName(key),
-          achievement: typeof data.achievement === 'string' ? data.achievement : '',
-          deadlineDisplay: deadline ? formatEpochLocal(deadline) : '-',
-          durationDisplay: formatDurationHuman(durationSec, curLang.value),
-          availabilityState
-        };
-      })
-      .sort((a, b) => {
-        const statusDiff = (statusOrder[a.availabilityState] ?? 3) - (statusOrder[b.availabilityState] ?? 3);
-        if (statusDiff !== 0) return statusDiff;
-        return a.key.localeCompare(b.key);
-      });
-  }
-  const nowEpoch = mapCooldownNowEpoch.value;
-  mapCooldownRowsCooling.value = mapCooldownRowsAll.value
-    .filter(row => row.deadline !== null && row.deadline > nowEpoch)
-    .slice()
-    .sort((a, b) => (a.deadline - b.deadline) || a.key.localeCompare(b.key));
+const ensureMapCooldownWorker = () => {
+  if (mapCooldownWorker) return;
+  mapCooldownWorker = new Worker(new URL('./workers/mapCooldown.worker.ts', import.meta.url), { type: 'module' });
+  mapCooldownWorker.onmessage = (event) => {
+    const { data } = event || {};
+    if (!data) return;
+    const payload = data.payload || {};
+    if (payload.buildId !== undefined && payload.buildId !== mapCooldownBuildId) return;
+    if (data.type === 'PROGRESS') {
+      mapCooldownBuildProgress.value = {
+        done: payload.done || 0,
+        total: payload.total || 0
+      };
+      return;
+    }
+    if (data.type === 'RESULT') {
+      if (payload.mode === 'showAll') {
+        mapCooldownRowsAll.value = payload.rows || [];
+      } else if (payload.mode === 'coolingOnly') {
+        mapCooldownRowsCooling.value = payload.rows || [];
+      }
+      if (mapCooldownPendingModes.has(payload.mode)) {
+        mapCooldownPendingModes.delete(payload.mode);
+      }
+      if (mapCooldownPendingModes.size === 0) {
+        mapCooldownIsBuilding.value = false;
+        mapCooldownNeedsRebuild.value = false;
+      }
+      scheduleMapCooldownPrefixRebuild();
+      return;
+    }
+    if (data.type === 'ERROR') {
+      console.error('[mapcd worker]', payload.message, payload.stack);
+      mapCooldownIsBuilding.value = false;
+      mapCooldownPendingModes.clear();
+    }
+  };
+};
+
+const requestMapCooldownBuild = ({ reason = 'update' } = {}) => {
+  ensureMapCooldownWorker();
+  if (!mapCooldownWorker) return;
+  mapCooldownTimeZone.value = Intl.DateTimeFormat().resolvedOptions().timeZone || mapCooldownTimeZone.value;
+  mapCooldownBuildId += 1;
+  mapCooldownPendingModes = new Set(['showAll', 'coolingOnly']);
+  mapCooldownIsBuilding.value = true;
+  mapCooldownBuildProgress.value = { done: 0, total: 0 };
+  mapCooldownWorker.postMessage({
+    type: 'BUILD',
+    payload: {
+      buildId: mapCooldownBuildId,
+      mapIndex: mapIndex.value || {},
+      nowEpochSec: mapCooldownNowEpoch.value,
+      locale: mapCooldownLocale.value,
+      timeZone: mapCooldownTimeZone.value,
+      rowHeight: mapCooldownEstimatedRowHeight,
+      mode: 'showAll',
+      prefixes: ['ze_', 'bhop_', 'kz_', 'mg_', 'surf_'],
+      availabilityLabels: {
+        available: t('available'),
+        unavailable: t('unavailable')
+      },
+      reason
+    }
+  });
+};
+
+const buildCooldownRows = ({ rebuildAll = false, reason = 'update' } = {}) => {
+  if (!rebuildAll && mapCooldownNeedsRebuild.value) return;
+  requestMapCooldownBuild({ reason });
 };
 
 const startMapCooldownTimer = () => {
@@ -1740,7 +1764,7 @@ const startMapCooldownTimer = () => {
       mapCooldownPendingRebuild.value = true;
       return;
     }
-    buildCooldownRows({ rebuildAll: false });
+    buildCooldownRows({ rebuildAll: false, reason: 'timer' });
   }, 5000);
 };
 
@@ -1751,11 +1775,11 @@ const stopMapCooldownTimer = () => {
   }
 };
 
-watch([mapIndex, mapTranslations, curLang], () => {
+watch([mapIndex, curLang], () => {
   mapCooldownNeedsRebuild.value = true;
   if (curView.value === 'map_cooldown') {
     mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
-    buildCooldownRows({ rebuildAll: true });
+    buildCooldownRows({ rebuildAll: true, reason: 'index-update' });
     mapCooldownNeedsRebuild.value = false;
     mapCooldownHeightByKey.clear();
     scheduleMapCooldownPrefixRebuild();
@@ -2467,6 +2491,8 @@ const submitFeedback = () => {
 .mapcd-controls {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 10px;
 }
 
@@ -2480,6 +2506,12 @@ const submitFeedback = () => {
 
 .mapcd-toggle input {
   accent-color: var(--accent);
+}
+
+.mapcd-preparing {
+  font-size: 12px;
+  color: var(--text-secondary);
+  opacity: 0.8;
 }
 
 .mapcd-table {
@@ -2629,6 +2661,7 @@ const submitFeedback = () => {
   white-space: normal;
   line-height: 1.2;
   word-break: break-word;
+  min-height: 14px;
 }
 
 .mapcd-row.is-fast .mapcd-cell {
