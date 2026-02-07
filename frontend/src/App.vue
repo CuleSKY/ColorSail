@@ -56,6 +56,11 @@
         <div class="tooltip" v-if="isCollapsed">{{ t('sub_menu') }}</div>
       </div>
 
+      <div class="nav-item" :class="{active: curView === 'map_cooldown'}" @click="goToView('map_cooldown')">
+        <div class="icon-svg" v-html="icons.map"></div>
+        <span v-if="!isCollapsed">Map Cooldown</span>
+        <div class="tooltip" v-if="isCollapsed">Map Cooldown</div>
+      </div>
       <div class="nav-item" v-if="isLoggedIn" :class="{active: curView === 'stats', disabled: !isLoggedIn}" @click="goToView('stats')">
         <div class="icon-svg" v-html="icons.stats"></div>
         <div v-if="!isCollapsed" style="display:flex; flex-direction:column; justify-content:center; line-height:1.2;">
@@ -69,14 +74,6 @@
         <div class="icon-svg" v-html="icons.feedback"></div>
         <span v-if="!isCollapsed">{{ t('feedback') }}</span>
         <div class="tooltip" v-if="isCollapsed">{{ t('feedback') }}</div>
-      </div>
-      <div class="nav-item" @click="openMapLink" v-if="hasFeature('map_cd')">
-        <div class="icon-svg" v-html="icons.map"></div>
-        <div v-if="!isCollapsed" style="display:flex; flex-direction:column; justify-content:center; line-height:1.2;">
-          <span>{{ t('mapcd') }}</span>
-          <span style="font-size: 10px; opacity: 0.7;">{{ t('exg_only') }}</span>
-        </div>
-        <div class="tooltip" v-if="isCollapsed">{{ t('mapcd') }}</div>
       </div>
 
       <div style="margin-top: auto; padding: 10px;">
@@ -96,6 +93,7 @@
             <div class="header-logo"><img :src="currentLogoPath" alt="Logo"></div>
             <h1 v-if="curView === 'servers'">{{ t('app_title') }}</h1>
             <h1 v-if="curView === 'map_sub'">{{ t('sub_menu') }}</h1>
+            <h1 v-if="curView === 'map_cooldown'">Map Cooldown</h1>
             <h1 v-if="curView === 'stats'">{{ t('stats') }}</h1>
             <h1 v-if="curView === 'feedback'">{{ t('feedback') }}</h1>
           </div>
@@ -333,6 +331,10 @@
           </div>
         </div>
 
+        <div v-show="curView === 'map_cooldown'" class="animate-enter">
+          <RouterView />
+        </div>
+
         <Teleport to="body">
           <div
             v-if="exgTooltip.visible"
@@ -406,7 +408,8 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { buildMapSearchIndex, createOpenCCConverter, formatExgDate, formatExgDateTime, getExgStatusState, normalizeSearchText, scoreSearchEntry, shouldShowExgStatus, stripBracketSegments, validateMapIndexEntry } from './mapSearchUtils';
+import { useRoute, useRouter } from 'vue-router';
+import { buildMapSearchIndex, createOpenCCConverter, formatExgDate, formatLocalDateTime, getExgStatusState, normalizeSearchText, scoreSearchEntry, shouldShowExgStatus, stripBracketSegments, validateMapIndexEntry } from './mapSearchUtils';
 
 const props = defineProps({
   initialConfig: {
@@ -433,14 +436,22 @@ const ICONS = {
   drag: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0-6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0-6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0-6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0-6a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" fill="currentColor"/></svg>`,
   bell: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z" fill="currentColor"/></svg>`,
   trash: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/></svg>`,
-  search_sub: `<svg width="24" height="24" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 2.5a7.5 7.5 0 0 1 5.964 12.048l4.743 4.745a1 1 0 0 1-1.32 1.497l-.094-.083-4.745-4.743A7.5 7.5 0 1 1 10 2.5Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z" fill="currentColor"/></svg>`
+  search_sub: `<svg width="24" height="24" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 2.5a7.5 7.5 0 0 1 5.964 12.048l4.743 4.745a1 1 0 0 1-1.32 1.497l-.094-.083-4.745-4.743A7.5 7.5 0 1 1 10 2.5Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z" fill="currentColor"/></svg>`,
+  checkmark: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 0 1 0 1.414l-7.25 7.25a1 1 0 0 1-1.414 0l-3.25-3.25a1 1 0 1 1 1.414-1.414l2.543 2.543 6.543-6.543a1 1 0 0 1 1.414 0Z" fill="currentColor"/></svg>`,
+  dismiss: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5.404 4.697a1 1 0 0 1 1.414 0L10 7.879l3.182-3.182a1 1 0 1 1 1.414 1.414L11.414 9.293l3.182 3.182a1 1 0 0 1-1.414 1.414L10 10.707l-3.182 3.182a1 1 0 0 1-1.414-1.414l3.182-3.182-3.182-3.182a1 1 0 0 1 0-1.414Z" fill="currentColor"/></svg>`
 };
 const icons = ICONS;
 
 const LOGO_PATHS = { B: '/static/nerv_logo.png', W: '/static/nerv_logo.png' };
 const FAVICON_PATHS = { light: '/static/nerv_logo.png', dark: '/static/nerv_logo.png' };
 const STEAM_LOGO_PATH = '/static/steam_logo.svg';
-const VIEW_ROUTES = { servers: '/', map_sub: '/map-sub', stats: '/stats', feedback: '/feedback' };
+const VIEW_ROUTES = {
+  servers: { name: 'Servers' },
+  map_sub: { name: 'MapSub' },
+  map_cooldown: { name: 'MapCooldown' },
+  stats: { name: 'Stats' },
+  feedback: { name: 'Feedback' }
+};
 const INITIAL_CONFIG = props.initialConfig || [];
 
 const communities = ref(Array.isArray(INITIAL_CONFIG) ? INITIAL_CONFIG : []);
@@ -468,13 +479,23 @@ const paramTheme = urlParams.get('theme');
 const paramTab = urlParams.get('tab');
 const paramDense = urlParams.get('dense');
 const initialView = document.body.dataset.initialView || 'servers';
-const allowedTabs = new Set(['servers', 'map_sub', 'stats', 'feedback']);
+const allowedTabs = new Set(['servers', 'map_sub', 'map_cooldown', 'stats', 'feedback']);
 const resolvedView = allowedTabs.has(paramTab) ? paramTab : initialView;
-const curView = ref(resolvedView);
+const route = useRoute();
+const router = useRouter();
+const ROUTE_NAME_TO_VIEW = {
+  Servers: 'servers',
+  MapSub: 'map_sub',
+  MapCooldown: 'map_cooldown',
+  Stats: 'stats',
+  Feedback: 'feedback'
+};
+const curView = computed(() => ROUTE_NAME_TO_VIEW[route.name] || 'servers');
 const toastMsg = ref('');
 let toastTimer = null;
 let steamLoginWindow = null;
 let steamLoginTimer = null;
+let nowTimer = null;
 const isCollapsed = ref(document.documentElement.classList.contains('sidebar-is-collapsed'));
 const showLangMenu = ref(false);
 const showSubPopover = ref(false);
@@ -498,6 +519,7 @@ const feedbackSubject = ref('');
 const feedbackMessage = ref('');
 const mainContentRef = ref(null);
 const serversScrollTop = ref(0);
+const nowEpochSec = ref(Math.floor(Date.now() / 1000));
 
 const currentStats = ref([]);
 const totalPlayers = ref(0);
@@ -507,7 +529,6 @@ const topCommunity = ref(null);
 const subSearchQuery = ref('');
 const mapTranslations = ref({});
 const mapIndex = ref({});
-const mapExgIndex = ref({});
 const mapSearchIndex = ref([]);
 const mapIndexConverter = createOpenCCConverter();
 const searchResults = ref([]);
@@ -811,6 +832,9 @@ onMounted(async () => {
   window.addEventListener('click', handleGlobalClick);
   window.addEventListener('message', handleSteamMessage);
   document.addEventListener('visibilitychange', handleVisibilityChange);
+  nowTimer = setInterval(() => {
+    nowEpochSec.value = Math.floor(Date.now() / 1000);
+  }, 1000);
 
   if (isDark.value) document.documentElement.setAttribute('data-theme', 'dark');
   updateFavicon();
@@ -850,10 +874,13 @@ onMounted(async () => {
 
   await loadLanguage();
   await loadTranslations();
-  await loadMapIndex();
+  await refreshMapIndex(true);
+  mapIndexRefreshTimer = setInterval(() => refreshMapIndex(), mapIndexRefreshIntervalMs);
   await fetchConfig();
   if ((initialView === 'map_sub' || initialView === 'stats' || initialView === 'feedback') && !isLoggedIn.value) {
-    curView.value = 'servers';
+    if (route.name !== 'Servers') {
+      router.replace(VIEW_ROUTES.servers);
+    }
     showToast(t('login_required_title'));
   }
   if (!isMobile.value && !embedMode) {
@@ -867,6 +894,13 @@ onMounted(async () => {
   }
   if (embedMode) {
     sendEmbedReady();
+  }
+
+  if (route.name === 'Servers' && resolvedView && resolvedView !== 'servers') {
+    const target = VIEW_ROUTES[resolvedView];
+    if (target) {
+      router.replace(target);
+    }
   }
 });
 
@@ -883,6 +917,12 @@ onUnmounted(() => {
   document.removeEventListener('visibilitychange', handleVisibilityChange);
   stopSteamLoginWatcher();
   clearToastTimer();
+  if (nowTimer) {
+    clearInterval(nowTimer);
+  }
+  if (mapIndexRefreshTimer) {
+    clearInterval(mapIndexRefreshTimer);
+  }
 });
 
 const toggleLangMenu = () => {
@@ -999,24 +1039,15 @@ const dismissLoginPrompt = () => {
   localStorage.setItem('steam_prompt_dismissed', 'true');
 };
 
-const hasFeature = (feat) => communities.value.some(c => c.features.includes(feat));
 const goToView = (view) => {
   if ((view === 'map_sub' || view === 'stats' || view === 'feedback') && !isLoggedIn.value) {
     showToast(t('login_required_title'));
     return;
   }
-  const target = VIEW_ROUTES[view] || '/';
-  if (window.location.pathname !== target) {
-    const url = new URL(window.location.href);
-    url.pathname = target;
-    window.history.pushState({}, '', url);
+  const target = VIEW_ROUTES[view] || VIEW_ROUTES.servers;
+  if (route.name !== target.name) {
+    router.push(target);
   }
-  curView.value = view;
-};
-
-const openMapLink = () => {
-  const comm = communities.value.find(c => c.features.includes('map_cd'));
-  window.open((comm && comm.map_url) ? comm.map_url : 'https://list.darkrp.cn:9000/serverlist/cs2maplist', '_blank');
 };
 
 const goToSubPage = () => {
@@ -1096,39 +1127,40 @@ const loadTranslations = async () => {
   } catch (e) {}
 };
 
-const loadMapIndex = async () => {
-  try {
-    const res = await fetch('/map_index.json');
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-    const data = await res.json();
-    mapIndex.value = data && typeof data === 'object' ? data : {};
-    Object.entries(mapIndex.value).forEach(([key, entry]) => {
-      validateMapIndexEntry(key, entry);
-    });
-    mapSearchIndex.value = buildMapSearchIndex(mapIndex.value, mapIndexConverter);
-  } catch (e) {
-    mapIndex.value = {};
-    mapSearchIndex.value = [];
-  }
+const mapIndexRefreshIntervalMs = 15000;
+let mapIndexRefreshTimer = null;
+let mapIndexRefreshInFlight = false;
+let mapIndexRefreshEtag = null;
+
+const applyMapIndex = (data) => {
+  mapIndex.value = data && typeof data === 'object' ? data : {};
+  Object.entries(mapIndex.value).forEach(([key, entry]) => {
+    validateMapIndexEntry(key, entry);
+  });
+  mapSearchIndex.value = buildMapSearchIndex(mapIndex.value, mapIndexConverter);
 };
 
-const loadMapExgIndex = async (mapKeys) => {
-  if (!Array.isArray(mapKeys) || mapKeys.length === 0) {
-    mapExgIndex.value = {};
-    return;
-  }
+const refreshMapIndex = async (force = false) => {
+  if (mapIndexRefreshInFlight) return;
+  mapIndexRefreshInFlight = true;
   try {
-    const params = new URLSearchParams();
-    mapKeys.forEach((key) => params.append('map', key));
-    const res = await fetch(`/api/map_exg?${params.toString()}`);
+    const headers = {};
+    if (mapIndexRefreshEtag && !force) {
+      headers['If-None-Match'] = mapIndexRefreshEtag;
+    }
+    const res = await fetch('/map_index.json', { headers });
+    if (res.status === 304) return;
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
+    const etag = res.headers.get('ETag') || res.headers.get('etag');
+    if (etag) mapIndexRefreshEtag = etag;
     const data = await res.json();
-    mapExgIndex.value = data && typeof data === 'object' ? data : {};
-  } catch (e) {}
+    applyMapIndex(data);
+  } catch (e) {
+  } finally {
+    mapIndexRefreshInFlight = false;
+  }
 };
 
 const normalizeMapKey = (value) => {
@@ -1144,23 +1176,6 @@ const normalizeMapKey = (value) => {
   }
   return mapKey;
 };
-
-const subscriptionMapKeys = computed(() => {
-  const keys = new Set();
-  subscriptions.value.forEach((sub) => {
-    const normalized = normalizeMapKey(sub?.map);
-    if (normalized) keys.add(normalized);
-  });
-  return Array.from(keys).sort();
-});
-
-let lastExgRequestKey = '';
-watch(subscriptionMapKeys, (keys) => {
-  const requestKey = keys.join('|');
-  if (requestKey === lastExgRequestKey) return;
-  lastExgRequestKey = requestKey;
-  loadMapExgIndex(keys);
-}, { immediate: true });
 
 const getMapTranslationEntry = (mapName, serverEntry) => {
   if (!mapName) return { zh_cn: '', zh_tw: '' };
@@ -1220,19 +1235,16 @@ const getExgStatus = (sub) => {
     viewportWidth: viewportWidth.value
   });
   if (!shouldShow) return null;
-  const entry = mapExgIndex.value[mapKey];
+  const entry = getMapIndexEntry(mapKey);
   if (!entry) return null;
-  const cooldown = entry.cooldown || {};
-  const deadline = cooldown.deadline ?? entry.deadline ?? null;
-  const durationRaw = cooldown.duration_raw ?? entry.duration_raw ?? '';
-  if ((deadline === null || deadline === undefined) && (durationRaw === null || durationRaw === undefined)) {
-    return null;
-  }
-  const state = entry.exg_status || getExgStatusState(deadline, durationRaw);
+  const deadline = entry.deadline ?? null;
+  const durationSec = typeof entry.duration_sec === 'number' ? entry.duration_sec : null;
+  const state = getExgStatusState(deadline, durationSec, nowEpochSec.value);
+  if (state === 'hidden') return null;
   if (state === 'cooldown' && deadline !== null && deadline !== undefined) {
     const date = formatExgDate(deadline);
-    const datetime = formatExgDateTime(deadline);
-    const datetimeDisplay = datetime.replace(' - ', ' ');
+    const datetime = formatLocalDateTime(deadline);
+    const datetimeDisplay = datetime;
     const cooldownText = formatTemplate(t('map.exg.cooldown_until'), { date });
     const prefix = cooldownText.replace(date, '').trim();
     return {
@@ -1653,8 +1665,6 @@ const loadStats = async () => {
     if (!top || c.count > top.count) top = c;
   });
   topCommunity.value = top;
-
-  curView.value = 'stats';
 
   if (data.line_chart && Array.isArray(data.line_chart.labels)) {
     data.line_chart.labels = data.line_chart.labels.map((ts) => {
