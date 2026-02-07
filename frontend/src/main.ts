@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import App from './App.vue';
+import router from './router';
 
 declare global {
   interface Window {
@@ -15,6 +16,7 @@ const pageContext = window.__PAGE_CONTEXT__ ?? {};
 
 const app = createApp(App, { initialConfig, pageContext });
 // Vite runtime-only build does not support custom template delimiters.
+app.use(router);
 app.mount('#app');
 window.__APP_MOUNTED__ = true;
 window.dispatchEvent(new Event('app:mounted'));
