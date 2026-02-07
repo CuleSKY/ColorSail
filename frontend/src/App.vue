@@ -396,25 +396,27 @@
           <div v-show="curView === 'map_cooldown'" class="animate-enter">
           <div class="mapcd-page">
             <div class="mapcd-content">
-              <div class="sub-search-area">
+              <div class="sub-search-area mapcd-search-area">
                 <input
                   ref="mapCooldownSearchInputRef"
                   class="sub-search-box"
                   type="text"
                   v-model="mapCooldownQueryInput"
-                  :placeholder="t('sub_search_ph')"
+                  :placeholder="t('mapcd_search_ph')"
                   autocomplete="off"
                   spellcheck="false"
                   @keydown="onMapCooldownSearchKeydown"
                 >
               </div>
 
-              <div style="border-top:1px solid var(--card-border); margin: 30px 0;"></div>
+              <div class="mapcd-divider"></div>
 
-              <div class="mapcd-title-row">
-                <h3 style="margin-bottom:16px; opacity:0.8">{{ mapCooldownTitle }}</h3>
-                <div v-if="mapCooldownIsBuilding" class="mapcd-preparing">
-                  {{ isChineseLang ? '准备中…' : 'Preparing…' }}{{ mapCooldownProgressText }}
+              <div class="mapcd-title-slot">
+                <div class="mapcd-title-row">
+                  <h3 style="margin-bottom:16px; opacity:0.8">{{ mapCooldownTitle }}</h3>
+                  <div v-if="mapCooldownIsBuilding" class="mapcd-preparing">
+                    {{ isChineseLang ? '准备中…' : 'Preparing…' }}{{ mapCooldownProgressText }}
+                  </div>
                 </div>
               </div>
 
@@ -472,7 +474,7 @@
               </div>
               <div class="mapcd-actions-row">
                 <button class="mapcd-toggle-btn" type="button" @click="toggleMapCooldownMode">
-                  {{ mapCooldownToggleLabel }}
+                  {{ mapcdToggleBtnLabel }}
                 </button>
               </div>
             </div>
@@ -1372,7 +1374,7 @@ const ensureCooldownPrefix = (text) => {
 const mapCooldownScrollRef = ref(null);
 const coolingOnly = ref(true);
 const mapCooldownTitle = computed(() => (coolingOnly.value ? t('mapcd_title_cooldown') : t('mapcd_title_all')));
-const mapCooldownToggleLabel = computed(() => (
+const mapcdToggleBtnLabel = computed(() => (
   coolingOnly.value
     ? t('mapcd_btn_show_all', 'Show all')
     : t('mapcd_btn_only_cooldown', 'Show cooldown only')
@@ -2730,14 +2732,30 @@ const submitFeedback = () => {
   padding: 0 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0;
 }
 
-.mapcd-page .sub-search-area {
+.mapcd-search-area {
   margin-top: 58px;
+  margin-bottom: 45px;
+}
+
+.mapcd-divider {
+  height: 1px;
+  background: var(--card-border);
+  margin: 0;
+}
+
+.mapcd-title-slot {
+  position: relative;
+  height: 110px;
 }
 
 .mapcd-title-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
