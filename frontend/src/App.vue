@@ -394,59 +394,64 @@
         </div>
 
         <div v-show="curView === 'map_cooldown'" class="animate-enter">
-          <div class="mapcd-container">
-            <div class="mapcd-controls">
-              <button class="mapcd-toggle-btn" type="button" @click="toggleMapCooldownMode">
-                {{ mapCooldownToggleLabel }}
-              </button>
-              <div v-if="mapCooldownIsBuilding" class="mapcd-preparing">
-                {{ isChineseLang ? '准备中…' : 'Preparing…' }}{{ mapCooldownProgressText }}
+          <div class="mapcd-page">
+            <div class="mapcd-toolbar">
+              <div class="mapcd-toolbar-left">{{ t('mapcd') }}</div>
+              <div class="mapcd-toolbar-right">
+                <button class="mapcd-toggle-btn" type="button" @click="toggleMapCooldownMode">
+                  {{ mapCooldownToggleLabel }}
+                </button>
+                <div v-if="mapCooldownIsBuilding" class="mapcd-preparing">
+                  {{ isChineseLang ? '准备中…' : 'Preparing…' }}{{ mapCooldownProgressText }}
+                </div>
               </div>
             </div>
-            <div class="mapcd-table">
-              <div class="mapcd-header">
-                <div class="mapcd-cell mapcd-col-map">{{ t('map') }}</div>
-                <div class="mapcd-cell mapcd-col-ach">{{ t('achievement') }}</div>
-                <div class="mapcd-cell mapcd-col-deadline">{{ t('cooldown_deadline') }}</div>
-                <div class="mapcd-cell mapcd-col-length">{{ t('cooldown_length') }}</div>
-                <div class="mapcd-cell mapcd-col-availability">{{ t('exg_availability') }}</div>
-              </div>
-              <div class="mapcd-body" ref="mapCooldownScrollRef" @scroll="onMapCooldownScroll">
-                <div class="mapcd-top-spacer" :style="{ height: `${mapCooldownTopSpacerPx}px` }"></div>
-                <div
-                  class="mapcd-row"
-                  :class="{ 'is-fast': mapCooldownIsFastScrolling, 'is-fresh': isMapCooldownRowFresh(row.key) }"
-                  v-for="row in mapCooldownVisibleRows"
-                  :key="row.key"
-                  :data-key="row.key"
-                  :ref="(el) => registerMapCooldownRowEl(el, row.key)"
-                >
-                  <div class="mapcd-cell mapcd-col-map">
-                    <div class="mapcd-map-key-row">
-                      <div class="mapcd-map-key">{{ row.mapLine1 }}</div>
+            <div class="mapcd-container">
+              <div class="mapcd-table">
+                <div class="mapcd-header">
+                  <div class="mapcd-cell mapcd-col-map">{{ t('map') }}</div>
+                  <div class="mapcd-cell mapcd-col-ach">{{ t('achievement') }}</div>
+                  <div class="mapcd-cell mapcd-col-deadline">{{ t('cooldown_deadline') }}</div>
+                  <div class="mapcd-cell mapcd-col-length">{{ t('cooldown_length') }}</div>
+                  <div class="mapcd-cell mapcd-col-availability">{{ t('exg_availability') }}</div>
+                </div>
+                <div class="mapcd-body" ref="mapCooldownScrollRef" @scroll="onMapCooldownScroll">
+                  <div class="mapcd-top-spacer" :style="{ height: `${mapCooldownTopSpacerPx}px` }"></div>
+                  <div
+                    class="mapcd-row"
+                    :class="{ 'is-fast': mapCooldownIsFastScrolling, 'is-fresh': isMapCooldownRowFresh(row.key) }"
+                    v-for="row in mapCooldownVisibleRows"
+                    :key="row.key"
+                    :data-key="row.key"
+                    :ref="(el) => registerMapCooldownRowEl(el, row.key)"
+                  >
+                    <div class="mapcd-cell mapcd-col-map">
+                      <div class="mapcd-map-key-row">
+                        <div class="mapcd-map-key">{{ row.mapLine1 }}</div>
+                      </div>
+                      <div class="mapcd-map-cn">{{ row.mapLine2 }}</div>
                     </div>
-                    <div class="mapcd-map-cn">{{ row.mapLine2 }}</div>
+                    <div class="mapcd-cell mapcd-col-ach">{{ row.achievement || '-' }}</div>
+                    <div class="mapcd-cell mapcd-col-deadline">{{ row.deadlineText }}</div>
+                    <div class="mapcd-cell mapcd-col-length">{{ row.durationText }}</div>
+                    <div class="mapcd-cell mapcd-col-availability">
+                      <span
+                        class="mapcd-availability"
+                        :class="row.availability === 'available' ? 'is-available' : 'is-cooldown'"
+                        :title="mapCooldownIsFastScrolling ? '' : row.availabilityTitle"
+                      >
+                        <span v-if="row.availability === 'available'" class="mapcd-availability-icon" v-html="icons.check"></span>
+                        <span v-else class="mapcd-availability-icon" v-html="icons.cross"></span>
+                      </span>
+                    </div>
                   </div>
-                  <div class="mapcd-cell mapcd-col-ach">{{ row.achievement || '-' }}</div>
-                  <div class="mapcd-cell mapcd-col-deadline">{{ row.deadlineText }}</div>
-                  <div class="mapcd-cell mapcd-col-length">{{ row.durationText }}</div>
-                  <div class="mapcd-cell mapcd-col-availability">
-                    <span
-                      class="mapcd-availability"
-                      :class="row.availability === 'available' ? 'is-available' : 'is-cooldown'"
-                      :title="mapCooldownIsFastScrolling ? '' : row.availabilityTitle"
-                    >
-                      <span v-if="row.availability === 'available'" class="mapcd-availability-icon" v-html="icons.check"></span>
-                      <span v-else class="mapcd-availability-icon" v-html="icons.cross"></span>
-                    </span>
+                  <div class="mapcd-bottom-spacer" :style="{ height: `${mapCooldownBottomSpacerPx}px` }"></div>
+                  <div v-if="mapCooldownRows.length === 0 && !mapCooldownIsBuilding" class="mapcd-empty">
+                    {{ t('no_data') }}
                   </div>
+                  <div class="mapcd-edge-fade mapcd-edge-fade--top"></div>
+                  <div class="mapcd-edge-fade mapcd-edge-fade--bottom"></div>
                 </div>
-                <div class="mapcd-bottom-spacer" :style="{ height: `${mapCooldownBottomSpacerPx}px` }"></div>
-                <div v-if="mapCooldownRows.length === 0 && !mapCooldownIsBuilding" class="mapcd-empty">
-                  {{ t('no_data') }}
-                </div>
-                <div class="mapcd-edge-fade mapcd-edge-fade--top"></div>
-                <div class="mapcd-edge-fade mapcd-edge-fade--bottom"></div>
               </div>
             </div>
           </div>
@@ -2500,23 +2505,44 @@ const submitFeedback = () => {
   pointer-events: none;
 }
 
-.mapcd-container {
+.mapcd-page {
   --mapcd-surface-bg: var(--card-bg);
   --mapcd-surface-border: var(--card-border);
   --mapcd-surface-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mapcd-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mapcd-toolbar-left {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.mapcd-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.mapcd-container {
   padding: 14px;
   background: var(--mapcd-surface-bg);
   border: 1px solid var(--mapcd-surface-border);
   border-radius: var(--mapcd-surface-radius);
   box-shadow: var(--shadow);
-}
-
-.mapcd-controls {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
 }
 
 .mapcd-toggle-btn {
