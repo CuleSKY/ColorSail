@@ -393,9 +393,9 @@
           </div>
         </div>
 
-          <div v-show="curView === 'map_cooldown'" class="animate-enter">
+        <div v-show="curView === 'map_cooldown'" class="animate-enter">
           <div class="mapcd-page">
-            <div class="mapcd-content">
+            <div class="mapcd-view">
               <div class="sub-search-area mapcd-search-area">
                 <input
                   ref="mapCooldownSearchInputRef"
@@ -411,12 +411,12 @@
 
               <div class="mapcd-divider"></div>
 
-              <div class="mapcd-title-slot">
-                <div class="mapcd-title-row">
-                  <h3 style="margin-bottom:16px; opacity:0.8">{{ mapCooldownTitle }}</h3>
-                  <div v-if="mapCooldownIsBuilding" class="mapcd-preparing">
+              <div class="mapcd-header-slot">
+                <div class="mapcd-section-title mapcd-title-pos">
+                  {{ isAllMapsMode ? t('mapcd_title_all') : t('mapcd_title_cooldown') }}
+                  <span v-if="mapCooldownIsBuilding" class="mapcd-preparing">
                     {{ isChineseLang ? '准备中…' : 'Preparing…' }}{{ mapCooldownProgressText }}
-                  </div>
+                  </span>
                 </div>
               </div>
 
@@ -474,7 +474,7 @@
               </div>
               <div class="mapcd-actions-row">
                 <button class="mapcd-toggle-btn" type="button" @click="toggleMapCooldownMode">
-                  {{ mapcdToggleBtnLabel }}
+                  {{ isAllMapsMode ? t('mapcd_btn_only_cooldown','Show cooldown only') : t('mapcd_btn_show_all','Show all') }}
                 </button>
               </div>
             </div>
@@ -1373,12 +1373,7 @@ const ensureCooldownPrefix = (text) => {
 
 const mapCooldownScrollRef = ref(null);
 const coolingOnly = ref(true);
-const mapCooldownTitle = computed(() => (coolingOnly.value ? t('mapcd_title_cooldown') : t('mapcd_title_all')));
-const mapcdToggleBtnLabel = computed(() => (
-  coolingOnly.value
-    ? t('mapcd_btn_show_all', 'Show all')
-    : t('mapcd_btn_only_cooldown', 'Show cooldown only')
-));
+const isAllMapsMode = computed(() => !coolingOnly.value);
 const mapCooldownRowsCooling = ref([]);
 const mapCooldownRowsAll = ref([]);
 const mapCooldownQueryInput = ref('');
@@ -2725,7 +2720,7 @@ const submitFeedback = () => {
   padding: 0 0 16px;
 }
 
-.mapcd-content {
+.mapcd-view {
   width: 100%;
   max-width: var(--mapcd-card-max);
   margin: 0 auto;
@@ -2746,21 +2741,24 @@ const submitFeedback = () => {
   margin: 0;
 }
 
-.mapcd-title-slot {
-  position: relative;
+.mapcd-header-slot {
   height: 110px;
+  position: relative;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
-.mapcd-title-row {
+.mapcd-title-pos {
   position: absolute;
+  bottom: 30px;
   left: 0;
   right: 0;
-  bottom: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+}
+
+.mapcd-section-title {
+  font-size: 18px;
+  font-weight: 600;
+  opacity: 0.8;
 }
 
 .mapcd-search-row {
@@ -2865,6 +2863,7 @@ const submitFeedback = () => {
 }
 
 .mapcd-container {
+  margin-top: 0 !important;
   padding: 0;
   background: var(--mapcd-surface-bg);
   border: 1px solid color-mix(in srgb, var(--mapcd-surface-border) 60%, transparent 40%);
@@ -2922,6 +2921,8 @@ const submitFeedback = () => {
 }
 
 .mapcd-preparing {
+  display: inline-block;
+  margin-left: 12px;
   font-size: 12px;
   color: var(--text-secondary);
   opacity: 0.8;
