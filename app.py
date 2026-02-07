@@ -218,6 +218,7 @@ MYSQL_MAPS_CACHE = {}
 MYSQL_MAPS_CACHE_LOADED_AT = 0.0
 MYSQL_MAPS_CACHE_TTL_SECONDS = int(os.environ.get('MYSQL_MAPS_CACHE_TTL_SECONDS', '180'))
 MYSQL_MAPS_CACHE_LOCK = threading.Lock()
+MYSQL_MAPS_LAST_ERROR = None
 MYSQL_EXG_CACHE = {}
 MYSQL_EXG_CACHE_LOADED_AT = 0.0
 MYSQL_EXG_CACHE_LOCK = threading.Lock()
@@ -856,30 +857,84 @@ def apply_mysql_map_translations(servers_by_cid, use_map_index_fallback=False):
     for servers in servers_by_cid.values():
         for srv in servers:
             map_key = normalize_map_name(srv.get("map"))
+            if not map_key and srv.get("map"):
+                map_key = str(srv.get("map")).strip()
             if map_key:
                 map_keys.add(map_key)
+    map_keys = normalize_map_keys(sorted(map_keys))
     translations = {}
     db_failed = False
     exg_entries = {}
     if map_keys:
-        translations, db_failed = get_mysql_map_translations(sorted(map_keys))
-        exg_entries, _ = get_mysql_map_exg_entries(sorted(map_keys))
+        config = _mysql_config_from_env()
+        if not config:
+            db_failed = True
+            print("[MySQL][MapTranslations] 配置缺失，无法连接数据库。")
+        else:
+            translations, db_failed = get_mysql_map_translations(map_keys)
+            if db_failed and MYSQL_MAPS_LAST_ERROR:
+                err = MYSQL_MAPS_LAST_ERROR
+                print(
+                    "[MySQL][MapTranslations] 查询失败: "
+                    f"host={err.get('host')} db={err.get('db')} user={err.get('user')} "
+                    f"port={err.get('port')} error={err.get('error')}"
+                )
+            exg_entries, _ = get_mysql_map_exg_entries(map_keys)
     map_index_translations = {}
     if db_failed and use_map_index_fallback:
         map_index_translations = load_map_index_translations()
+    stats = {
+        "total_maps": len(map_keys),
+        "mysql_hit": 0,
+        "mysql_row_found_but_empty": 0,
+        "mysql_miss": 0,
+        "fallback_map_index_used": 0,
+        "final_untranslated": 0,
+    }
+    map_translation_cache = {}
+    for map_key in map_keys:
+        entry = translations.get(map_key) if map_key else None
+        if entry is not None:
+            name_zh_cn = str(entry.get("name_zh_cn") or "").strip()
+            if name_zh_cn:
+                stats["mysql_hit"] += 1
+            else:
+                stats["mysql_row_found_but_empty"] += 1
+        else:
+            stats["mysql_miss"] += 1
+        if db_failed and use_map_index_fallback and map_index_translations.get(map_key):
+            stats["fallback_map_index_used"] += 1
+        if entry:
+            map_cn, map_tw = resolve_mysql_map_translation(map_key, entry)
+        elif db_failed and use_map_index_fallback:
+            map_cn, map_tw = resolve_map_index_translation(map_key, map_index_translations.get(map_key))
+        else:
+            map_cn, map_tw = resolve_mysql_map_translation(map_key, None)
+        if map_cn == (map_key or "").strip():
+            stats["final_untranslated"] += 1
+        map_translation_cache[map_key] = (map_cn, map_tw)
+    if stats["total_maps"]:
+        print(
+            "[Servers][MapTranslations] "
+            f"total_maps={stats['total_maps']} mysql_hit={stats['mysql_hit']} "
+            f"mysql_row_found_but_empty={stats['mysql_row_found_but_empty']} "
+            f"mysql_miss={stats['mysql_miss']} fallback_map_index_used={stats['fallback_map_index_used']} "
+            f"final_untranslated={stats['final_untranslated']}"
+        )
+    if stats["mysql_miss"] > 50:
+        print("[Servers][MapTranslations] 警告: mysql_miss 较多，可能 map_key 规范化不一致或连接错误库/表。")
     translated = OrderedDict()
     for cid, servers in servers_by_cid.items():
         updated_servers = []
         for srv in servers:
             map_name = srv.get("map")
             map_key = normalize_map_name(map_name) or (str(map_name).strip() if map_name else "")
-            entry = translations.get(map_key) if map_key else None
-            if entry:
-                map_cn, map_tw = resolve_mysql_map_translation(map_key, entry)
-            elif db_failed and use_map_index_fallback:
-                map_cn, map_tw = resolve_map_index_translation(map_key, map_index_translations.get(map_key))
-            else:
-                map_cn, map_tw = resolve_mysql_map_translation(map_key, None)
+            if map_key:
+                map_key = normalize_map_key(map_key)
+            map_cn, map_tw = map_translation_cache.get(
+                map_key,
+                resolve_mysql_map_translation(map_key, None)
+            )
             updated = dict(srv)
             updated["map_cn"] = map_cn
             updated["map_tw"] = map_tw
@@ -1416,6 +1471,9 @@ def get_mysql_map_exg_entries(map_keys):
     global MYSQL_EXG_CACHE, MYSQL_EXG_CACHE_LOADED_AT
     if not map_keys:
         return {}, False
+    map_keys = normalize_map_keys(map_keys)
+    if not map_keys:
+        return {}, False
     now = time.time()
     with MYSQL_EXG_CACHE_LOCK:
         cache_age = now - MYSQL_EXG_CACHE_LOADED_AT
@@ -1467,7 +1525,10 @@ def build_exg_payload(map_cn, exg_entry):
     }
 
 def get_mysql_map_translations(map_keys):
-    global MYSQL_MAPS_CACHE, MYSQL_MAPS_CACHE_LOADED_AT
+    global MYSQL_MAPS_CACHE, MYSQL_MAPS_CACHE_LOADED_AT, MYSQL_MAPS_LAST_ERROR
+    if not map_keys:
+        return {}, False
+    map_keys = normalize_map_keys(map_keys)
     if not map_keys:
         return {}, False
     now = time.time()
@@ -1483,6 +1544,14 @@ def get_mysql_map_translations(map_keys):
     try:
         fetched = fetch_mysql_map_translations(missing)
     except Exception as e:
+        config = _mysql_config_from_env()
+        MYSQL_MAPS_LAST_ERROR = {
+            "host": config.get("host") if config else None,
+            "db": config.get("db") if config else None,
+            "user": config.get("user") if config else None,
+            "port": config.get("port") if config else None,
+            "error": str(e),
+        }
         print(f"[MySQL] 地图翻译查询失败: {e}")
         with MYSQL_MAPS_CACHE_LOCK:
             return {key: MYSQL_MAPS_CACHE.get(key) for key in map_keys}, True
@@ -1490,6 +1559,7 @@ def get_mysql_map_translations(map_keys):
         for key in missing:
             MYSQL_MAPS_CACHE[key] = fetched.get(key, {"name_zh_cn": "", "name_zh_tw": ""})
         MYSQL_MAPS_CACHE_LOADED_AT = now
+        MYSQL_MAPS_LAST_ERROR = None
         return {key: MYSQL_MAPS_CACHE.get(key) for key in map_keys}, False
 
 def ensure_map_translation_entry(map_raw):
@@ -1566,6 +1636,27 @@ def normalize_map_name(map_name):
     else:
         map_clean = map_clean.split("/")[-1]
     return map_clean or None
+
+def normalize_map_key(map_key):
+    normalized = normalize_map_name(map_key)
+    if normalized:
+        return normalized
+    if map_key is None:
+        return ""
+    return str(map_key).strip()
+
+def normalize_map_keys(map_keys):
+    if not map_keys:
+        return []
+    normalized_keys = []
+    seen = set()
+    for key in map_keys:
+        normalized = normalize_map_key(key)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        normalized_keys.append(normalized)
+    return normalized_keys
 
 def get_map_image_url(map_name):
     map_clean = normalize_map_name(map_name)
@@ -2620,7 +2711,7 @@ def get_map_exg_payload():
     raw_keys = request.args.getlist('map')
     if not raw_keys:
         return make_json_response({})
-    map_keys = sorted({normalize_map_name(key) or str(key).strip() for key in raw_keys if key})
+    map_keys = normalize_map_keys([key for key in raw_keys if key])
     if not map_keys:
         return make_json_response({})
     exg_entries, _ = get_mysql_map_exg_entries(map_keys)
