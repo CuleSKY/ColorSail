@@ -417,7 +417,7 @@
                   <div class="mapcd-header">
                     <div class="mapcd-cell mapcd-col-map">{{ t('map') }}</div>
                     <div class="mapcd-cell mapcd-col-ach">{{ t('achievement') }}</div>
-                    <div class="mapcd-cell mapcd-col-deadline">{{ t('cooldown_deadline') }}</div>
+                    <div class="mapcd-cell mapcd-col-deadline sortable" @click="sortByCooldownTrigger++">{{ t('cooldown_deadline') }}</div>
                     <div class="mapcd-cell mapcd-col-length">{{ t('cooldown_length') }}</div>
                     <div class="mapcd-cell mapcd-col-availability">{{ t('exg_availability') }}</div>
                   </div>
@@ -1266,6 +1266,7 @@ const mapCooldownHighlightKey = ref('');
 const mapCooldownNowEpoch = ref(Math.floor(Date.now() / 1000));
 const mapCooldownNeedsRebuild = ref(true);
 const mapCooldownIsFastScrolling = ref(false);
+const sortByCooldownTrigger = ref(0);
 const mapCooldownPendingRebuild = ref(false);
 const mapCooldownIsBuilding = ref(false);
 const mapCooldownBuildProgress = ref({ done: 0, total: 0 });
@@ -1327,7 +1328,18 @@ const mapCooldownFilteredRows = computed(() => {
   if (!queryNorm) return baseRows;
   return baseRows.filter((row) => (row.searchTextNorm || '').includes(queryNorm));
 });
-const mapCooldownRows = computed(() => mapCooldownFilteredRows.value);
+const mapCooldownRows = computed(() => {
+  sortByCooldownTrigger.value;
+  const rows = mapCooldownFilteredRows.value;
+  return rows.slice().sort((a, b) => {
+    const ta = a.deadlineEpochSec;
+    const tb = b.deadlineEpochSec;
+    if (!ta && !tb) return 0;
+    if (!ta) return 1;
+    if (!tb) return -1;
+    return ta - tb;
+  });
+});
 const mapCooldownKeysAll = computed(() => mapCooldownRows.value.map((row) => row.key));
 const updateMapCooldownVisibleRows = () => {
   const total = mapCooldownRows.value.length;
@@ -2882,6 +2894,24 @@ const submitFeedback = () => {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
+}
+
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+th.sortable:hover {
+  opacity: 0.75;
+}
+
+.mapcd-header .sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.mapcd-header .sortable:hover {
+  opacity: 0.75;
 }
 
 .mapcd-row {
