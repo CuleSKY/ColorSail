@@ -396,43 +396,24 @@
           <div v-show="curView === 'map_cooldown'" class="animate-enter">
           <div class="mapcd-page">
             <div class="mapcd-content">
-              <div class="mapcd-search-row">
-                <div class="mapcd-search-wrap">
-                  <div class="mapcd-search" @click.stop>
-                    <span class="mapcd-searchIcon" aria-hidden="true" v-html="icons.search_sub"></span>
-                    <input
-                      ref="mapCooldownSearchInputRef"
-                      class="mapcd-searchInput"
-                      type="text"
-                      v-model="mapCooldownQueryInput"
-                      :placeholder="isChineseLang ? '搜索' : 'Search'"
-                      autocomplete="off"
-                      spellcheck="false"
-                      @keydown="onMapCooldownSearchKeydown"
-                    >
-                    <button
-                      v-if="mapCooldownQueryInput"
-                      class="mapcd-clearBtn"
-                      type="button"
-                      aria-label="Clear"
-                      @click.stop="clearMapCooldownSearchAndFocus"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M3 3L9 9M9 3L3 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                      </svg>
-                    </button>
-                  </div>
-                  <div v-if="mapCooldownSearchQueryTrimmed && mapCooldownFilteredRows.length === 0" class="mapcd-search-empty">
-                    无匹配结果
-                  </div>
-                </div>
+              <div class="sub-search-area">
+                <input
+                  ref="mapCooldownSearchInputRef"
+                  class="sub-search-box"
+                  type="text"
+                  v-model="mapCooldownQueryInput"
+                  :placeholder="t('sub_search_ph')"
+                  autocomplete="off"
+                  spellcheck="false"
+                  @keydown="onMapCooldownSearchKeydown"
+                >
               </div>
+
+              <div style="border-top:1px solid var(--card-border); margin: 30px 0;"></div>
+
               <div class="mapcd-container">
                 <div class="mapcd-card-header">
                   <div class="mapcd-card-header-right">
-                    <button class="mapcd-toggle-btn" type="button" @click="toggleMapCooldownMode">
-                      {{ mapCooldownToggleLabel }}
-                    </button>
                     <div v-if="mapCooldownIsBuilding" class="mapcd-preparing">
                       {{ isChineseLang ? '准备中…' : 'Preparing…' }}{{ mapCooldownProgressText }}
                     </div>
@@ -488,6 +469,11 @@
                     <div class="mapcd-edge-fade mapcd-edge-fade--bottom"></div>
                   </div>
                 </div>
+              </div>
+              <div class="mapcd-actions-row">
+                <button class="mapcd-toggle-btn" type="button" @click="toggleMapCooldownMode">
+                  {{ t('mapcd_show_all', 'Show all') }}
+                </button>
               </div>
             </div>
           </div>
@@ -696,10 +682,10 @@ const ROLE_LABELS = {
 };
 
 const i18nData = ref({});
-const t = (key) => {
+const t = (key, fallback = '') => {
   const langPack = i18nData.value[curLang.value] || {};
   const fallbackPack = i18nData.value['en'] || {};
-  return langPack[key] || fallbackPack[key] || key;
+  return langPack[key] || fallbackPack[key] || fallback || key;
 };
 const isLoggedIn = computed(() => authState.value.loggedIn);
 const authRoleLabel = computed(() => ROLE_LABELS[authState.value.role]?.label || ROLE_LABELS.guest.label);
@@ -1445,7 +1431,6 @@ const mapCooldownProgressText = computed(() => {
   const pct = Math.min(100, Math.round((done / total) * 100));
   return ` ${pct}%`;
 });
-const mapCooldownToggleLabel = computed(() => (coolingOnly.value ? '显示全部' : '仅显示冷却中地图'));
 
 const mapCooldownSearchQueryTrimmed = computed(() => mapCooldownSearchQuery.value.trim());
 const mapCooldownSearchQueryNorm = computed(() => normalizeZh(mapCooldownSearchQuery.value));
@@ -2868,6 +2853,12 @@ const submitFeedback = () => {
   gap: 12px;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.mapcd-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
 }
 
 .mapcd-toggle-btn {
