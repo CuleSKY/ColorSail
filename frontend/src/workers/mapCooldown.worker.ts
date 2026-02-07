@@ -1,4 +1,4 @@
-import { createOpenCCConverter, getExgStatusState, stripBracketSegments } from '../mapSearchUtils.js';
+import { createOpenCCConverter, getExgStatusState, normalizeZh, stripBracketSegments } from '../mapSearchUtils.js';
 
 const converter = createOpenCCConverter();
 
@@ -76,10 +76,12 @@ const buildRows = (payload: any, buildId?: number) => {
       const durationSec = typeof data.duration_sec === 'number' ? data.duration_sec : null;
       const availability = toAvailability(deadline, durationSec, nowEpochSec);
       const sortGroup = availability === 'cooling' ? 0 : availability === 'available' ? 1 : 2;
+      const mapCnRaw = stripBracketSegments(typeof data?.map_cn === 'string' ? data.map_cn : '');
       const mapLine2 = resolveMapLine2(key, data);
       const achievement = typeof data.achievement === 'string' ? data.achievement : '';
       const aliases = Array.isArray(data.aliases) ? data.aliases.filter((alias) => typeof alias === 'string') : [];
-      const searchKey = `${key}\n${mapLine2}\n${achievement}\n${aliases.join(' ')}`.trim();
+      const searchTextRaw = `${key}\n${mapCnRaw}\n${mapLine2}\n${achievement}\n${aliases.join(' ')}`.trim();
+      const searchTextNorm = normalizeZh(searchTextRaw);
       rows.push({
         key,
         mapLine1: key,
@@ -92,8 +94,7 @@ const buildRows = (payload: any, buildId?: number) => {
         availability,
         availabilityTitle: availability === 'available' ? availabilityLabels.available : availabilityLabels.unavailable,
         sortGroup,
-        searchKey,
-        searchKeyLower: searchKey.toLowerCase()
+        searchTextNorm
       });
     });
     done = Math.min(total, i + chunk.length);

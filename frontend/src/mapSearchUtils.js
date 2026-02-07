@@ -12,6 +12,52 @@ export const createOpenCCConverter = () => {
 export const stripBracketSegments = (value) => (value || '').toString().replace(/\[[^\]]*]/g, '').trim();
 export const normalizeSearchText = (value) => (value || '').toString().toLowerCase().replace(/\s+/g, '');
 
+const ZH_VARIANT_PAIRS = [
+  ['图', '圖'],
+  ['显', '顯'],
+  ['却', '卻'],
+  ['乐', '樂'],
+  ['发', '發'],
+  ['无', '無'],
+  ['龙', '龍'],
+  ['圣', '聖'],
+  ['战', '戰'],
+  ['终', '終'],
+  ['爱', '愛'],
+  ['梦', '夢'],
+  ['炉', '爐'],
+  ['魔', '魔'],
+  ['光', '光'],
+  ['败', '敗'],
+  ['风', '風'],
+  ['云', '雲'],
+  ['书', '書'],
+  ['车', '車'],
+  ['门', '門'],
+  ['国', '國'],
+  ['岛', '島'],
+  ['剑', '劍'],
+  ['进', '進'],
+  ['觉', '覺'],
+  ['体', '體'],
+  ['击', '擊'],
+  ['队', '隊'],
+  ['续', '續'],
+  ['绝', '絕']
+];
+
+const ZH_VARIANT_MAP = ZH_VARIANT_PAIRS.reduce((acc, [simp, trad]) => {
+  acc[simp] = simp;
+  acc[trad] = simp;
+  return acc;
+}, {});
+
+export const normalizeZh = (value) => {
+  const base = (value || '').toString().toLowerCase().trim().replace(/\s+/g, ' ');
+  if (!base) return '';
+  return Array.from(base).map((char) => ZH_VARIANT_MAP[char] ?? char).join('');
+};
+
 const normalizeTokenText = (value) => (value || '').toString().toLowerCase().trim();
 const splitTokens = (value) => normalizeTokenText(value).split(/[\s_-]+/).filter(Boolean);
 
