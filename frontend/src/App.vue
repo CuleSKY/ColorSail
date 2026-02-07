@@ -411,14 +411,14 @@
 
               <div style="border-top:1px solid var(--card-border); margin: 30px 0;"></div>
 
-              <div class="mapcd-container">
-                <div class="mapcd-card-header">
-                  <div class="mapcd-card-header-right">
-                    <div v-if="mapCooldownIsBuilding" class="mapcd-preparing">
-                      {{ isChineseLang ? '准备中…' : 'Preparing…' }}{{ mapCooldownProgressText }}
-                    </div>
-                  </div>
+              <div class="mapcd-title-row">
+                <h3 style="margin-bottom:16px; opacity:0.8">{{ mapCooldownTitle }}</h3>
+                <div v-if="mapCooldownIsBuilding" class="mapcd-preparing">
+                  {{ isChineseLang ? '准备中…' : 'Preparing…' }}{{ mapCooldownProgressText }}
                 </div>
+              </div>
+
+              <div class="mapcd-container">
                 <div class="mapcd-table">
                   <div class="mapcd-header">
                     <div class="mapcd-cell mapcd-col-map">{{ t('map') }}</div>
@@ -472,7 +472,7 @@
               </div>
               <div class="mapcd-actions-row">
                 <button class="mapcd-toggle-btn" type="button" @click="toggleMapCooldownMode">
-                  {{ t('mapcd_show_all', 'Show all') }}
+                  {{ mapCooldownToggleLabel }}
                 </button>
               </div>
             </div>
@@ -1371,6 +1371,12 @@ const ensureCooldownPrefix = (text) => {
 
 const mapCooldownScrollRef = ref(null);
 const coolingOnly = ref(true);
+const mapCooldownTitle = computed(() => (coolingOnly.value ? t('mapcd_title_cooldown') : t('mapcd_title_all')));
+const mapCooldownToggleLabel = computed(() => (
+  coolingOnly.value
+    ? t('mapcd_btn_show_all', 'Show all')
+    : t('mapcd_btn_only_cooldown', 'Show cooldown only')
+));
 const mapCooldownRowsCooling = ref([]);
 const mapCooldownRowsAll = ref([]);
 const mapCooldownQueryInput = ref('');
@@ -2725,6 +2731,18 @@ const submitFeedback = () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.mapcd-page .sub-search-area {
+  margin-top: 58px;
+}
+
+.mapcd-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .mapcd-search-row {
