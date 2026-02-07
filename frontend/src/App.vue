@@ -393,33 +393,40 @@
           </div>
         </div>
 
-        <div v-show="curView === 'map_cooldown'" class="animate-enter">
+          <div v-show="curView === 'map_cooldown'" class="animate-enter">
           <div class="mapcd-page">
-            <div class="mapcd-search" @click.stop>
-              <div class="mapcd-search-input-wrap">
-                <span class="mapcd-search-icon" v-html="icons.search_sub"></span>
-                <input
-                  class="mapcd-search-input"
-                  type="text"
-                  v-model="mapCooldownQueryInput"
-                  :placeholder="isChineseLang ? '搜索地图或成就…' : 'Search maps or achievements…'"
-                  @keydown="onMapCooldownSearchKeydown"
-                >
-                <button
-                  v-if="mapCooldownQueryInput"
-                  class="mapcd-search-clear"
-                  type="button"
-                  @click.stop="clearMapCooldownSearch"
-                  aria-label="Clear"
-                >
-                  ×
-                </button>
-              </div>
-              <div v-if="mapCooldownSearchQueryTrimmed && mapCooldownFilteredRows.length === 0" class="mapcd-search-empty">
-                无匹配结果
-              </div>
-            </div>
             <div class="mapcd-toolbar">
+              <div class="mapcd-toolbar-left">
+                <div class="mapcd-search-wrap">
+                  <div class="mapcd-search" @click.stop>
+                    <span class="mapcd-searchIcon" aria-hidden="true" v-html="icons.search_sub"></span>
+                    <input
+                      ref="mapCooldownSearchInputRef"
+                      class="mapcd-searchInput"
+                      type="text"
+                      v-model="mapCooldownQueryInput"
+                      :placeholder="isChineseLang ? '搜索' : 'Search'"
+                      autocomplete="off"
+                      spellcheck="false"
+                      @keydown="onMapCooldownSearchKeydown"
+                    >
+                    <button
+                      v-if="mapCooldownQueryInput"
+                      class="mapcd-clearBtn"
+                      type="button"
+                      aria-label="Clear"
+                      @click.stop="clearMapCooldownSearchAndFocus"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M3 3L9 9M9 3L3 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div v-if="mapCooldownSearchQueryTrimmed && mapCooldownFilteredRows.length === 0" class="mapcd-search-empty">
+                    无匹配结果
+                  </div>
+                </div>
+              </div>
               <div class="mapcd-toolbar-right">
                 <button class="mapcd-toggle-btn" type="button" @click="toggleMapCooldownMode">
                   {{ mapCooldownToggleLabel }}
@@ -1379,6 +1386,7 @@ const coolingOnly = ref(true);
 const mapCooldownRowsCooling = ref([]);
 const mapCooldownRowsAll = ref([]);
 const mapCooldownQueryInput = ref('');
+const mapCooldownSearchInputRef = ref(null);
 const mapCooldownSearchQuery = ref('');
 const mapCooldownHighlightKey = ref('');
 const mapCooldownNowEpoch = ref(Math.floor(Date.now() / 1000));
@@ -1482,6 +1490,19 @@ const clearMapCooldownSearch = () => {
   mapCooldownQueryInput.value = '';
   mapCooldownSearchQuery.value = '';
   mapCooldownHighlightKey.value = '';
+};
+
+const focusMapCooldownSearchInput = () => {
+  nextTick(() => {
+    if (mapCooldownSearchInputRef.value) {
+      mapCooldownSearchInputRef.value.focus();
+    }
+  });
+};
+
+const clearMapCooldownSearchAndFocus = () => {
+  clearMapCooldownSearch();
+  focusMapCooldownSearchInput();
 };
 
 const setMapCooldownHighlight = (key) => {
@@ -2701,74 +2722,82 @@ const submitFeedback = () => {
 }
 
 .mapcd-search {
-  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--mapcd-surface-bg) 88%, #ffffff 12%);
-  border: 1px solid color-mix(in srgb, var(--mapcd-surface-border) 70%, transparent 30%);
-}
-
-.mapcd-search-input-wrap {
-  position: relative;
-}
-
-.mapcd-search-icon {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 18px;
-  height: 18px;
-  color: var(--text-secondary);
-  opacity: 0.8;
-  pointer-events: none;
-}
-
-.mapcd-search-input {
+  align-items: center;
+  gap: 10px;
+  height: 40px;
   width: 100%;
-  height: 44px;
-  padding: 0 40px 0 42px;
+  padding: 0 12px;
   border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--mapcd-surface-border) 70%, transparent 30%);
-  background: color-mix(in srgb, var(--mapcd-surface-bg) 90%, #ffffff 10%);
-  color: var(--text-primary);
-  font-size: 14.5px;
-  outline: none;
+  background: color-mix(in srgb, var(--mapcd-surface-bg) 86%, #ffffff 14%);
+  border: 1px solid color-mix(in srgb, var(--mapcd-surface-border) 65%, transparent 35%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
-.mapcd-search-input:focus {
-  border-color: rgba(120, 160, 255, 0.4);
-  box-shadow: 0 0 0 3px rgba(120, 160, 255, 0.16);
-  background: color-mix(in srgb, var(--mapcd-surface-bg) 86%, #ffffff 14%);
+.mapcd-search:focus-within {
+  border-color: color-mix(in srgb, var(--mapcd-surface-border) 30%, rgba(96, 165, 250, 0.5));
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.25), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  background: color-mix(in srgb, var(--mapcd-surface-bg) 82%, #ffffff 18%);
 }
 
-.mapcd-search-clear {
-  position: absolute;
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(128, 128, 128, 0.12);
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
+.mapcd-searchIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.mapcd-searchIcon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.mapcd-searchInput {
+  flex: 1;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.mapcd-searchInput::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+.mapcd-clearBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.mapcd-search-clear:hover {
-  background: rgba(128, 128, 128, 0.2);
+.mapcd-clearBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text-primary);
+}
+
+.mapcd-clearBtn:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.mapcd-clearBtn svg {
+  display: block;
 }
 
 .mapcd-search-empty {
@@ -2779,10 +2808,24 @@ const submitFeedback = () => {
 
 .mapcd-toolbar {
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.mapcd-toolbar-left {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.mapcd-search-wrap {
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .mapcd-toolbar-right {
