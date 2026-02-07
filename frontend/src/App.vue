@@ -732,7 +732,7 @@ watch(curView, (nextView, prevView) => {
         mapCooldownScrollRef.value.scrollTop = 0;
         mapCooldownLatestScrollTop = mapCooldownScrollRef.value.scrollTop || 0;
       }
-      scheduleMapCooldownRaf();
+      startMapCooldownScrollLoop();
     });
   }
   if (prevView === 'map_cooldown' && nextView !== 'map_cooldown') {
@@ -761,7 +761,7 @@ const handleResize = () => {
   if (curView.value === 'map_cooldown') {
     updateMapCooldownContainerHeight();
     mapCooldownLatestScrollTop = mapCooldownScrollRef.value?.scrollTop || mapCooldownLatestScrollTop;
-    scheduleMapCooldownRaf();
+    startMapCooldownScrollLoop();
   }
 };
 
@@ -1379,6 +1379,7 @@ const mapCooldownFastSpeedThreshold = 2.0;
 const mapCooldownFasterSpeedThreshold = 5.0;
 const mapCooldownScrollIdleMs = 180;
 const mapCooldownMaxRenderedRows = 120;
+const mapCooldownOverscanMin = 8;
 const mapCooldownOverscan = ref(mapCooldownOverscanBase);
 const mapCooldownVisibleStartIndex = ref(0);
 const mapCooldownVisibleEndIndex = ref(0);
@@ -1387,9 +1388,12 @@ const mapCooldownPoolIndices = ref([]);
 const mapCooldownPerfDebug = false;
 let mapCooldownTimer = null;
 let mapCooldownScrollRafId = 0;
+let mapCooldownScrollLoopRafId = 0;
 let mapCooldownLatestScrollTop = 0;
 let mapCooldownLastScrollTop = 0;
 let mapCooldownLastTimestamp = 0;
+let mapCooldownLastObservedScrollTop = 0;
+let mapCooldownLastScrollChangeTs = 0;
 let mapCooldownIdleTimer = null;
 let mapCooldownPrevFastState = false;
 let mapCooldownPrevOverscan = mapCooldownOverscanBase;
@@ -1422,7 +1426,9 @@ const logMapCooldownPerf = ({ overscan, isFast, rendered }) => {
 
 const applyMapCooldownScrollUpdate = (timestamp) => {
   const frameStart = performance.now();
-  const scrollTop = mapCooldownLatestScrollTop;
+  const scrollEl = mapCooldownScrollRef.value;
+  // Read from the DOM each frame because scroll events can be throttled/coalesced.
+  const scrollTop = scrollEl ? scrollEl.scrollTop : mapCooldownLatestScrollTop;
   const nextTimestamp = timestamp || performance.now();
   if (!mapCooldownLastTimestamp) {
     mapCooldownLastTimestamp = nextTimestamp;
@@ -1436,7 +1442,7 @@ const applyMapCooldownScrollUpdate = (timestamp) => {
   } else if (speed > mapCooldownFastSpeedThreshold) {
     nextOverscan = mapCooldownOverscanMedium;
   }
-  mapCooldownOverscan.value = Math.min(mapCooldownOverscanMax, nextOverscan);
+  mapCooldownOverscan.value = Math.max(mapCooldownOverscanMin, Math.min(mapCooldownOverscanMax, nextOverscan));
   const isFast = speed > mapCooldownFastSpeedThreshold;
   mapCooldownIsFastScrolling.value = isFast;
   mapCooldownScrollTop.value = scrollTop;
@@ -1475,6 +1481,38 @@ const scheduleMapCooldownRaf = () => {
   });
 };
 
+const stopMapCooldownScrollLoop = () => {
+  if (mapCooldownScrollLoopRafId) {
+    cancelAnimationFrame(mapCooldownScrollLoopRafId);
+    mapCooldownScrollLoopRafId = 0;
+  }
+  mapCooldownLastScrollChangeTs = 0;
+};
+
+const startMapCooldownScrollLoop = () => {
+  if (mapCooldownScrollLoopRafId) return;
+  mapCooldownLastObservedScrollTop = Number.NaN;
+  mapCooldownLastScrollChangeTs = performance.now();
+  const tick = (timestamp) => {
+    const now = timestamp || performance.now();
+    const scrollEl = mapCooldownScrollRef.value;
+    const currentScrollTop = scrollEl ? scrollEl.scrollTop : mapCooldownLatestScrollTop;
+    if (currentScrollTop !== mapCooldownLastObservedScrollTop) {
+      mapCooldownLastObservedScrollTop = currentScrollTop;
+      mapCooldownLatestScrollTop = currentScrollTop;
+      mapCooldownLastScrollChangeTs = now;
+      applyMapCooldownScrollUpdate(now);
+      scheduleMapCooldownIdleReset();
+    }
+    if (now - mapCooldownLastScrollChangeTs < mapCooldownScrollIdleMs) {
+      mapCooldownScrollLoopRafId = window.requestAnimationFrame(tick);
+    } else {
+      mapCooldownScrollLoopRafId = 0;
+    }
+  };
+  mapCooldownScrollLoopRafId = window.requestAnimationFrame(tick);
+};
+
 const clearMapCooldownIdleTimer = () => {
   if (mapCooldownIdleTimer) {
     clearTimeout(mapCooldownIdleTimer);
@@ -1498,6 +1536,8 @@ const resetMapCooldownScrollState = () => {
   mapCooldownLatestScrollTop = 0;
   mapCooldownLastScrollTop = 0;
   mapCooldownLastTimestamp = 0;
+  mapCooldownLastObservedScrollTop = 0;
+  mapCooldownLastScrollChangeTs = 0;
   mapCooldownIsFastScrolling.value = false;
   mapCooldownOverscan.value = mapCooldownOverscanBase;
   mapCooldownVisibleStartIndex.value = 0;
@@ -1509,13 +1549,14 @@ const resetMapCooldownScrollState = () => {
     cancelAnimationFrame(mapCooldownScrollRafId);
     mapCooldownScrollRafId = 0;
   }
+  stopMapCooldownScrollLoop();
   clearMapCooldownIdleTimer();
 };
 
 const onMapCooldownScroll = (event) => {
   const target = event?.target;
   mapCooldownLatestScrollTop = target?.scrollTop ?? mapCooldownScrollRef.value?.scrollTop ?? 0;
-  scheduleMapCooldownRaf();
+  startMapCooldownScrollLoop();
   scheduleMapCooldownIdleReset();
 };
 
