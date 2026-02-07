@@ -23,8 +23,13 @@ const formatDeadline = (epochSec: number | null, formatter: Intl.DateTimeFormat)
   return formatter.format(new Date(epochSec * 1000));
 };
 
-const toAvailability = (deadline: number | null, durationSec: number | null, nowEpochSec: number) => {
-  const state = getExgStatusState(deadline, durationSec, nowEpochSec);
+const toAvailability = (
+  deadline: number | null,
+  durationSec: number | null,
+  nowEpochSec: number,
+  durationRaw: string | null
+) => {
+  const state = getExgStatusState(deadline, durationSec, nowEpochSec, durationRaw);
   if (state === 'cooldown') return 'cooling';
   if (state === 'available') return 'available';
   return 'unavailable';
@@ -72,9 +77,13 @@ const buildRows = (payload: any, buildId?: number) => {
     chunk.forEach(([key, entry]) => {
       if (!shouldInclude(key)) return;
       const data = entry && typeof entry === 'object' ? entry : {};
-      const deadline = typeof data.deadline === 'number' ? data.deadline : null;
+      const hasExgFields = ['cooldown_end_epoch', 'duration_raw', 'duration_sec']
+        .some((field) => Object.prototype.hasOwnProperty.call(data, field));
+      if (!hasExgFields) return;
+      const deadline = typeof data.cooldown_end_epoch === 'number' ? data.cooldown_end_epoch : null;
       const durationSec = typeof data.duration_sec === 'number' ? data.duration_sec : null;
-      const availability = toAvailability(deadline, durationSec, nowEpochSec);
+      const durationRaw = Object.prototype.hasOwnProperty.call(data, 'duration_raw') ? data.duration_raw ?? null : null;
+      const availability = toAvailability(deadline, durationSec, nowEpochSec, durationRaw);
       const sortGroup = availability === 'cooling' ? 0 : availability === 'available' ? 1 : 2;
       const mapCnRaw = stripBracketSegments(typeof data?.map_cn === 'string' ? data.map_cn : '');
       const mapLine2 = resolveMapLine2(key, data);

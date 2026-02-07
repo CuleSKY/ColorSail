@@ -599,7 +599,6 @@ const topCommunity = ref(null);
 const subSearchQuery = ref('');
 const mapTranslations = ref({});
 const mapIndex = ref({});
-const mapExgIndex = ref({});
 const mapSearchIndex = ref([]);
 const mapIndexConverter = createOpenCCConverter();
 const searchResults = ref([]);
@@ -1248,23 +1247,6 @@ const loadMapIndex = async () => {
   }
 };
 
-const loadMapExgIndex = async (mapKeys) => {
-  if (!Array.isArray(mapKeys) || mapKeys.length === 0) {
-    mapExgIndex.value = {};
-    return;
-  }
-  try {
-    const params = new URLSearchParams();
-    mapKeys.forEach((key) => params.append('map', key));
-    const res = await fetch(`/api/map_exg?${params.toString()}`);
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-    const data = await res.json();
-    mapExgIndex.value = data && typeof data === 'object' ? data : {};
-  } catch (e) {}
-};
-
 const normalizeMapKey = (value) => {
   if (!value) return '';
   let mapKey = value.toString().trim().toLowerCase();
@@ -1278,23 +1260,6 @@ const normalizeMapKey = (value) => {
   }
   return mapKey;
 };
-
-const subscriptionMapKeys = computed(() => {
-  const keys = new Set();
-  subscriptions.value.forEach((sub) => {
-    const normalized = normalizeMapKey(sub?.map);
-    if (normalized) keys.add(normalized);
-  });
-  return Array.from(keys).sort();
-});
-
-let lastExgRequestKey = '';
-watch(subscriptionMapKeys, (keys) => {
-  const requestKey = keys.join('|');
-  if (requestKey === lastExgRequestKey) return;
-  lastExgRequestKey = requestKey;
-  loadMapExgIndex(keys);
-}, { immediate: true });
 
 const getMapTranslationEntry = (mapName, serverEntry) => {
   if (!mapName) return { zh_cn: '', zh_tw: '' };
@@ -1342,27 +1307,6 @@ const getMapIndexDisplayName = (mapName) => {
   }
   if (curLang.value === 'zh-CN') return cleaned;
   return '';
-};
-
-const durationRawToSeconds = (raw) => {
-  if (raw === null || raw === undefined) return null;
-  if (typeof raw === 'number' && !Number.isNaN(raw)) return raw;
-  const text = raw.toString().trim();
-  if (!text) return null;
-  if (/^\d+$/.test(text)) return Number(text);
-  const matches = Array.from(text.matchAll(/(\d+)\s*(天|小时|時|时|分钟|分|秒)/g));
-  if (matches.length === 0) return null;
-  let total = 0;
-  matches.forEach((match) => {
-    const value = Number(match[1]);
-    const unit = match[2];
-    if (Number.isNaN(value)) return;
-    if (unit === '天') total += value * 86400;
-    else if (unit === '小时' || unit === '時' || unit === '时') total += value * 3600;
-    else if (unit === '分钟' || unit === '分') total += value * 60;
-    else if (unit === '秒') total += value;
-  });
-  return total;
 };
 
 const ensureCooldownPrefix = (text) => {
@@ -2023,6 +1967,13 @@ watch(mapCooldownRows, () => {
   }
 }, { immediate: true });
 
+const hasMapIndexExgFields = (entry) => (
+  entry
+  && typeof entry === 'object'
+  && ['cooldown_end_epoch', 'duration_raw', 'duration_sec']
+    .some((field) => Object.prototype.hasOwnProperty.call(entry, field))
+);
+
 const getExgStatus = (sub) => {
   if (!sub) return null;
   const mapKey = normalizeMapKey(sub.map || '');
@@ -2033,16 +1984,15 @@ const getExgStatus = (sub) => {
     viewportWidth: viewportWidth.value
   });
   if (!shouldShow) return null;
-  const entry = mapExgIndex.value[mapKey];
-  if (!entry) return null;
-  const cooldown = entry.cooldown || {};
-  const deadline = cooldown.deadline ?? entry.deadline ?? null;
-  const durationRaw = cooldown.duration_raw ?? entry.duration_raw ?? '';
-  const durationSec = durationRawToSeconds(durationRaw);
+  const entry = getMapIndexEntry(mapKey);
+  if (!entry || !hasMapIndexExgFields(entry)) return null;
+  const deadline = typeof entry.cooldown_end_epoch === 'number' ? entry.cooldown_end_epoch : null;
+  const durationRaw = Object.prototype.hasOwnProperty.call(entry, 'duration_raw') ? entry.duration_raw ?? null : null;
+  const durationSec = typeof entry.duration_sec === 'number' ? entry.duration_sec : null;
   if ((deadline === null || deadline === undefined) && (durationRaw === null || durationRaw === undefined)) {
     return null;
   }
-  const state = entry.exg_status || getExgStatusState(deadline, durationSec);
+  const state = getExgStatusState(deadline, durationSec, undefined, durationRaw);
   if (state === 'cooldown' && deadline !== null && deadline !== undefined) {
     const date = formatExgDate(deadline);
     const datetime = formatExgDateTime(deadline);
@@ -2062,7 +2012,10 @@ const getExgStatus = (sub) => {
   if (state === 'available') {
     return { state, label: t('map.exg.available') };
   }
-  return { state, label: t('map.exg.not_available') };
+  if (state === 'not_available') {
+    return { state, label: t('map.exg.not_available') };
+  }
+  return null;
 };
 const exgStatusByIndex = computed(() => subscriptions.value.map(sub => getExgStatus(sub)));
 

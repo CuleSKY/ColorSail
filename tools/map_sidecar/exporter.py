@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 from tools.map_sidecar.utils import ensure_dir
 
@@ -38,17 +39,49 @@ def export_time_json(settings: "Settings", logger: "logging.Logger") -> None:
     atomic_write_json(target_path, payload)
     logger.info("time.json exported")
 
+def parse_duration_raw(raw: Optional[str]) -> Optional[int]:
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    if text == "0分":
+        return 0
+    match = re.fullmatch(r"(\d+(?:\.\d+)?)\s*(秒|分|时|天)", text)
+    if not match:
+        return None
+    value = float(match.group(1))
+    unit = match.group(2)
+    unit_seconds = {"秒": 1, "分": 60, "时": 3600, "天": 86400}
+    return int(round(value * unit_seconds[unit]))
+
 
 def export_map_index(settings: "Settings", logger: "logging.Logger", db: "MySQLClient") -> int:
     records = db.fetch_map_index()
     payload: dict[str, dict[str, object]] = {}
+    unknown_duration_samples: set[str] = set()
     for record in sorted(records, key=lambda item: item.map_key):
         map_cn = record.name_zh_cn or record.map_key
-        payload[record.map_key] = {
+        entry: dict[str, object] = {
             "map_cn": map_cn,
             "deadline": record.cooldown_end_epoch,
             "achievement": record.achievement or "",
         }
+        if record.exg_supported:
+            duration_sec = parse_duration_raw(record.duration_raw)
+            if duration_sec is None:
+                raw_text = record.duration_raw
+                if raw_text is not None and str(raw_text).strip() not in ("", "0分"):
+                    unknown_duration_samples.add(str(raw_text))
+            entry["cooldown_end_epoch"] = record.cooldown_end_epoch
+            entry["duration_raw"] = record.duration_raw
+            entry["duration_sec"] = duration_sec
+        payload[record.map_key] = entry
+    if unknown_duration_samples:
+        logger.warning(
+            "map_index unknown duration_raw samples: %s",
+            ", ".join(sorted(unknown_duration_samples)),
+        )
     target_path = os.path.join(settings.project_root, "map_index.json")
     atomic_write_json(target_path, payload)
     export_time_json(settings, logger)
