@@ -396,10 +396,9 @@
         <div v-show="curView === 'map_cooldown'" class="animate-enter">
           <div class="mapcd-container">
             <div class="mapcd-controls">
-              <label class="mapcd-toggle">
-                <input type="checkbox" v-model="coolingOnly">
-                <span>{{ coolingOnly ? (isChineseLang ? '仅冷却中' : 'Cooling only') : (isChineseLang ? '显示全部' : 'Show all') }}</span>
-              </label>
+              <button class="mapcd-toggle-btn" type="button" @click="toggleMapCooldownMode">
+                {{ mapCooldownToggleLabel }}
+              </button>
               <div v-if="mapCooldownIsBuilding" class="mapcd-preparing">
                 {{ isChineseLang ? '准备中…' : 'Preparing…' }}{{ mapCooldownProgressText }}
               </div>
@@ -425,10 +424,6 @@
                   <div class="mapcd-cell mapcd-col-map">
                     <div class="mapcd-map-key-row">
                       <div class="mapcd-map-key">{{ row.mapLine1 }}</div>
-                      <span
-                        class="mapcd-fast-status"
-                        :class="row.availability === 'available' ? 'is-available' : 'is-cooldown'"
-                      ></span>
                     </div>
                     <div class="mapcd-map-cn">{{ row.mapLine2 }}</div>
                   </div>
@@ -1388,6 +1383,7 @@ const mapCooldownProgressText = computed(() => {
   const pct = Math.min(100, Math.round((done / total) * 100));
   return ` ${pct}%`;
 });
+const mapCooldownToggleLabel = computed(() => (coolingOnly.value ? '显示全部' : '仅显示冷却中地图'));
 
 const mapCooldownRows = computed(() => (coolingOnly.value ? mapCooldownRowsCooling.value : mapCooldownRowsAll.value));
 const mapCooldownKeysAll = computed(() => mapCooldownRows.value.map((row) => row.key));
@@ -1789,6 +1785,10 @@ const stopMapCooldownTimer = () => {
     clearInterval(mapCooldownTimer);
     mapCooldownTimer = null;
   }
+};
+
+const toggleMapCooldownMode = () => {
+  coolingOnly.value = !coolingOnly.value;
 };
 
 watch([mapIndex, curLang], () => {
@@ -2501,7 +2501,14 @@ const submitFeedback = () => {
 }
 
 .mapcd-container {
-  padding: 10px 4px;
+  --mapcd-surface-bg: var(--card-bg);
+  --mapcd-surface-border: var(--card-border);
+  --mapcd-surface-radius: 14px;
+  padding: 14px;
+  background: var(--mapcd-surface-bg);
+  border: 1px solid var(--mapcd-surface-border);
+  border-radius: var(--mapcd-surface-radius);
+  box-shadow: var(--shadow);
 }
 
 .mapcd-controls {
@@ -2512,16 +2519,28 @@ const submitFeedback = () => {
   margin-bottom: 10px;
 }
 
-.mapcd-toggle {
+.mapcd-toggle-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 1px solid var(--mapcd-surface-border);
+  background: rgba(128, 128, 128, 0.08);
+  color: var(--text-primary);
   font-size: 12px;
-  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.mapcd-toggle input {
-  accent-color: var(--accent);
+.mapcd-toggle-btn:hover {
+  background: rgba(128, 128, 128, 0.14);
+}
+
+.mapcd-toggle-btn:active {
+  background: rgba(128, 128, 128, 0.2);
 }
 
 .mapcd-preparing {
@@ -2531,10 +2550,11 @@ const submitFeedback = () => {
 }
 
 .mapcd-table {
-  border-radius: 14px;
-  border: 1px solid var(--card-border);
-  background: var(--card-bg);
-  box-shadow: var(--shadow);
+  border-radius: var(--mapcd-surface-radius);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: hidden;
 }
 
 .mapcd-body {
@@ -2555,12 +2575,12 @@ const submitFeedback = () => {
 
 .mapcd-edge-fade--top {
   top: 0;
-  background: linear-gradient(to bottom, var(--card-bg), rgba(0, 0, 0, 0));
+  background: linear-gradient(to bottom, var(--mapcd-surface-bg), rgba(0, 0, 0, 0));
 }
 
 .mapcd-edge-fade--bottom {
   bottom: 0;
-  background: linear-gradient(to top, var(--card-bg), rgba(0, 0, 0, 0));
+  background: linear-gradient(to top, var(--mapcd-surface-bg), rgba(0, 0, 0, 0));
 }
 
 .mapcd-top-spacer {
@@ -2584,15 +2604,15 @@ const submitFeedback = () => {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: var(--card-bg);
-  border-bottom: 1px solid var(--card-border);
+  background: var(--mapcd-surface-bg);
+  border-bottom: 1px solid var(--mapcd-surface-border);
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
 }
 
 .mapcd-row {
-  border-bottom: 1px solid var(--card-border);
+  border-bottom: 1px solid var(--mapcd-surface-border);
   font-size: 13px;
   color: var(--text-primary);
   transition: background 0.2s ease, opacity 160ms ease-out;
@@ -2620,16 +2640,12 @@ const submitFeedback = () => {
 }
 
 .mapcd-col-map,
-.mapcd-col-ach,
-.mapcd-col-deadline,
-.mapcd-col-length,
-.mapcd-col-availability {
+.mapcd-col-ach {
   align-items: flex-start;
   justify-content: center;
 }
 
 .mapcd-col-ach,
-.mapcd-col-deadline,
 .mapcd-col-length {
   white-space: nowrap;
   overflow: hidden;
@@ -2645,9 +2661,23 @@ const submitFeedback = () => {
   height: 100%;
 }
 
-.mapcd-col-deadline,
-.mapcd-col-length,
-.mapcd-col-availability {
+.mapcd-header .mapcd-col-deadline,
+.mapcd-row .mapcd-col-deadline {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.mapcd-row .mapcd-col-deadline {
+  justify-content: flex-start;
+}
+
+.mapcd-header .mapcd-col-length,
+.mapcd-header .mapcd-col-availability,
+.mapcd-row .mapcd-col-length,
+.mapcd-row .mapcd-col-availability {
+  flex-direction: row;
   align-items: center;
   justify-content: center;
   text-align: center;
@@ -2688,29 +2718,8 @@ const submitFeedback = () => {
   opacity: 0.85;
 }
 
-.mapcd-fast-status {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  background: rgba(128, 128, 128, 0.2);
-  opacity: 0;
-  flex-shrink: 0;
-}
-
-.mapcd-fast-status.is-available {
-  background: var(--status-online);
-}
-
-.mapcd-fast-status.is-cooldown {
-  background: var(--status-offline);
-}
-
 .mapcd-row.is-fast {
   grid-template-columns: 1fr;
-}
-
-.mapcd-row.is-fast .mapcd-fast-status {
-  opacity: 1;
 }
 
 .mapcd-row.is-fast .mapcd-col-ach,
