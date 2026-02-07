@@ -18,8 +18,10 @@ class MapRecord:
     name_zh_tw: Optional[str]
     achievement: Optional[str]
     cooldown_end_epoch: Optional[int]
+    duration_raw: Optional[str]
     workshop_id: Optional[int]
     workshop_url: Optional[str]
+    exg_supported: bool
 
 
 class MySQLClient:
@@ -138,7 +140,8 @@ class MySQLClient:
     def fetch_map_index(self) -> List[MapRecord]:
         sql = (
             "SELECT m.map_key, m.name_zh_cn, m.name_zh_tw, "
-            "e.achievement, e.cooldown_end_epoch, e.workshop_id, e.workshop_url "
+            "e.achievement, e.cooldown_end_epoch, e.duration_raw, e.workshop_id, e.workshop_url, "
+            "e.map_key AS exg_map_key "
             "FROM maps m "
             "LEFT JOIN map_exg e ON m.map_key = e.map_key"
         )
@@ -155,8 +158,10 @@ class MySQLClient:
                     name_zh_tw=row.get("name_zh_tw"),
                     achievement=row.get("achievement"),
                     cooldown_end_epoch=row.get("cooldown_end_epoch"),
+                    duration_raw=row.get("duration_raw"),
                     workshop_id=row.get("workshop_id"),
                     workshop_url=row.get("workshop_url"),
+                    exg_supported=row.get("exg_map_key") is not None,
                 )
             )
         return records
@@ -189,8 +194,10 @@ class MySQLClient:
                 f"{record.name_zh_tw or ''}\x1f"
                 f"{record.achievement or ''}\x1f"
                 f"{record.cooldown_end_epoch or ''}\x1f"
+                f"{record.duration_raw or ''}\x1f"
                 f"{record.workshop_id or ''}\x1f"
                 f"{record.workshop_url or ''}\x1f"
+                f"{1 if record.exg_supported else 0}\x1f"
             )
             hasher.update(payload.encode("utf-8"))
         return int(hasher.hexdigest(), 16)

@@ -102,14 +102,18 @@ export const buildMapSearchIndex = (mapIndex, converter) => {
     const normalizedAliases = aliases.map(normalizeSearchText).filter(Boolean);
     const tokens = [...splitTokens(key), ...aliases.flatMap(splitTokens)];
     const pinyinIndex = buildPinyinIndex(mapCn);
+    const deadline = entry.cooldown_end_epoch ?? entry.deadline ?? null;
+    const durationRaw = entry.duration_raw ?? null;
+    const durationSec = entry.duration_sec ?? null;
     entries.push({
       key,
       mapCn,
       mapTw,
       aliases,
       achievement,
-      deadline: entry.deadline ?? null,
-      durationRaw: entry.duration_raw ?? '',
+      deadline,
+      durationRaw,
+      durationSec,
       normalized: {
         key: normalizeSearchText(key),
         mapCn: normalizeSearchText(mapCn),
@@ -171,13 +175,22 @@ export const scoreSearchEntry = (entry, query) => {
   return score;
 };
 
-export const getExgStatusState = (deadline, durationSec, nowSec = Math.floor(Date.now() / 1000)) => {
+export const getExgStatusState = (
+  deadline,
+  durationSec,
+  nowSec = Math.floor(Date.now() / 1000),
+  durationRaw = null
+) => {
   if (deadline !== null && deadline !== undefined && deadline > nowSec) return 'cooldown';
   if (deadline === null || deadline === undefined) {
+    if (durationRaw === '0分') return 'not_available';
+    if (durationRaw !== null && durationRaw !== undefined && durationRaw !== '0分') return 'available';
     if (durationSec === 0) return 'not_available';
     if (typeof durationSec === 'number' && durationSec > 0) return 'available';
     return 'hidden';
   }
+  if (durationRaw === '0分') return 'not_available';
+  if (durationRaw !== null && durationRaw !== undefined && durationRaw !== '0分') return 'available';
   if (durationSec === 0) return 'not_available';
   if (typeof durationSec === 'number' && durationSec > 0) return 'available';
   return 'hidden';
@@ -226,6 +239,19 @@ export const validateMapIndexEntry = (mapKey, entry, warn = console.warn) => {
   }
   if (entry.deadline !== undefined && entry.deadline !== null && typeof entry.deadline !== 'number') {
     warn?.(`[map_index] deadline should be number|null for ${mapKey}`);
+  }
+  if (
+    entry.cooldown_end_epoch !== undefined
+    && entry.cooldown_end_epoch !== null
+    && typeof entry.cooldown_end_epoch !== 'number'
+  ) {
+    warn?.(`[map_index] cooldown_end_epoch should be number|null for ${mapKey}`);
+  }
+  if (entry.duration_raw !== undefined && entry.duration_raw !== null && typeof entry.duration_raw !== 'string') {
+    warn?.(`[map_index] duration_raw should be string|null for ${mapKey}`);
+  }
+  if (entry.duration_sec !== undefined && entry.duration_sec !== null && typeof entry.duration_sec !== 'number') {
+    warn?.(`[map_index] duration_sec should be number|null for ${mapKey}`);
   }
 };
 
