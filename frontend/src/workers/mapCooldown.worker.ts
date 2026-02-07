@@ -76,18 +76,24 @@ const buildRows = (payload: any, buildId?: number) => {
       const durationSec = typeof data.duration_sec === 'number' ? data.duration_sec : null;
       const availability = toAvailability(deadline, durationSec, nowEpochSec);
       const sortGroup = availability === 'cooling' ? 0 : availability === 'available' ? 1 : 2;
+      const mapLine2 = resolveMapLine2(key, data);
+      const achievement = typeof data.achievement === 'string' ? data.achievement : '';
+      const aliases = Array.isArray(data.aliases) ? data.aliases.filter((alias) => typeof alias === 'string') : [];
+      const searchKey = `${key}\n${mapLine2}\n${achievement}\n${aliases.join(' ')}`.trim();
       rows.push({
         key,
         mapLine1: key,
-        mapLine2: resolveMapLine2(key, data),
-        achievement: typeof data.achievement === 'string' ? data.achievement : '',
+        mapLine2,
+        achievement,
         deadlineEpochSec: deadline,
         deadlineText: formatDeadline(deadline, formatter),
         durationSec,
         durationText: formatDurationHuman(durationSec, locale),
         availability,
         availabilityTitle: availability === 'available' ? availabilityLabels.available : availabilityLabels.unavailable,
-        sortGroup
+        sortGroup,
+        searchKey,
+        searchKeyLower: searchKey.toLowerCase()
       });
     });
     done = Math.min(total, i + chunk.length);
