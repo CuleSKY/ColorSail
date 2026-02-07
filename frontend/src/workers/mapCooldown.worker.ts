@@ -130,8 +130,13 @@ self.onmessage = (event: MessageEvent) => {
   const buildId = data.payload?.buildId;
   try {
     const { rows, coolingRows } = buildRows(data.payload, buildId);
-    self.postMessage({ type: 'RESULT', payload: { mode: 'showAll', rows, buildId } });
-    self.postMessage({ type: 'RESULT', payload: { mode: 'coolingOnly', rows: coolingRows, buildId } });
+    const meta = {
+      totalRows: rows.length,
+      coolingRows: coolingRows.length,
+      rowHeight: data.payload?.rowHeight ?? null
+    };
+    self.postMessage({ type: 'RESULT', payload: { mode: 'showAll', rows, buildId, meta } });
+    self.postMessage({ type: 'RESULT', payload: { mode: 'coolingOnly', rows: coolingRows, buildId, meta } });
   } catch (error: any) {
     self.postMessage({
       type: 'ERROR',
