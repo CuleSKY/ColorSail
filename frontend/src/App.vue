@@ -2685,7 +2685,7 @@ const submitFeedback = () => {
 
 .mapcd-view .mapcd-search-area {
   margin-top: 58px;
-  margin-bottom: 45px;
+  margin-bottom: 30px;
 }
 
 .mapcd-view .mapcd-divider {
@@ -2695,7 +2695,7 @@ const submitFeedback = () => {
 }
 
 .mapcd-view .mapcd-header-slot {
-  height: 110px;
+  height: 72px;
   position: relative;
   margin: 0 !important;
   padding: 0 !important;
@@ -2703,7 +2703,7 @@ const submitFeedback = () => {
 
 .mapcd-view .mapcd-title-pos {
   position: absolute;
-  bottom: 30px;
+  bottom: 16px;
   left: 0;
   right: 0;
 }
