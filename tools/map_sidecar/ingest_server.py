@@ -104,10 +104,7 @@ def _validate_records(payload: dict) -> list[dict]:
             raise ValueError(f"Record {idx} achievement must be a string")
 
         name_zh_cn = _empty_to_none(name_zh)
-        try:
-            name_zh_tw = convert_to_traditional(name_zh_cn) if name_zh_cn else None
-        except RuntimeError as exc:
-            raise ValueError(f"Record {idx} zh_tw conversion failed: {exc}") from exc
+        name_zh_tw = convert_to_traditional(name_zh_cn) if name_zh_cn else None
         duration_raw = _empty_to_none(duration_raw)
         deadline = _empty_to_none(deadline)
         cooldown_end_epoch = parse_beijing_time(deadline) if deadline else None

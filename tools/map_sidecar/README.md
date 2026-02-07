@@ -96,6 +96,7 @@ Overseas:
 .venv/bin/python -m tools.map_sidecar.sidecar fetch-images
 .venv/bin/python -m tools.map_sidecar.sidecar exg-health
 .venv/bin/python -m tools.map_sidecar.sidecar ingest-server
+.venv/bin/python -m tools.map_sidecar.utils --self-check-opencc
 ```
 
 CN fetcher:
@@ -171,7 +172,9 @@ sudo systemctl enable --now exg-fetcher-cn.timer
 - `map_index.json` is exported only after successful MySQL updates via the `map-sidecar-index-refresh.timer` (ingest does not export immediately).
 - `map_index.json` and `time.json` are written atomically to the project root by the exporter timer.
 - `map_translations.json` is deprecated and should not be used as the primary lookup path.
+- The `maps` table is authoritative for map naming; `map_exg` augments it with EXG metadata.
 - `static/data/maplist_normalized.json` is the authoritative normalized EXG maplist consumed by the main site.
+- `name_zh_tw` is auto-generated from `name_zh_cn` using OpenCC `s2tw` (Taiwan traditional), but manual edits are respected: non-empty values are never overwritten, and `name_locked` still gates automatic updates.
 - EXG HTML is retained under `tools/map_sidecar/debug/exg_html/` on the **CN fetcher** when `DEBUG=true` or parsing fails; files older than `RETENTION_HOURS` are deleted automatically.
 - Workshop images are saved as lowercase `<map_key>.jpg` under `<PROJECT_ROOT>/<STATIC_DIR_NAME>/maps/`.
 - Overseas hosts do **not** fetch the EXG HTML directly; ingestion happens via the HTTP sidecar endpoint.
