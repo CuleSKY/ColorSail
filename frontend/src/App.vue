@@ -395,6 +395,12 @@
 
         <div v-show="curView === 'map_cooldown'" class="animate-enter">
           <div class="mapcd-container">
+            <div class="mapcd-controls">
+              <label class="mapcd-toggle">
+                <input type="checkbox" v-model="coolingOnly">
+                <span>{{ coolingOnly ? (isChineseLang ? '仅冷却中' : 'Cooling only') : (isChineseLang ? '显示全部' : 'Show all') }}</span>
+              </label>
+            </div>
             <div class="mapcd-table">
               <div class="mapcd-header">
                 <div class="mapcd-cell mapcd-col-map">{{ t('map') }}</div>
@@ -403,24 +409,27 @@
                 <div class="mapcd-cell mapcd-col-length">{{ t('cooldown_length') }}</div>
                 <div class="mapcd-cell mapcd-col-availability">{{ t('exg_availability') }}</div>
               </div>
-              <div class="mapcd-body">
-                <div class="mapcd-row" v-for="row in mapCooldownRows" :key="row.key">
-                  <div class="mapcd-cell mapcd-col-map">
-                    <div class="mapcd-map-key">{{ row.key }}</div>
-                    <div v-if="isChineseLang && row.displayName" class="mapcd-map-cn">{{ row.displayName }}</div>
-                  </div>
-                  <div class="mapcd-cell mapcd-col-ach">{{ row.achievement || '-' }}</div>
-                  <div class="mapcd-cell mapcd-col-deadline">{{ row.deadlineDisplay }}</div>
-                  <div class="mapcd-cell mapcd-col-length">{{ row.durationDisplay }}</div>
-                  <div class="mapcd-cell mapcd-col-availability">
-                    <span
-                      class="mapcd-availability"
-                      :class="row.availabilityState === 'available' ? 'is-available' : 'is-cooldown'"
-                      :title="row.availabilityState === 'available' ? t('available') : t('unavailable')"
-                    >
-                      <span v-if="row.availabilityState === 'available'" v-html="icons.check"></span>
-                      <span v-else v-html="icons.cross"></span>
-                    </span>
+              <div class="mapcd-body" ref="mapCooldownScrollRef" @scroll="onMapCooldownScroll">
+                <div class="mapcd-spacer" :style="{ height: `${mapCooldownSpacerHeight}px` }"></div>
+                <div class="mapcd-virtual" :style="{ transform: `translateY(${mapCooldownTranslateY}px)` }">
+                  <div class="mapcd-row" v-for="row in mapCooldownVisibleRows" :key="row.key">
+                    <div class="mapcd-cell mapcd-col-map">
+                      <div class="mapcd-map-key">{{ row.key }}</div>
+                      <div v-if="isChineseLang && row.displayName" class="mapcd-map-cn">{{ row.displayName }}</div>
+                    </div>
+                    <div class="mapcd-cell mapcd-col-ach">{{ row.achievement || '-' }}</div>
+                    <div class="mapcd-cell mapcd-col-deadline">{{ row.deadlineDisplay }}</div>
+                    <div class="mapcd-cell mapcd-col-length">{{ row.durationDisplay }}</div>
+                    <div class="mapcd-cell mapcd-col-availability">
+                      <span
+                        class="mapcd-availability"
+                        :class="row.availabilityState === 'available' ? 'is-available' : 'is-cooldown'"
+                        :title="row.availabilityState === 'available' ? t('available') : t('unavailable')"
+                      >
+                        <span v-if="row.availabilityState === 'available'" v-html="icons.check"></span>
+                        <span v-else v-html="icons.cross"></span>
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div v-if="mapCooldownRows.length === 0" class="mapcd-empty">
@@ -446,7 +455,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { buildMapSearchIndex, createOpenCCConverter, formatExgDate, formatExgDateTime, formatLocalDateTime, getExgStatusState, normalizeSearchText, scoreSearchEntry, shouldShowExgStatus, stripBracketSegments, validateMapIndexEntry } from './mapSearchUtils';
+import { buildMapSearchIndex, createOpenCCConverter, formatExgDate, formatExgDateTime, getExgStatusState, normalizeSearchText, scoreSearchEntry, shouldShowExgStatus, stripBracketSegments, validateMapIndexEntry } from './mapSearchUtils';
 
 const props = defineProps({
   initialConfig: {
@@ -693,6 +702,26 @@ watch(curView, (nextView, prevView) => {
   if (nextView === 'servers' && prevView !== 'servers') {
     restoreServersScroll();
   }
+  if (nextView === 'map_cooldown') {
+    mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
+    if (mapCooldownNeedsRebuild.value) {
+      buildCooldownRows({ rebuildAll: true });
+      mapCooldownNeedsRebuild.value = false;
+    } else {
+      buildCooldownRows({ rebuildAll: false });
+    }
+    startMapCooldownTimer();
+    nextTick(() => {
+      updateMapCooldownContainerHeight();
+      mapCooldownScrollTop.value = 0;
+      if (mapCooldownScrollRef.value) {
+        mapCooldownScrollRef.value.scrollTop = 0;
+      }
+    });
+  }
+  if (prevView === 'map_cooldown' && nextView !== 'map_cooldown') {
+    stopMapCooldownTimer();
+  }
 });
 watch([isLoggedIn, curView], () => {
   scheduleServerRefresh();
@@ -711,6 +740,9 @@ const handleResize = () => {
   isMobile.value = window.innerWidth <= 768;
   if (isMobile.value) {
     exgTooltip.value = { ...exgTooltip.value, visible: false };
+  }
+  if (curView.value === 'map_cooldown') {
+    updateMapCooldownContainerHeight();
   }
 };
 
@@ -925,6 +957,7 @@ onUnmounted(() => {
   document.removeEventListener('visibilitychange', handleVisibilityChange);
   stopSteamLoginWatcher();
   clearToastTimer();
+  stopMapCooldownTimer();
 });
 
 const toggleLangMenu = () => {
@@ -1247,6 +1280,39 @@ const getMapIndexDisplayName = (mapName) => {
   return '';
 };
 
+const epochFmtCache = new Map();
+const durFmtCache = new Map();
+
+const formatEpochLocal = (epochSec) => {
+  if (!epochSec) return '-';
+  if (epochFmtCache.has(epochSec)) return epochFmtCache.get(epochSec);
+  const date = new Date(epochSec * 1000);
+  const pad = (val) => String(val).padStart(2, '0');
+  const value = `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  epochFmtCache.set(epochSec, value);
+  return value;
+};
+
+const formatDurationHuman = (seconds, lang) => {
+  if (seconds === null || seconds === undefined || Number.isNaN(seconds)) return '-';
+  const cacheKey = `${lang || ''}:${seconds}`;
+  if (durFmtCache.has(cacheKey)) return durFmtCache.get(cacheKey);
+  const total = Math.max(0, Math.floor(seconds));
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  const isZh = (lang || '').startsWith('zh');
+  const parts = [];
+  if (days) parts.push(isZh ? `${days}天` : `${days}d`);
+  if (hours) parts.push(isZh ? `${hours}小时` : `${hours}h`);
+  if (minutes) parts.push(isZh ? `${minutes}分钟` : `${minutes}m`);
+  if (total < 60 || parts.length === 0) parts.push(isZh ? `${secs}秒` : `${secs}s`);
+  const value = isZh ? parts.join('') : parts.join(' ');
+  durFmtCache.set(cacheKey, value);
+  return value;
+};
+
 const durationRawToSeconds = (raw) => {
   if (raw === null || raw === undefined) return null;
   if (typeof raw === 'number' && !Number.isNaN(raw)) return raw;
@@ -1268,65 +1334,106 @@ const durationRawToSeconds = (raw) => {
   return total;
 };
 
-const formatDurationHuman = (seconds, lang) => {
-  if (seconds === null || seconds === undefined || Number.isNaN(seconds)) return '-';
-  const total = Math.max(0, Math.floor(seconds));
-  const days = Math.floor(total / 86400);
-  const hours = Math.floor((total % 86400) / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  const secs = total % 60;
-  const isZh = (lang || '').startsWith('zh');
-  const parts = [];
-  if (days) parts.push(isZh ? `${days}天` : `${days}d`);
-  if (hours) parts.push(isZh ? `${hours}小时` : `${hours}h`);
-  if (minutes) parts.push(isZh ? `${minutes}分` : `${minutes}m`);
-  if (secs || parts.length === 0) parts.push(isZh ? `${secs}秒` : `${secs}s`);
-  return isZh ? parts.join('') : parts.join(' ');
-};
-
-const formatDeadlineLocal = (epochSec) => {
-  if (!epochSec) return '-';
-  try {
-    return new Intl.DateTimeFormat(curLang.value, {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    }).format(new Date(epochSec * 1000));
-  } catch (e) {
-    return formatLocalDateTime(epochSec);
-  }
-};
-
 const ensureCooldownPrefix = (text) => {
   if (!text) return text;
   if (text.endsWith(':') || text.endsWith('：')) return text;
   return `${text}${isChineseLang.value ? '：' : ':'}`;
 };
 
-const mapCooldownRows = computed(() => {
+const mapCooldownScrollRef = ref(null);
+const coolingOnly = ref(true);
+const mapCooldownRowsCooling = ref([]);
+const mapCooldownRowsAll = ref([]);
+const mapCooldownScrollTop = ref(0);
+const mapCooldownContainerHeight = ref(0);
+const mapCooldownNowEpoch = ref(Math.floor(Date.now() / 1000));
+const mapCooldownNeedsRebuild = ref(true);
+const mapCooldownRowHeight = 56;
+const mapCooldownOverscan = 10;
+let mapCooldownTimer = null;
+
+const mapCooldownRows = computed(() => (coolingOnly.value ? mapCooldownRowsCooling.value : mapCooldownRowsAll.value));
+const mapCooldownSpacerHeight = computed(() => mapCooldownRows.value.length * mapCooldownRowHeight);
+const mapCooldownVisibleCount = computed(() => {
+  const baseHeight = mapCooldownContainerHeight.value || Math.round(window.innerHeight * 0.7);
+  return Math.ceil(baseHeight / mapCooldownRowHeight) + mapCooldownOverscan * 2;
+});
+const mapCooldownStartIndex = computed(() => Math.max(0, Math.floor(mapCooldownScrollTop.value / mapCooldownRowHeight) - mapCooldownOverscan));
+const mapCooldownEndIndex = computed(() => Math.min(mapCooldownRows.value.length, mapCooldownStartIndex.value + mapCooldownVisibleCount.value));
+const mapCooldownVisibleRows = computed(() => mapCooldownRows.value.slice(mapCooldownStartIndex.value, mapCooldownEndIndex.value));
+const mapCooldownTranslateY = computed(() => mapCooldownStartIndex.value * mapCooldownRowHeight);
+
+const updateMapCooldownContainerHeight = () => {
+  if (mapCooldownScrollRef.value) {
+    mapCooldownContainerHeight.value = mapCooldownScrollRef.value.clientHeight || 0;
+  }
+};
+
+const onMapCooldownScroll = () => {
+  if (mapCooldownScrollRef.value) {
+    mapCooldownScrollTop.value = mapCooldownScrollRef.value.scrollTop || 0;
+  }
+};
+
+const buildCooldownRows = ({ rebuildAll = false } = {}) => {
   const prefixes = ['ze_', 'bhop_', 'kz_', 'mg_', 'surf_'];
   const entries = Object.entries(mapIndex.value || {});
-  return entries
-    .filter(([key]) => prefixes.some(prefix => key.startsWith(prefix)))
-    .map(([key, entry]) => {
-      const data = entry && typeof entry === 'object' ? entry : {};
-      const deadline = typeof data.deadline === 'number' ? data.deadline : null;
-      const durationRaw = typeof data.duration_raw === 'string' ? data.duration_raw : '';
-      const durationSec = durationRawToSeconds(durationRaw);
-      const availabilityState = getExgStatusState(deadline, durationSec);
-      return {
-        key,
-        displayName: getMapIndexDisplayName(key),
-        achievement: typeof data.achievement === 'string' ? data.achievement : '',
-        deadlineDisplay: deadline ? formatDeadlineLocal(deadline) : '-',
-        durationDisplay: formatDurationHuman(durationSec, curLang.value),
-        availabilityState
-      };
-    })
-    .sort((a, b) => a.key.localeCompare(b.key));
+  if (rebuildAll) {
+    mapCooldownRowsAll.value = entries
+      .filter(([key]) => prefixes.some(prefix => key.startsWith(prefix)))
+      .map(([key, entry]) => {
+        const data = entry && typeof entry === 'object' ? entry : {};
+        const deadline = typeof data.deadline === 'number' ? data.deadline : null;
+        const durationSec = typeof data.duration_sec === 'number' ? data.duration_sec : null;
+        const availabilityState = getExgStatusState(deadline, durationSec, mapCooldownNowEpoch.value);
+        return {
+          key,
+          deadline,
+          displayName: getMapIndexDisplayName(key),
+          achievement: typeof data.achievement === 'string' ? data.achievement : '',
+          deadlineDisplay: deadline ? formatEpochLocal(deadline) : '-',
+          durationDisplay: formatDurationHuman(durationSec, curLang.value),
+          availabilityState
+        };
+      })
+      .sort((a, b) => a.key.localeCompare(b.key));
+  }
+  const nowEpoch = mapCooldownNowEpoch.value;
+  mapCooldownRowsCooling.value = mapCooldownRowsAll.value
+    .filter(row => row.deadline !== null && row.deadline > nowEpoch)
+    .slice()
+    .sort((a, b) => (a.deadline - b.deadline) || a.key.localeCompare(b.key));
+};
+
+const startMapCooldownTimer = () => {
+  if (mapCooldownTimer) return;
+  mapCooldownTimer = setInterval(() => {
+    mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
+    buildCooldownRows({ rebuildAll: false });
+  }, 5000);
+};
+
+const stopMapCooldownTimer = () => {
+  if (mapCooldownTimer) {
+    clearInterval(mapCooldownTimer);
+    mapCooldownTimer = null;
+  }
+};
+
+watch([mapIndex, mapTranslations, curLang], () => {
+  mapCooldownNeedsRebuild.value = true;
+  if (curView.value === 'map_cooldown') {
+    mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
+    buildCooldownRows({ rebuildAll: true });
+    mapCooldownNeedsRebuild.value = false;
+  }
+});
+
+watch(coolingOnly, () => {
+  mapCooldownScrollTop.value = 0;
+  if (mapCooldownScrollRef.value) {
+    mapCooldownScrollRef.value.scrollTop = 0;
+  }
 });
 
 const getExgStatus = (sub) => {
@@ -2012,13 +2119,46 @@ const submitFeedback = () => {
   padding: 10px 4px;
 }
 
+.mapcd-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.mapcd-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.mapcd-toggle input {
+  accent-color: var(--accent);
+}
+
 .mapcd-table {
   border-radius: 14px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
   box-shadow: var(--shadow);
-  overflow: auto;
-  max-height: 72vh;
+}
+
+.mapcd-body {
+  position: relative;
+  height: 70vh;
+  overflow-y: auto;
+}
+
+.mapcd-spacer {
+  width: 100%;
+}
+
+.mapcd-virtual {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
 }
 
 .mapcd-header,
@@ -2046,6 +2186,7 @@ const submitFeedback = () => {
   font-size: 13px;
   color: var(--text-primary);
   transition: background 0.2s ease;
+  height: 56px;
 }
 
 .mapcd-row:hover {
