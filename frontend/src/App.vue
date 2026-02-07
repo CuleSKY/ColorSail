@@ -418,12 +418,9 @@
                         <div class="mapcd-cell mapcd-cell--compact">
                           <div class="mapcd-map-key mapcd-map-key--single">{{ mapCooldownVisibleRows[poolIndex].key }}</div>
                           <span
-                            class="mapcd-availability"
+                            class="mapcd-fast-status"
                             :class="mapCooldownVisibleRows[poolIndex].availabilityState === 'available' ? 'is-available' : 'is-cooldown'"
-                          >
-                            <span v-if="mapCooldownVisibleRows[poolIndex].availabilityState === 'available'" v-html="icons.check"></span>
-                            <span v-else v-html="icons.cross"></span>
-                          </span>
+                          ></span>
                         </div>
                       </template>
                       <template v-else>
@@ -1375,9 +1372,9 @@ const mapCooldownIsFastScrolling = ref(false);
 const mapCooldownPendingRebuild = ref(false);
 const mapCooldownRowHeight = 56;
 const mapCooldownOverscanBase = 30;
-const mapCooldownOverscanFast = 12;
-const mapCooldownOverscanFaster = 6;
-const mapCooldownOverscanMax = 60;
+const mapCooldownOverscanMedium = 16;
+const mapCooldownOverscanHigh = 8;
+const mapCooldownOverscanMax = mapCooldownOverscanBase;
 const mapCooldownFastSpeedThreshold = 2.0;
 const mapCooldownFasterSpeedThreshold = 5.0;
 const mapCooldownScrollIdleMs = 180;
@@ -1393,7 +1390,6 @@ let mapCooldownScrollRafId = 0;
 let mapCooldownLatestScrollTop = 0;
 let mapCooldownLastScrollTop = 0;
 let mapCooldownLastTimestamp = 0;
-let mapCooldownLastScrollEventTs = 0;
 let mapCooldownIdleTimer = null;
 let mapCooldownPrevFastState = false;
 let mapCooldownPrevOverscan = mapCooldownOverscanBase;
@@ -1436,15 +1432,13 @@ const applyMapCooldownScrollUpdate = (timestamp) => {
   const speed = delta / dtMs;
   let nextOverscan = mapCooldownOverscanBase;
   if (speed > mapCooldownFasterSpeedThreshold) {
-    nextOverscan = mapCooldownOverscanFaster;
+    nextOverscan = mapCooldownOverscanHigh;
   } else if (speed > mapCooldownFastSpeedThreshold) {
-    nextOverscan = mapCooldownOverscanFast;
+    nextOverscan = mapCooldownOverscanMedium;
   }
   mapCooldownOverscan.value = Math.min(mapCooldownOverscanMax, nextOverscan);
   const isFast = speed > mapCooldownFastSpeedThreshold;
-  if (isFast) {
-    mapCooldownIsFastScrolling.value = true;
-  }
+  mapCooldownIsFastScrolling.value = isFast;
   mapCooldownScrollTop.value = scrollTop;
   mapCooldownLastScrollTop = scrollTop;
   mapCooldownLastTimestamp = nextTimestamp;
@@ -1504,7 +1498,6 @@ const resetMapCooldownScrollState = () => {
   mapCooldownLatestScrollTop = 0;
   mapCooldownLastScrollTop = 0;
   mapCooldownLastTimestamp = 0;
-  mapCooldownLastScrollEventTs = 0;
   mapCooldownIsFastScrolling.value = false;
   mapCooldownOverscan.value = mapCooldownOverscanBase;
   mapCooldownVisibleStartIndex.value = 0;
@@ -1519,14 +1512,9 @@ const resetMapCooldownScrollState = () => {
   clearMapCooldownIdleTimer();
 };
 
-const onMapCooldownScroll = () => {
-  if (!mapCooldownScrollRef.value) return;
-  mapCooldownLatestScrollTop = mapCooldownScrollRef.value.scrollTop || 0;
-  const now = performance.now();
-  if (mapCooldownLastScrollEventTs && now - mapCooldownLastScrollEventTs < 90) {
-    mapCooldownIsFastScrolling.value = true;
-  }
-  mapCooldownLastScrollEventTs = now;
+const onMapCooldownScroll = (event) => {
+  const target = event?.target;
+  mapCooldownLatestScrollTop = target?.scrollTop ?? mapCooldownScrollRef.value?.scrollTop ?? 0;
   scheduleMapCooldownRaf();
   scheduleMapCooldownIdleReset();
 };
@@ -2423,6 +2411,21 @@ const submitFeedback = () => {
 
 .mapcd-row.is-fast .mapcd-cell {
   justify-content: center;
+}
+
+.mapcd-fast-status {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, 0.2);
+}
+
+.mapcd-fast-status.is-available {
+  background: var(--status-online);
+}
+
+.mapcd-fast-status.is-cooldown {
+  background: var(--status-offline);
 }
 
 .mapcd-availability {
