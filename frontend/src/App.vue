@@ -2683,25 +2683,25 @@ const submitFeedback = () => {
   gap: 0;
 }
 
-.mapcd-search-area {
+.mapcd-view .mapcd-search-area {
   margin-top: 58px;
   margin-bottom: 45px;
 }
 
-.mapcd-divider {
+.mapcd-view .mapcd-divider {
   height: 1px;
   background: var(--card-border);
   margin: 0;
 }
 
-.mapcd-header-slot {
+.mapcd-view .mapcd-header-slot {
   height: 110px;
   position: relative;
   margin: 0 !important;
   padding: 0 !important;
 }
 
-.mapcd-title-pos {
+.mapcd-view .mapcd-title-pos {
   position: absolute;
   bottom: 30px;
   left: 0;
