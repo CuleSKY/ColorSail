@@ -802,7 +802,9 @@ const showExgTooltip = (event, datetime) => {
   if (!datetime || viewportWidth.value < 768) return;
   const target = event?.currentTarget;
   if (!target || typeof target.getBoundingClientRect !== 'function') return;
-  const rect = target.getBoundingClientRect();
+  const anchor = target.querySelector?.('.exg-pill-line2') || target;
+  if (!anchor || typeof anchor.getBoundingClientRect !== 'function') return;
+  const rect = anchor.getBoundingClientRect();
   exgTooltip.value = {
     visible: true,
     text: datetime,
@@ -1970,26 +1972,42 @@ watch(mapCooldownRows, () => {
 const hasMapIndexExgFields = (entry) => (
   entry
   && typeof entry === 'object'
-  && ['cooldown_end_epoch', 'duration_raw', 'duration_sec']
+  && ['deadline', 'cooldown_end_epoch', 'duration_raw', 'duration_sec']
     .some((field) => Object.prototype.hasOwnProperty.call(entry, field))
 );
 
 const getExgStatus = (sub) => {
   if (!sub) return null;
   const mapKey = normalizeMapKey(sub.map || '');
-  const comms = sub.comms || [];
+  const commsNorm = Array.isArray(sub.comms)
+    ? sub.comms
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (item && typeof item === 'object') {
+          return item.id ?? item.community_id ?? item.value ?? String(item);
+        }
+        return item == null ? null : String(item);
+      })
+      .filter(Boolean)
+    : [];
   const shouldShow = shouldShowExgStatus({
     mapKey,
-    comms,
+    comms: commsNorm,
     viewportWidth: viewportWidth.value
   });
   if (!shouldShow) return null;
   const entry = getMapIndexEntry(mapKey);
   if (!entry || !hasMapIndexExgFields(entry)) return null;
-  const deadline = typeof entry.cooldown_end_epoch === 'number' ? entry.cooldown_end_epoch : null;
+  const deadline = typeof entry.cooldown_end_epoch === 'number'
+    ? entry.cooldown_end_epoch
+    : (typeof entry.deadline === 'number' ? entry.deadline : null);
   const durationRaw = Object.prototype.hasOwnProperty.call(entry, 'duration_raw') ? entry.duration_raw ?? null : null;
   const durationSec = typeof entry.duration_sec === 'number' ? entry.duration_sec : null;
-  if ((deadline === null || deadline === undefined) && (durationRaw === null || durationRaw === undefined)) {
+  if (
+    (deadline === null || deadline === undefined)
+    && (durationRaw === null || durationRaw === undefined)
+    && (durationSec === null || durationSec === undefined)
+  ) {
     return null;
   }
   const state = getExgStatusState(deadline, durationSec, undefined, durationRaw);
