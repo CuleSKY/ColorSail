@@ -70,6 +70,20 @@
       ]
     },
     {
+      "id": "trn",
+      "name": "Training/训练服",
+      "short_name": "Training",
+      "logo": "/static/xcq_logo.png",
+      "location": "cn",
+      "game": "cs2",
+      "servers": [
+        { "name": "XCQ 01 SURF", "host": "101.35.153.193", "port": 27015 },
+        { "name": "XCQ 03 ZE", "host": "43.142.157.148", "port": 27015 },
+        { "name": "XCQ 04 ZE", "host": "43.142.157.148", "port": 27020 },
+        { "name": "Genshin PRO", "host": "frp-gym.com", "port": 63699 }
+      ]
+    },
+    {
       "id": "gfl",
       "name": "Others (CS2)",
       "short_name": "Others",
