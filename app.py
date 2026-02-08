@@ -1363,32 +1363,23 @@ def _mysql_config_from_env():
     }
 
 def resolve_mysql_map_translation(map_key, translation_entry):
-    map_key_value = (map_key or "").strip()
     zh_cn = ""
     zh_tw = ""
     if translation_entry:
         zh_cn = str(translation_entry.get("name_zh_cn") or "").strip()
         zh_tw = str(translation_entry.get("name_zh_tw") or "").strip()
-    map_cn = zh_cn or map_key_value
-    map_cn = strip_leading_bracket_tag(map_cn)
+    map_cn = strip_leading_bracket_tag(zh_cn) if zh_cn else ""
     if zh_tw:
         map_tw = strip_leading_bracket_tag(zh_tw)
+    elif map_cn:
+        map_tw = convert_to_tw(map_cn)
     else:
-        map_tw = convert_to_tw(map_cn) if map_cn else map_key_value
-    if not map_cn:
-        map_cn = map_key_value
-    if not map_tw:
-        map_tw = map_key_value
+        map_tw = ""
     return map_cn, map_tw
 
 def resolve_map_index_translation(map_key, map_cn_value):
-    map_key_value = (map_key or "").strip()
     map_cn = strip_leading_bracket_tag(map_cn_value or "") if map_cn_value else ""
-    if not map_cn:
-        map_cn = map_key_value
-    map_tw = convert_to_tw(map_cn) if map_cn else map_key_value
-    if not map_tw:
-        map_tw = map_key_value
+    map_tw = convert_to_tw(map_cn) if map_cn else ""
     return map_cn, map_tw
 
 def fetch_mysql_map_translations(map_keys):
