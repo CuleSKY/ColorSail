@@ -419,7 +419,10 @@
                   <div class="mapcd-header">
                     <div class="mapcd-cell mapcd-col-map">{{ t('map') }}</div>
                     <div class="mapcd-cell mapcd-col-ach">{{ t('achievement') }}</div>
-                    <div class="mapcd-cell mapcd-col-deadline sortable" @click="sortByCooldownTrigger++">{{ t('cooldown_deadline') }}</div>
+                    <div class="mapcd-cell mapcd-col-deadline sortable" @click="onMapcdCooldownEndHeaderClick">
+                      <span>{{ t('cooldown_deadline') }}</span>
+                      <span class="sort-arrow" :class="{ active: mapcdSortMode === 'availability' }" aria-hidden="true">↑</span>
+                    </div>
                     <div class="mapcd-cell mapcd-col-length">{{ t('cooldown_length') }}</div>
                     <div class="mapcd-cell mapcd-col-availability">{{ t('exg_availability') }}</div>
                   </div>
@@ -1269,7 +1272,7 @@ const mapCooldownHighlightKey = ref('');
 const mapCooldownNowEpoch = ref(Math.floor(Date.now() / 1000));
 const mapCooldownNeedsRebuild = ref(true);
 const mapCooldownIsFastScrolling = ref(false);
-const sortByCooldownTrigger = ref(0);
+const mapcdSortMode = ref('default');
 const mapCooldownPendingRebuild = ref(false);
 const mapCooldownIsBuilding = ref(false);
 const mapCooldownBuildProgress = ref({ done: 0, total: 0 });
@@ -1345,17 +1348,29 @@ const mapcdAutoShowAll = computed(() =>
   mapcdAllMatches.value.length > 0
 );
 const mapcdDisplayedRows = computed(() => (mapcdAutoShowAll.value ? mapcdAllMatches.value : mapCooldownFilteredRows.value));
+const onMapcdCooldownEndHeaderClick = () => {
+  mapcdSortMode.value = mapcdSortMode.value === 'default' ? 'availability' : 'default';
+};
 const mapCooldownRows = computed(() => {
-  sortByCooldownTrigger.value;
   const rows = mapcdDisplayedRows.value;
-  return rows.slice().sort((a, b) => {
-    const ta = a.deadlineEpochSec;
-    const tb = b.deadlineEpochSec;
-    if (!ta && !tb) return 0;
-    if (!ta) return 1;
-    if (!tb) return -1;
-    return ta - tb;
-  });
+  const compareName = (a, b) => (a.mapLine1 || '').localeCompare(b.mapLine1 || '');
+  if (mapcdSortMode.value === 'availability') {
+    return rows.slice().sort((a, b) => {
+      const aCooling = a.availability === 'cooling';
+      const bCooling = b.availability === 'cooling';
+      if (aCooling !== bCooling) return aCooling ? 1 : -1;
+      if (!aCooling) return compareName(a, b);
+      const ta = a.deadlineEpochSec;
+      const tb = b.deadlineEpochSec;
+      if (ta == null && tb == null) return compareName(a, b);
+      if (ta == null) return 1;
+      if (tb == null) return -1;
+      const diff = ta - tb;
+      if (diff !== 0) return diff;
+      return compareName(a, b);
+    });
+  }
+  return rows.slice().sort(compareName);
 });
 const mapCooldownKeysAll = computed(() => mapCooldownRows.value.map((row) => row.key));
 const updateMapCooldownVisibleRows = () => {
@@ -3023,6 +3038,17 @@ th.sortable:hover {
 
 .mapcd-header .sortable:hover {
   opacity: 0.75;
+}
+
+.mapcd-view .sort-arrow {
+  margin-left: 6px;
+  font-size: 12px;
+  opacity: 0.4;
+}
+
+.mapcd-view .sort-arrow.active {
+  opacity: 1;
+  color: var(--accent);
 }
 
 .mapcd-row {
