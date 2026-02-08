@@ -306,18 +306,23 @@
                   <div v-if="exgStatusByIndex[idx]" class="exg-status-stack">
                     <div
                       v-if="exgStatusByIndex[idx].state === 'available'"
-                      class="exg-pill exg-pill--available"
+                      class="exg-status-tag exg-status-tag--available"
                     >
-                      {{ exgStatusByIndex[idx].label }}
+                      ✔ {{ t('map_sub_exg_available') }}
                     </div>
                     <div
                       v-else-if="exgStatusByIndex[idx].state === 'cooldown'"
-                      class="exg-pill exg-pill--cooldown"
+                      class="exg-status-block"
                     >
-                      <div class="exg-pill-line1">{{ exgStatusByIndex[idx].prefix }}</div>
-                      <div class="exg-pill-line2">{{ exgStatusByIndex[idx].datetimeDisplay }}</div>
+                      <div class="exg-status-tag exg-status-tag--cooldown">
+                        ⏳ {{ t('map_sub_exg_cooldown') }}
+                      </div>
+                      <div class="exg-status-time">{{ exgStatusByIndex[idx].compactTime }}</div>
+                      <div v-if="exgStatusByIndex[idx].progress !== null" class="exg-status-progress">
+                        <div class="exg-status-progress-bar" :style="{ width: `${exgStatusByIndex[idx].progress * 100}%` }"></div>
+                      </div>
                     </div>
-                    <div v-else class="exg-pill exg-pill--unavailable">
+                    <div v-else class="exg-status-tag exg-status-tag--unavailable">
                       {{ exgStatusByIndex[idx].label }}
                     </div>
                   </div>
@@ -1258,10 +1263,25 @@ const getMapIndexDisplayName = (mapName) => {
   return '';
 };
 
-const ensureCooldownPrefix = (text) => {
-  if (!text) return text;
-  if (text.endsWith(':') || text.endsWith('：')) return text;
-  return `${text}${isChineseLang.value ? '：' : ':'}`;
+const formatExgCompactTime = (datetimeString) => {
+  if (!datetimeString) return '';
+  const normalized = datetimeString.replace(' - ', ' ').trim();
+  const [datePart, timePart = ''] = normalized.split(' ');
+  const dateSegments = datePart.split('/');
+  if (dateSegments.length < 3) return datetimeString;
+  const month = dateSegments[1];
+  const day = dateSegments[2];
+  const time = timePart.slice(0, 5);
+  if (!month || !day || !time) return datetimeString;
+  return `${month}/${day} ${time}`;
+};
+
+const getExgCooldownProgress = (deadline, durationSec) => {
+  if (!deadline || typeof durationSec !== 'number' || durationSec <= 0) return null;
+  const nowEpoch = Math.floor(Date.now() / 1000);
+  const remaining = Math.max(0, deadline - nowEpoch);
+  const progress = 1 - Math.min(1, remaining / durationSec);
+  return Math.max(0, Math.min(1, progress));
 };
 
 const mapCooldownScrollRef = ref(null);
@@ -2001,17 +2021,14 @@ const getExgStatus = (sub) => {
   if (state === 'cooldown' && deadline !== null && deadline !== undefined) {
     const date = formatExgDate(deadline);
     const datetime = formatExgDateTime(deadline);
-    const datetimeDisplay = datetime.replace(' - ', ' ');
-    const cooldownText = formatTemplate(t('map.exg.cooldown_until'), { date });
-    const prefix = ensureCooldownPrefix(cooldownText.replace(date, '').trim());
-    const tooltipText = formatTemplate(t('map.exg.cooldown_tooltip'), { datetime: datetimeDisplay });
+    const compactTime = formatExgCompactTime(datetime);
+    const progress = getExgCooldownProgress(deadline, durationSec);
     return {
       state,
-      prefix,
       date,
       datetime,
-      datetimeDisplay,
-      tooltipText
+      compactTime,
+      progress
     };
   }
   if (state === 'available') {
@@ -2677,51 +2694,68 @@ const submitFeedback = () => {
 
 <style scoped>
 .sub-container .exg-status-stack {
+  width: 220px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   text-align: center;
 }
 
-.sub-container .exg-pill {
+.sub-container .exg-status-block {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  min-height: 0;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  background: transparent;
-  font-size: 12px;
+  gap: 6px;
+  text-align: center;
+}
+
+.sub-container .exg-status-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px) saturate(120%);
+  font-size: 13px;
   font-weight: 600;
   text-align: center;
 }
 
-.sub-container .exg-pill--available {
+.sub-container .exg-status-tag--available {
   color: var(--status-online);
 }
 
-.sub-container .exg-pill--cooldown {
+.sub-container .exg-status-tag--cooldown {
   color: var(--accent);
 }
 
-.sub-container .exg-pill--unavailable {
+.sub-container .exg-status-tag--unavailable {
   color: var(--status-offline);
 }
 
-.sub-container .exg-pill-line1 {
-  font-size: 11px;
+.sub-container .exg-status-time {
+  font-size: 12px;
   opacity: 0.75;
+  text-align: center;
 }
 
-.sub-container .exg-pill-line2 {
-  font-size: 12px;
-  font-weight: 600;
+.sub-container .exg-status-progress {
+  width: 120px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.sub-container .exg-status-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
 }
 
 .sub-container {
