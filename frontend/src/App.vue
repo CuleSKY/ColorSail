@@ -255,7 +255,7 @@
           </div>
         </div>
 
-        <div v-show="curView === 'map_sub' && isLoggedIn" class="animate-enter">
+        <div v-show="curView === 'map_sub' && isLoggedIn" class="animate-enter map-sub-view">
           <div class="sub-container">
             <div class="perm-warning" v-if="notificationPermission !== 'granted'" @click="requestPerm">
               {{ t('notify_warn') }}
@@ -300,39 +300,41 @@
                 <div class="sub-col-info">
                   <div class="sub-map-key">{{ sub.map }}</div>
                   <div class="sub-map-val" v-if="isChineseLang && getMapIndexDisplayName(sub.map)">{{ getMapIndexDisplayName(sub.map) }}</div>
-                  <div class="sub-comms">{{ formatSubComms(sub.comms) }}</div>
-                </div>
-                <div class="sub-actions">
-                  <div v-if="exgStatusByIndex[idx]" class="exg-status-stack">
-                    <div
-                      v-if="exgStatusByIndex[idx].state === 'available'"
-                      class="exg-status-tag exg-status-tag--available exg-pill--withicon"
-                    >
-                      <svg class="exg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2Zm3.22 6.97-4.47 4.47-1.97-1.97a.75.75 0 0 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5-5a.75.75 0 1 0-1.06-1.06Z" fill="currentColor"/>
-                      </svg>
-                      <span>{{ t('map_sub_exg_available') }}</span>
-                    </div>
-                    <div
-                      v-else-if="exgStatusByIndex[idx].state === 'cooldown'"
-                      class="exg-status-block"
-                    >
-                      <div class="exg-status-tag exg-status-tag--cooldown exg-pill--withicon">
-                        <div class="exg-pill-text">
-                          <div class="exg-pill-line1">
-                            <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                              <path d="M12 5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Zm0 3a.75.75 0 0 0-.743.648l-.007.102v4.5l.007.102a.75.75 0 0 0 1.486 0l.007-.102v-4.5l-.007-.102A.75.75 0 0 0 12 8Zm7.17-2.877.082.061 1.149 1a.75.75 0 0 1-.904 1.193l-.081-.061-1.149-1a.75.75 0 0 1 .903-1.193ZM14.25 2.5a.75.75 0 0 1 .102 1.493L14.25 4h-4.5a.75.75 0 0 1-.102-1.493L9.75 2.5h4.5Z" fill="currentColor"/>
-                            </svg>
-                            <span>{{ t('map_sub_exg_cooldown') }}</span>
+                  <div class="tag-row">
+                    <div class="sub-comms">{{ formatSubComms(sub.comms) }}</div>
+                    <div v-if="exgStatusByIndex[idx]" class="exg-status-stack">
+                      <div
+                        v-if="exgStatusByIndex[idx].state === 'available'"
+                        class="exg-status-tag exg-status-tag--available exg-pill--withicon"
+                      >
+                        <svg class="exg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                          <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2Zm3.22 6.97-4.47 4.47-1.97-1.97a.75.75 0 0 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5-5a.75.75 0 1 0-1.06-1.06Z" fill="currentColor"/>
+                        </svg>
+                        <span>{{ t('map_sub_exg_available') }}</span>
+                      </div>
+                      <div
+                        v-else-if="exgStatusByIndex[idx].state === 'cooldown'"
+                        class="exg-status-block"
+                      >
+                        <div class="exg-status-tag exg-status-tag--cooldown exg-pill--withicon">
+                          <div class="exg-pill-text">
+                            <div class="exg-pill-line1">
+                              <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <path d="M12 5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Zm0 3a.75.75 0 0 0-.743.648l-.007.102v4.5l.007.102a.75.75 0 0 0 1.486 0l.007-.102v-4.5l-.007-.102A.75.75 0 0 0 12 8Zm7.17-2.877.082.061 1.149 1a.75.75 0 0 1-.904 1.193l-.081-.061-1.149-1a.75.75 0 0 1 .903-1.193ZM14.25 2.5a.75.75 0 0 1 .102 1.493L14.25 4h-4.5a.75.75 0 0 1-.102-1.493L9.75 2.5h4.5Z" fill="currentColor"/>
+                              </svg>
+                              <span>{{ t('map_sub_exg_cooldown') }}</span>
+                            </div>
+                            <div class="exg-pill-line2">{{ exgStatusByIndex[idx].compactTime }}</div>
                           </div>
-                          <div class="exg-pill-line2">{{ exgStatusByIndex[idx].compactTime }}</div>
                         </div>
                       </div>
-                    </div>
-                    <div v-else class="exg-status-tag exg-status-tag--unavailable">
-                      {{ exgStatusByIndex[idx].label }}
+                      <div v-else class="exg-status-tag exg-status-tag--unavailable">
+                        {{ exgStatusByIndex[idx].label }}
+                      </div>
                     </div>
                   </div>
+                </div>
+                <div class="sub-actions">
                   <button class="btn-unsub" @click="removeSubscription(idx)">{{ t('unsubscribe') }}</button>
                 </div>
               </div>
@@ -2700,6 +2702,31 @@ const submitFeedback = () => {
 </script>
 
 <style scoped>
+.map-sub-view .tag-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.map-sub-view .exg-status-stack {
+  width: auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.map-sub-view .exg-status-block {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.map-sub-view .exg-pill-text {
+  align-items: flex-start;
+}
+
 .sub-container .exg-status-stack {
   width: 220px;
   display: flex;
