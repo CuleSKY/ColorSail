@@ -401,7 +401,7 @@
               <div class="mapcd-header-slot">
                 <div class="mapcd-header-row">
                   <h3 class="mapcd-title">
-                    {{ isAllMapsMode ? t('mapcd_title_all') : t('mapcd_title_cooldown') }}
+                    {{ mapcdAutoShowAll ? t('mapcd_title_fallback_all') : (isAllMapsMode ? t('mapcd_title_all') : t('mapcd_title_cooldown')) }}
                     <span v-if="mapCooldownIsBuilding" class="mapcd-preparing">
                       {{ isChineseLang ? '准备中…' : 'Preparing…' }}{{ mapCooldownProgressText }}
                     </span>
@@ -411,6 +411,8 @@
                   </button>
                 </div>
               </div>
+
+              <div v-if="mapcdAutoShowAll" class="mapcd-hint">{{ t('mapcd_hint_auto_all') }}</div>
 
               <div class="mapcd-container">
                 <div class="mapcd-table">
@@ -1319,6 +1321,7 @@ const mapCooldownProgressText = computed(() => {
   return ` ${pct}%`;
 });
 
+const mapcdQueryTrimmed = computed(() => mapCooldownQueryInput.value.trim());
 const mapCooldownSearchQueryTrimmed = computed(() => mapCooldownSearchQuery.value.trim());
 const mapCooldownSearchQueryNorm = computed(() => normalizeZh(mapCooldownSearchQuery.value));
 const mapCooldownBaseRows = computed(() => (coolingOnly.value ? mapCooldownRowsCooling.value : mapCooldownRowsAll.value));
@@ -1328,9 +1331,22 @@ const mapCooldownFilteredRows = computed(() => {
   if (!queryNorm) return baseRows;
   return baseRows.filter((row) => (row.searchTextNorm || '').includes(queryNorm));
 });
+const mapcdAllMatches = computed(() => {
+  const baseRows = mapCooldownRowsAll.value;
+  const queryNorm = mapCooldownSearchQueryNorm.value;
+  if (!queryNorm) return baseRows;
+  return baseRows.filter((row) => (row.searchTextNorm || '').includes(queryNorm));
+});
+const mapcdAutoShowAll = computed(() =>
+  coolingOnly.value &&
+  mapcdQueryTrimmed.value.length > 0 &&
+  mapCooldownFilteredRows.value.length === 0 &&
+  mapcdAllMatches.value.length > 0
+);
+const mapcdDisplayedRows = computed(() => (mapcdAutoShowAll.value ? mapcdAllMatches.value : mapCooldownFilteredRows.value));
 const mapCooldownRows = computed(() => {
   sortByCooldownTrigger.value;
-  const rows = mapCooldownFilteredRows.value;
+  const rows = mapcdDisplayedRows.value;
   return rows.slice().sort((a, b) => {
     const ta = a.deadlineEpochSec;
     const tb = b.deadlineEpochSec;
@@ -1403,7 +1419,7 @@ const setMapCooldownHighlight = (key) => {
 
 const jumpToMapCooldownRow = (row) => {
   if (!row) return;
-  const idx = mapCooldownFilteredRows.value.findIndex((item) => item.key === row.key);
+  const idx = mapcdDisplayedRows.value.findIndex((item) => item.key === row.key);
   if (idx < 0) return;
   const scrollEl = mapCooldownScrollRef.value;
   if (scrollEl) {
@@ -1417,7 +1433,7 @@ const jumpToMapCooldownRow = (row) => {
 
 const jumpToBestMapCooldownMatch = () => {
   if (!mapCooldownSearchQueryTrimmed.value) return;
-  const rows = mapCooldownFilteredRows.value;
+  const rows = mapcdDisplayedRows.value;
   if (!rows.length) return;
   jumpToMapCooldownRow(rows[0]);
 };
@@ -2641,6 +2657,12 @@ const submitFeedback = () => {
 .mapcd-view .mapcd-header-slot {
   margin: 16px 0 12px;
   padding: 0;
+}
+
+.mapcd-view .mapcd-hint {
+  margin: 6px 0 10px;
+  opacity: 0.85;
+  text-align: center;
 }
 
 .mapcd-header-row {
