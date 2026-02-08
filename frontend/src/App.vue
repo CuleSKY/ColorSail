@@ -1220,32 +1220,56 @@ const normalizeMapKey = (value) => {
   return mapKey;
 };
 
+const mapNoTranslationText = '暂无';
+
+const toTraditional = (value) => {
+  if (!value) return '';
+  return mapIndexConverter ? mapIndexConverter(value) : value;
+};
+
+const buildMapTranslationEntry = (mapCn, mapTw) => {
+  return {
+    zh_cn: mapCn || '',
+    zh_tw: mapTw || (mapCn ? toTraditional(mapCn) : '')
+  };
+};
+
 const getMapTranslationEntry = (mapName, serverEntry) => {
-  if (!mapName) return { zh_cn: '', zh_tw: '' };
-  if (mapTranslations.value[mapName]) return mapTranslations.value[mapName];
-  const normalizedKey = normalizeMapKey(mapName);
-  if (normalizedKey && mapTranslations.value[normalizedKey]) return mapTranslations.value[normalizedKey];
-  if (serverEntry) {
-    return {
-      zh_cn: serverEntry.map_cn || '',
-      zh_tw: serverEntry.map_tw || ''
-    };
+  if (!mapName) return buildMapTranslationEntry('', '');
+  if (serverEntry && (serverEntry.map_cn || serverEntry.map_tw)) {
+    return buildMapTranslationEntry(serverEntry.map_cn, serverEntry.map_tw);
   }
-  return { zh_cn: '', zh_tw: '' };
+  const entry = getMapIndexEntry(mapName);
+  if (entry && entry.map_cn) {
+    return buildMapTranslationEntry(entry.map_cn, '');
+  }
+  return buildMapTranslationEntry('', '');
 };
 
 const getMapTranslation = (mapName) => {
   const entry = getMapTranslationEntry(mapName);
-  if (curLang.value === 'zh-TW') return stripBracketSegments(entry.zh_tw || entry.zh_cn || '');
-  if (curLang.value === 'zh-CN') return stripBracketSegments(entry.zh_cn || '');
+  if (curLang.value === 'zh-TW') {
+    const translated = stripBracketSegments(entry.zh_tw || '');
+    return translated || mapNoTranslationText;
+  }
+  if (curLang.value === 'zh-CN') {
+    const translated = stripBracketSegments(entry.zh_cn || '');
+    return translated || mapNoTranslationText;
+  }
   return '';
 };
 
 const getServerMapTranslation = (serverEntry) => {
-  if (!serverEntry) return '';
+  if (!serverEntry) return mapNoTranslationText;
   const entry = getMapTranslationEntry(serverEntry.map, serverEntry);
-  if (curLang.value === 'zh-TW') return stripBracketSegments(entry.zh_tw || entry.zh_cn || '');
-  if (curLang.value === 'zh-CN') return stripBracketSegments(entry.zh_cn || '');
+  if (curLang.value === 'zh-TW') {
+    const translated = stripBracketSegments(entry.zh_tw || '');
+    return translated || mapNoTranslationText;
+  }
+  if (curLang.value === 'zh-CN') {
+    const translated = stripBracketSegments(entry.zh_cn || '');
+    return translated || mapNoTranslationText;
+  }
   return '';
 };
 
@@ -1262,7 +1286,7 @@ const getMapIndexDisplayName = (mapName) => {
   if (!entry || !entry.map_cn) return '';
   const cleaned = stripBracketSegments(entry.map_cn);
   if (curLang.value === 'zh-TW') {
-    return mapIndexConverter ? mapIndexConverter(cleaned) : cleaned;
+    return toTraditional(cleaned);
   }
   if (curLang.value === 'zh-CN') return cleaned;
   return '';
