@@ -304,28 +304,28 @@
                     <div class="sub-comms">{{ formatSubComms(sub.comms) }}</div>
                     <div
                       v-if="exgStatusByIndex[idx]"
-                      class="sub-tag--exg-status"
+                      class="exg-inline-status"
                       :class="{
-                        'sub-tag--available': exgStatusByIndex[idx].state === 'available',
-                        'sub-tag--cooldown': exgStatusByIndex[idx].state === 'cooldown',
-                        'sub-tag--unavailable': exgStatusByIndex[idx].state !== 'available' && exgStatusByIndex[idx].state !== 'cooldown'
+                        'exg-inline-status--available': exgStatusByIndex[idx].state === 'available',
+                        'exg-inline-status--cooldown': exgStatusByIndex[idx].state === 'cooldown',
+                        'exg-inline-status--unavailable': exgStatusByIndex[idx].state !== 'available' && exgStatusByIndex[idx].state !== 'cooldown'
                       }"
                     >
                       <template v-if="exgStatusByIndex[idx].state === 'available'">
                         <svg class="exg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                           <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2Zm3.22 6.97-4.47 4.47-1.97-1.97a.75.75 0 0 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5-5a.75.75 0 1 0-1.06-1.06Z" fill="currentColor"/>
                         </svg>
-                        <span>{{ t('map_sub_exg_available') }}</span>
+                        <span class="exg-inline-label">{{ t('map_sub_exg_available') }}</span>
                       </template>
                       <template v-else-if="exgStatusByIndex[idx].state === 'cooldown'">
                         <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                           <path d="M12 5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Zm0 3a.75.75 0 0 0-.743.648l-.007.102v4.5l.007.102a.75.75 0 0 0 1.486 0l.007-.102v-4.5l-.007-.102A.75.75 0 0 0 12 8Zm7.17-2.877.082.061 1.149 1a.75.75 0 0 1-.904 1.193l-.081-.061-1.149-1a.75.75 0 0 1 .903-1.193ZM14.25 2.5a.75.75 0 0 1 .102 1.493L14.25 4h-4.5a.75.75 0 0 1-.102-1.493L9.75 2.5h4.5Z" fill="currentColor"/>
                         </svg>
-                        <span>{{ t('map_sub_exg_cooldown') }}</span>
-                        <span class="sub-tag-time">{{ exgStatusByIndex[idx].compactTime }}</span>
+                        <span class="exg-inline-label">{{ t('map_sub_exg_cooldown') }}</span>
+                        <span class="exg-inline-time">{{ exgStatusByIndex[idx].compactTime }}</span>
                       </template>
                       <template v-else>
-                        {{ exgStatusByIndex[idx].label }}
+                        <span class="exg-inline-label">{{ exgStatusByIndex[idx].label }}</span>
                       </template>
                     </div>
                   </div>
@@ -2705,31 +2705,22 @@ const submitFeedback = () => {
   flex-wrap: wrap;
 }
 
-.map-sub-view .sub-tag--exg-status {
+.map-sub-view .exg-inline-status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: 12px;
   font-size: 13px;
+  line-height: 24px;
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(8px) saturate(120%);
+  padding: 0;
+  background: none;
+  border: none;
   cursor: default;
   pointer-events: none;
 }
 
-.map-sub-view .sub-tag--cooldown {
-  color: rgba(74, 163, 255, 0.85);
-}
-
-.map-sub-view .sub-tag--available {
-  color: rgba(55, 208, 125, 0.85);
-}
-
-.map-sub-view .sub-tag-time {
-  opacity: 0.85;
+.map-sub-view .exg-inline-time {
+  opacity: 0.9;
   font-weight: 600;
 }
 
@@ -2739,7 +2730,23 @@ const submitFeedback = () => {
   flex: 0 0 auto;
 }
 
-.map-sub-view .sub-tag--unavailable {
+[data-theme="dark"] .map-sub-view .exg-inline-status--cooldown {
+  color: rgba(74, 163, 255, 0.85);
+}
+
+[data-theme="dark"] .map-sub-view .exg-inline-status--available {
+  color: rgba(55, 208, 125, 0.85);
+}
+
+[data-theme="light"] .map-sub-view .exg-inline-status--cooldown {
+  color: rgba(0, 90, 158, 0.8);
+}
+
+[data-theme="light"] .map-sub-view .exg-inline-status--available {
+  color: rgba(0, 120, 70, 0.8);
+}
+
+.map-sub-view .exg-inline-status--unavailable {
   color: var(--status-offline);
 }
 
