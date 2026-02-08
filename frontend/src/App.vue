@@ -419,9 +419,13 @@
                   <div class="mapcd-header">
                     <div class="mapcd-cell mapcd-col-map">{{ t('map') }}</div>
                     <div class="mapcd-cell mapcd-col-ach">{{ t('achievement') }}</div>
-                    <div class="mapcd-cell mapcd-col-deadline sortable" @click="onMapcdCooldownEndHeaderClick">
-                      <span>{{ t('cooldown_deadline') }}</span>
-                      <span class="sort-arrow" :class="{ active: mapcdSortMode === 'availability' }" aria-hidden="true">↑</span>
+                    <div
+                      class="mapcd-cell mapcd-col-deadline sortable"
+                      :class="{ active: mapcdSortMode === 'availability' }"
+                      @click="onMapcdCooldownEndHeaderClick"
+                    >
+                      <span class="sort-label">{{ t('cooldown_deadline') }}</span>
+                      <span class="sort-tri" aria-hidden="true">▲</span>
                     </div>
                     <div class="mapcd-cell mapcd-col-length">{{ t('cooldown_length') }}</div>
                     <div class="mapcd-cell mapcd-col-availability">{{ t('exg_availability') }}</div>
@@ -486,7 +490,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, isProxy, nextTick, onMounted, onUnmounted, ref, toRaw, watch } from 'vue';
 import { buildMapSearchIndex, createOpenCCConverter, formatExgDate, formatExgDateTime, getExgStatusState, normalizeSearchText, normalizeZh, scoreSearchEntry, shouldShowExgStatus, stripBracketSegments, validateMapIndexEntry } from './mapSearchUtils';
 
@@ -1272,7 +1276,7 @@ const mapCooldownHighlightKey = ref('');
 const mapCooldownNowEpoch = ref(Math.floor(Date.now() / 1000));
 const mapCooldownNeedsRebuild = ref(true);
 const mapCooldownIsFastScrolling = ref(false);
-const mapcdSortMode = ref('default');
+const mapcdSortMode = ref<'default' | 'availability'>('default');
 const mapCooldownPendingRebuild = ref(false);
 const mapCooldownIsBuilding = ref(false);
 const mapCooldownBuildProgress = ref({ done: 0, total: 0 });
@@ -1347,31 +1351,32 @@ const mapcdAutoShowAll = computed(() =>
   mapCooldownFilteredRows.value.length === 0 &&
   mapcdAllMatches.value.length > 0
 );
-const mapcdDisplayedRows = computed(() => (mapcdAutoShowAll.value ? mapcdAllMatches.value : mapCooldownFilteredRows.value));
-const onMapcdCooldownEndHeaderClick = () => {
-  mapcdSortMode.value = mapcdSortMode.value === 'default' ? 'availability' : 'default';
-};
-const mapCooldownRows = computed(() => {
-  const rows = mapcdDisplayedRows.value;
-  const compareName = (a, b) => (a.mapLine1 || '').localeCompare(b.mapLine1 || '');
+const mapcdDisplayedRows = computed(() => {
+  const baseRows = mapcdAutoShowAll.value ? mapcdAllMatches.value : mapCooldownFilteredRows.value;
+  const nameValue = (row) => (row.mapLine1 || '').toLowerCase();
+  const compareName = (a, b) => nameValue(a).localeCompare(nameValue(b));
   if (mapcdSortMode.value === 'availability') {
-    return rows.slice().sort((a, b) => {
-      const aCooling = a.availability === 'cooling';
-      const bCooling = b.availability === 'cooling';
+    return baseRows.slice().sort((a, b) => {
+      const aCooldownEpoch = a.deadlineEpochSec;
+      const bCooldownEpoch = b.deadlineEpochSec;
+      const aCooling = a.availability === 'cooling' || (typeof aCooldownEpoch === 'number' && aCooldownEpoch > 0);
+      const bCooling = b.availability === 'cooling' || (typeof bCooldownEpoch === 'number' && bCooldownEpoch > 0);
       if (aCooling !== bCooling) return aCooling ? 1 : -1;
       if (!aCooling) return compareName(a, b);
-      const ta = a.deadlineEpochSec;
-      const tb = b.deadlineEpochSec;
-      if (ta == null && tb == null) return compareName(a, b);
-      if (ta == null) return 1;
-      if (tb == null) return -1;
-      const diff = ta - tb;
+      if (aCooldownEpoch == null && bCooldownEpoch == null) return compareName(a, b);
+      if (aCooldownEpoch == null) return 1;
+      if (bCooldownEpoch == null) return -1;
+      const diff = aCooldownEpoch - bCooldownEpoch;
       if (diff !== 0) return diff;
       return compareName(a, b);
     });
   }
-  return rows.slice().sort(compareName);
+  return baseRows.slice().sort(compareName);
 });
+const onMapcdCooldownEndHeaderClick = () => {
+  mapcdSortMode.value = mapcdSortMode.value === 'default' ? 'availability' : 'default';
+};
+const mapCooldownRows = computed(() => mapcdDisplayedRows.value);
 const mapCooldownKeysAll = computed(() => mapCooldownRows.value.map((row) => row.key));
 const updateMapCooldownVisibleRows = () => {
   const total = mapCooldownRows.value.length;
@@ -3022,31 +3027,23 @@ const submitFeedback = () => {
   color: var(--text-secondary);
 }
 
-th.sortable {
-  cursor: pointer;
-  user-select: none;
-}
-
-th.sortable:hover {
-  opacity: 0.75;
-}
-
 .mapcd-header .sortable {
   cursor: pointer;
   user-select: none;
 }
 
 .mapcd-header .sortable:hover {
-  opacity: 0.75;
+  opacity: 0.85;
 }
 
-.mapcd-view .sort-arrow {
+.mapcd-view .sort-tri {
   margin-left: 6px;
-  font-size: 12px;
-  opacity: 0.4;
+  font-size: 11px;
+  opacity: 0.35;
 }
 
-.mapcd-view .sort-arrow.active {
+.mapcd-view .mapcd-header .sortable.active,
+.mapcd-view .mapcd-header .sortable.active .sort-tri {
   opacity: 1;
   color: var(--accent);
 }
