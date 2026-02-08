@@ -1669,12 +1669,16 @@ def get_map_image_url(map_name):
 
 def build_config_snapshot(data):
     communities = []
+    join_config = {}
     if isinstance(data, dict):
         raw_communities = data.get('communities', [])
         if isinstance(raw_communities, list):
             for comm in raw_communities:
                 if isinstance(comm, dict):
                     communities.append(MappingProxyType(dict(comm)))
+        raw_join = data.get('join')
+        if isinstance(raw_join, dict):
+            join_config = dict(raw_join)
     server_order_index = {}
     for comm in communities:
         server_list = comm.get('servers')
@@ -1719,7 +1723,8 @@ def build_config_snapshot(data):
         "server_order_index": MappingProxyType(server_order_index),
         "admin_steam_ids": frozenset(admin_ids),
         "fys_ids": frozenset(fys_ids),
-        "stats_export_retention_days": retention_days
+        "stats_export_retention_days": retention_days,
+        "join": MappingProxyType(join_config)
     }
 
 def refresh_config_snapshot(force=False):
@@ -1794,7 +1799,7 @@ def build_community_meta(communities=None):
         snapshot = get_config_snapshot()
         communities = snapshot['communities']
     for c in communities:
-        meta.append({
+        entry = {
             "id": c['id'],
             "name": c['name'],
             "logo": c.get('logo', ''),
@@ -1807,7 +1812,11 @@ def build_community_meta(communities=None):
             "features": c.get('features', []),
             "map_url": c.get('map_cd_url', '') if "map_cd" in c.get('features', []) else "",
             "short_name": c.get('short_name', c['name'])
-        })
+        }
+        join_strategy = c.get('join_strategy')
+        if join_strategy:
+            entry["join_strategy"] = join_strategy
+        meta.append(entry)
     return meta
 
 # --- 2. 核心：EXG API 直接抓取（实时数据）---
@@ -1927,6 +1936,7 @@ def fetch_a2s_data(server_cfg, game_type='cs2'):
     host = server_cfg['host']
     port = server_cfg['port']
     name = server_cfg.get('name', f"{host}:{port}")
+    join_strategy = server_cfg.get('join_strategy')
     if is_ip_literal(host):
         resolved_ip = host
     else:
@@ -1946,6 +1956,8 @@ def fetch_a2s_data(server_cfg, game_type='cs2'):
         "image_url": None, 
         "game_type": game_type
     }
+    if join_strategy:
+        res["join_strategy"] = join_strategy
     
     try:
         info = a2s.info((host, port), timeout=2.0)
@@ -2489,7 +2501,11 @@ def get_config_meta():
 def get_public_config():
     """公开的社区元数据（只读）"""
     snapshot = get_config_snapshot()
-    return make_etag_response(list(snapshot['community_meta']), 'public, max-age=1')
+    payload = {
+        "communities": list(snapshot['community_meta']),
+        "join": dict(snapshot.get('join') or {})
+    }
+    return make_etag_response(payload, 'public, max-age=1')
 
 @app.route('/api/servers')
 def get_all_servers():

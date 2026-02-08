@@ -525,6 +525,7 @@ const VIEW_ROUTES = { servers: '/', map_sub: '/map-sub', map_cooldown: '/map-coo
 const INITIAL_CONFIG = props.initialConfig || [];
 
 const communities = ref(Array.isArray(INITIAL_CONFIG) ? INITIAL_CONFIG : []);
+const joinConfig = ref({ default_strategy: 'rungameid' });
 const servers = ref(window.__INITIAL_SERVERS__ || {});
 const serverCache = ref({});
 if (window.__INITIAL_SERVERS__) {
@@ -2169,6 +2170,19 @@ let serverRefreshEtag = null;
 let serverRefreshInFlight = false;
 let serverRefreshInitialized = false;
 
+const parseConfigPayload = (payload) => {
+  if (Array.isArray(payload)) {
+    return { communities: payload, join: {} };
+  }
+  if (payload && typeof payload === 'object') {
+    return {
+      communities: Array.isArray(payload.communities) ? payload.communities : [],
+      join: payload.join && typeof payload.join === 'object' ? payload.join : {}
+    };
+  }
+  return { communities: [], join: {} };
+};
+
 const applyCommunities = (data) => {
   communities.value = Array.isArray(data) ? data : [];
   let needsServerRefresh = false;
@@ -2195,11 +2209,14 @@ const fetchConfig = async () => {
   try {
     const res = await fetch('/config.json');
     const data = await res.json();
+    const parsed = parseConfigPayload(data);
+    const defaultStrategy = normalizeJoinStrategy(parsed.join?.default_strategy) || 'rungameid';
+    joinConfig.value = { ...parsed.join, default_strategy: defaultStrategy };
 
     try {
       const savedIds = JSON.parse(localStorage.getItem('comm_order') || '[]');
       if (savedIds.length > 0) {
-        data.sort((a, b) => {
+        parsed.communities.sort((a, b) => {
           const idxA = savedIds.indexOf(a.id);
           const idxB = savedIds.indexOf(b.id);
           if (idxA === -1 && idxB === -1) return 0;
@@ -2212,7 +2229,7 @@ const fetchConfig = async () => {
       localStorage.removeItem('comm_order');
     }
 
-    applyCommunities(data);
+    applyCommunities(parsed.communities);
   } catch (e) {
     console.error("Config fetch failed", e);
   }
@@ -2474,6 +2491,17 @@ const getConnectAddress = (srv) => {
   }
   return srv.display_ip || (srv.ip + ':' + srv.port);
 };
+const allowedJoinStrategies = new Set([
+  'rungameid',
+  'steam_connect',
+  'server_browser',
+  'clipboard_only'
+]);
+const normalizeJoinStrategy = (value) => {
+  if (!value) return null;
+  const normalized = String(value).trim().toLowerCase();
+  return allowedJoinStrategies.has(normalized) ? normalized : null;
+};
 const getJoinPayload = (srv) => {
   const host = srv.connect_ip || srv.ip || '';
   return {
@@ -2493,9 +2521,70 @@ const getFastJoinUrl = (srv) => {
   return `steam://rungameid/${appid}//+connect%20${address}`;
 };
 
+const bestEffortCopy = (text) => {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).catch(() => {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.top = "0";
+      textArea.style.left = "0";
+      textArea.style.position = "fixed";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+      } catch (err) {
+      }
+      document.body.removeChild(textArea);
+    });
+  } else {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+    } catch (err) {
+    }
+    document.body.removeChild(textArea);
+  }
+};
+
 const joinServer = (srv, comm) => {
   const target = decorateServer(srv, comm);
   const address = getConnectAddress(target);
+  const strategy = normalizeJoinStrategy(target.join_strategy)
+    || normalizeJoinStrategy(comm && comm.join_strategy)
+    || normalizeJoinStrategy(joinConfig.value.default_strategy)
+    || 'rungameid';
+  if (strategy === 'steam_connect') {
+    const connectUrl = `steam://connect/${address}`;
+    bestEffortCopy(address);
+    try {
+      window.location.href = connectUrl;
+    } catch (err) {
+      showToast(`Server address copied: ${address}`);
+    }
+    return;
+  }
+  if (strategy === 'clipboard_only') {
+    copyText(address, `Server address copied: ${address}`);
+    return;
+  }
+  if (strategy === 'server_browser') {
+    bestEffortCopy(address);
+    try {
+      window.location.href = 'steam://open/servers';
+    } catch (err) {
+      showToast(`Server address copied: ${address}`);
+    }
+    return;
+  }
   if (embedMode) {
     const sent = postEmbedMessage('CS2ZE_JOIN', getJoinPayload(target));
     if (sent) return;
