@@ -401,7 +401,7 @@
               <div class="mapcd-header-slot">
                 <div class="mapcd-header-row">
                   <h3 class="mapcd-title">
-                    {{ isAllMapsMode ? t('mapcd_title_all') : t('mapcd_title_cooldown') }}
+                    {{ mapcdAutoShowAll ? t('mapcd_title_fallback_all') : (isAllMapsMode ? t('mapcd_title_all') : t('mapcd_title_cooldown')) }}
                     <span v-if="mapCooldownIsBuilding" class="mapcd-preparing">
                       {{ isChineseLang ? '准备中…' : 'Preparing…' }}{{ mapCooldownProgressText }}
                     </span>
@@ -411,6 +411,8 @@
                   </button>
                 </div>
               </div>
+
+              <div v-if="mapcdAutoShowAll" class="mapcd-hint">{{ t('mapcd_hint_auto_all') }}</div>
 
               <div class="mapcd-container">
                 <div class="mapcd-table">
@@ -523,6 +525,7 @@ const VIEW_ROUTES = { servers: '/', map_sub: '/map-sub', map_cooldown: '/map-coo
 const INITIAL_CONFIG = props.initialConfig || [];
 
 const communities = ref(Array.isArray(INITIAL_CONFIG) ? INITIAL_CONFIG : []);
+const joinConfig = ref({ default_strategy: 'rungameid' });
 const servers = ref(window.__INITIAL_SERVERS__ || {});
 const serverCache = ref({});
 if (window.__INITIAL_SERVERS__) {
@@ -1319,6 +1322,7 @@ const mapCooldownProgressText = computed(() => {
   return ` ${pct}%`;
 });
 
+const mapcdQueryTrimmed = computed(() => mapCooldownQueryInput.value.trim());
 const mapCooldownSearchQueryTrimmed = computed(() => mapCooldownSearchQuery.value.trim());
 const mapCooldownSearchQueryNorm = computed(() => normalizeZh(mapCooldownSearchQuery.value));
 const mapCooldownBaseRows = computed(() => (coolingOnly.value ? mapCooldownRowsCooling.value : mapCooldownRowsAll.value));
@@ -1328,9 +1332,22 @@ const mapCooldownFilteredRows = computed(() => {
   if (!queryNorm) return baseRows;
   return baseRows.filter((row) => (row.searchTextNorm || '').includes(queryNorm));
 });
+const mapcdAllMatches = computed(() => {
+  const baseRows = mapCooldownRowsAll.value;
+  const queryNorm = mapCooldownSearchQueryNorm.value;
+  if (!queryNorm) return baseRows;
+  return baseRows.filter((row) => (row.searchTextNorm || '').includes(queryNorm));
+});
+const mapcdAutoShowAll = computed(() =>
+  coolingOnly.value &&
+  mapcdQueryTrimmed.value.length > 0 &&
+  mapCooldownFilteredRows.value.length === 0 &&
+  mapcdAllMatches.value.length > 0
+);
+const mapcdDisplayedRows = computed(() => (mapcdAutoShowAll.value ? mapcdAllMatches.value : mapCooldownFilteredRows.value));
 const mapCooldownRows = computed(() => {
   sortByCooldownTrigger.value;
-  const rows = mapCooldownFilteredRows.value;
+  const rows = mapcdDisplayedRows.value;
   return rows.slice().sort((a, b) => {
     const ta = a.deadlineEpochSec;
     const tb = b.deadlineEpochSec;
@@ -1403,7 +1420,7 @@ const setMapCooldownHighlight = (key) => {
 
 const jumpToMapCooldownRow = (row) => {
   if (!row) return;
-  const idx = mapCooldownFilteredRows.value.findIndex((item) => item.key === row.key);
+  const idx = mapcdDisplayedRows.value.findIndex((item) => item.key === row.key);
   if (idx < 0) return;
   const scrollEl = mapCooldownScrollRef.value;
   if (scrollEl) {
@@ -1417,7 +1434,7 @@ const jumpToMapCooldownRow = (row) => {
 
 const jumpToBestMapCooldownMatch = () => {
   if (!mapCooldownSearchQueryTrimmed.value) return;
-  const rows = mapCooldownFilteredRows.value;
+  const rows = mapcdDisplayedRows.value;
   if (!rows.length) return;
   jumpToMapCooldownRow(rows[0]);
 };
@@ -2153,6 +2170,19 @@ let serverRefreshEtag = null;
 let serverRefreshInFlight = false;
 let serverRefreshInitialized = false;
 
+const parseConfigPayload = (payload) => {
+  if (Array.isArray(payload)) {
+    return { communities: payload, join: {} };
+  }
+  if (payload && typeof payload === 'object') {
+    return {
+      communities: Array.isArray(payload.communities) ? payload.communities : [],
+      join: payload.join && typeof payload.join === 'object' ? payload.join : {}
+    };
+  }
+  return { communities: [], join: {} };
+};
+
 const applyCommunities = (data) => {
   communities.value = Array.isArray(data) ? data : [];
   let needsServerRefresh = false;
@@ -2179,11 +2209,14 @@ const fetchConfig = async () => {
   try {
     const res = await fetch('/config.json');
     const data = await res.json();
+    const parsed = parseConfigPayload(data);
+    const defaultStrategy = normalizeJoinStrategy(parsed.join?.default_strategy) || 'rungameid';
+    joinConfig.value = { ...parsed.join, default_strategy: defaultStrategy };
 
     try {
       const savedIds = JSON.parse(localStorage.getItem('comm_order') || '[]');
       if (savedIds.length > 0) {
-        data.sort((a, b) => {
+        parsed.communities.sort((a, b) => {
           const idxA = savedIds.indexOf(a.id);
           const idxB = savedIds.indexOf(b.id);
           if (idxA === -1 && idxB === -1) return 0;
@@ -2196,7 +2229,7 @@ const fetchConfig = async () => {
       localStorage.removeItem('comm_order');
     }
 
-    applyCommunities(data);
+    applyCommunities(parsed.communities);
   } catch (e) {
     console.error("Config fetch failed", e);
   }
@@ -2458,6 +2491,17 @@ const getConnectAddress = (srv) => {
   }
   return srv.display_ip || (srv.ip + ':' + srv.port);
 };
+const allowedJoinStrategies = new Set([
+  'rungameid',
+  'steam_connect',
+  'server_browser',
+  'clipboard_only'
+]);
+const normalizeJoinStrategy = (value) => {
+  if (!value) return null;
+  const normalized = String(value).trim().toLowerCase();
+  return allowedJoinStrategies.has(normalized) ? normalized : null;
+};
 const getJoinPayload = (srv) => {
   const host = srv.connect_ip || srv.ip || '';
   return {
@@ -2477,9 +2521,70 @@ const getFastJoinUrl = (srv) => {
   return `steam://rungameid/${appid}//+connect%20${address}`;
 };
 
+const bestEffortCopy = (text) => {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).catch(() => {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.top = "0";
+      textArea.style.left = "0";
+      textArea.style.position = "fixed";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+      } catch (err) {
+      }
+      document.body.removeChild(textArea);
+    });
+  } else {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+    } catch (err) {
+    }
+    document.body.removeChild(textArea);
+  }
+};
+
 const joinServer = (srv, comm) => {
   const target = decorateServer(srv, comm);
   const address = getConnectAddress(target);
+  const strategy = normalizeJoinStrategy(target.join_strategy)
+    || normalizeJoinStrategy(comm && comm.join_strategy)
+    || normalizeJoinStrategy(joinConfig.value.default_strategy)
+    || 'rungameid';
+  if (strategy === 'steam_connect') {
+    const connectUrl = `steam://connect/${address}`;
+    bestEffortCopy(address);
+    try {
+      window.location.href = connectUrl;
+    } catch (err) {
+      showToast(`Server address copied: ${address}`);
+    }
+    return;
+  }
+  if (strategy === 'clipboard_only') {
+    copyText(address, `Server address copied: ${address}`);
+    return;
+  }
+  if (strategy === 'server_browser') {
+    bestEffortCopy(address);
+    try {
+      window.location.href = 'steam://open/servers';
+    } catch (err) {
+      showToast(`Server address copied: ${address}`);
+    }
+    return;
+  }
   if (embedMode) {
     const sent = postEmbedMessage('CS2ZE_JOIN', getJoinPayload(target));
     if (sent) return;
@@ -2641,6 +2746,12 @@ const submitFeedback = () => {
 .mapcd-view .mapcd-header-slot {
   margin: 16px 0 12px;
   padding: 0;
+}
+
+.mapcd-view .mapcd-hint {
+  margin: 6px 0 10px;
+  opacity: 0.85;
+  text-align: center;
 }
 
 .mapcd-header-row {
