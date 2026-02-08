@@ -300,37 +300,33 @@
                 <div class="sub-col-info">
                   <div class="sub-map-key">{{ sub.map }}</div>
                   <div class="sub-map-val" v-if="isChineseLang && getMapIndexDisplayName(sub.map)">{{ getMapIndexDisplayName(sub.map) }}</div>
-                  <div class="tag-row">
+                  <div class="sub-tags">
                     <div class="sub-comms">{{ formatSubComms(sub.comms) }}</div>
-                    <div v-if="exgStatusByIndex[idx]" class="exg-status-stack">
-                      <div
-                        v-if="exgStatusByIndex[idx].state === 'available'"
-                        class="exg-status-tag exg-status-tag--available exg-pill--withicon"
-                      >
+                    <div
+                      v-if="exgStatusByIndex[idx]"
+                      class="sub-tag--exg-status"
+                      :class="{
+                        'sub-tag--available': exgStatusByIndex[idx].state === 'available',
+                        'sub-tag--cooldown': exgStatusByIndex[idx].state === 'cooldown',
+                        'sub-tag--unavailable': exgStatusByIndex[idx].state !== 'available' && exgStatusByIndex[idx].state !== 'cooldown'
+                      }"
+                    >
+                      <template v-if="exgStatusByIndex[idx].state === 'available'">
                         <svg class="exg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                           <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2Zm3.22 6.97-4.47 4.47-1.97-1.97a.75.75 0 0 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5-5a.75.75 0 1 0-1.06-1.06Z" fill="currentColor"/>
                         </svg>
                         <span>{{ t('map_sub_exg_available') }}</span>
-                      </div>
-                      <div
-                        v-else-if="exgStatusByIndex[idx].state === 'cooldown'"
-                        class="exg-status-block"
-                      >
-                        <div class="exg-status-tag exg-status-tag--cooldown exg-pill--withicon">
-                          <div class="exg-pill-text">
-                            <div class="exg-pill-line1">
-                              <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                <path d="M12 5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Zm0 3a.75.75 0 0 0-.743.648l-.007.102v4.5l.007.102a.75.75 0 0 0 1.486 0l.007-.102v-4.5l-.007-.102A.75.75 0 0 0 12 8Zm7.17-2.877.082.061 1.149 1a.75.75 0 0 1-.904 1.193l-.081-.061-1.149-1a.75.75 0 0 1 .903-1.193ZM14.25 2.5a.75.75 0 0 1 .102 1.493L14.25 4h-4.5a.75.75 0 0 1-.102-1.493L9.75 2.5h4.5Z" fill="currentColor"/>
-                              </svg>
-                              <span>{{ t('map_sub_exg_cooldown') }}</span>
-                            </div>
-                            <div class="exg-pill-line2">{{ exgStatusByIndex[idx].compactTime }}</div>
-                          </div>
-                        </div>
-                      </div>
-                      <div v-else class="exg-status-tag exg-status-tag--unavailable">
+                      </template>
+                      <template v-else-if="exgStatusByIndex[idx].state === 'cooldown'">
+                        <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                          <path d="M12 5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Zm0 3a.75.75 0 0 0-.743.648l-.007.102v4.5l.007.102a.75.75 0 0 0 1.486 0l.007-.102v-4.5l-.007-.102A.75.75 0 0 0 12 8Zm7.17-2.877.082.061 1.149 1a.75.75 0 0 1-.904 1.193l-.081-.061-1.149-1a.75.75 0 0 1 .903-1.193ZM14.25 2.5a.75.75 0 0 1 .102 1.493L14.25 4h-4.5a.75.75 0 0 1-.102-1.493L9.75 2.5h4.5Z" fill="currentColor"/>
+                        </svg>
+                        <span>{{ t('map_sub_exg_cooldown') }}</span>
+                        <span class="sub-tag-time">{{ exgStatusByIndex[idx].compactTime }}</span>
+                      </template>
+                      <template v-else>
                         {{ exgStatusByIndex[idx].label }}
-                      </div>
+                      </template>
                     </div>
                   </div>
                 </div>
@@ -2702,111 +2698,49 @@ const submitFeedback = () => {
 </script>
 
 <style scoped>
-.map-sub-view .tag-row {
+.map-sub-view .sub-tags {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.map-sub-view .exg-status-stack {
-  width: auto;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  text-align: left;
-}
-
-.map-sub-view .exg-status-block {
-  align-items: flex-start;
-  text-align: left;
-}
-
-.map-sub-view .exg-pill-text {
-  align-items: flex-start;
-}
-
-.sub-container .exg-status-stack {
-  width: 220px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  text-align: center;
-}
-
-.sub-container .exg-status-block {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  text-align: center;
-}
-
-.sub-container .exg-status-tag {
+.map-sub-view .sub-tag--exg-status {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 6px 10px;
+  gap: 6px;
+  padding: 4px 10px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(8px) saturate(120%);
   font-size: 13px;
   font-weight: 600;
-  text-align: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px) saturate(120%);
+  cursor: default;
+  pointer-events: none;
 }
 
-.sub-container .exg-pill--withicon {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.map-sub-view .sub-tag--cooldown {
+  color: rgba(74, 163, 255, 0.85);
 }
 
-.sub-container .exg-icon {
+.map-sub-view .sub-tag--available {
+  color: rgba(55, 208, 125, 0.85);
+}
+
+.map-sub-view .sub-tag-time {
+  opacity: 0.85;
+  font-weight: 600;
+}
+
+.map-sub-view .exg-icon {
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
 }
 
-.sub-container .exg-pill-text {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.sub-container .exg-pill-line1 {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-}
-
-.sub-container .exg-pill-line2 {
-  font-size: 12px;
-  opacity: 0.75;
-  margin-top: 4px;
-}
-
-.sub-container .exg-status-tag--available {
-  color: var(--status-online);
-}
-
-.sub-container .exg-status-tag--cooldown {
-  color: var(--accent);
-}
-
-.sub-container .exg-status-tag--unavailable {
+.map-sub-view .sub-tag--unavailable {
   color: var(--status-offline);
-}
-
-.sub-container .exg-status-time {
-  font-size: 12px;
-  opacity: 0.75;
-  text-align: center;
 }
 
 .sub-container {
