@@ -2709,8 +2709,8 @@ const submitFeedback = () => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
-  line-height: 24px;
+  font-size: 14px;
+  line-height: 30px;
   font-weight: 600;
   padding: 0;
   background: none;
