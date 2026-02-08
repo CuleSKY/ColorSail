@@ -306,18 +306,26 @@
                   <div v-if="exgStatusByIndex[idx]" class="exg-status-stack">
                     <div
                       v-if="exgStatusByIndex[idx].state === 'available'"
-                      class="exg-status-tag exg-status-tag--available"
+                      class="exg-status-tag exg-status-tag--available exg-pill--withicon"
                     >
-                      ✔ {{ t('map_sub_exg_available') }}
+                      <svg class="exg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2Zm3.22 6.97-4.47 4.47-1.97-1.97a.75.75 0 0 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5-5a.75.75 0 1 0-1.06-1.06Z" fill="currentColor"/>
+                      </svg>
+                      <span>{{ t('map_sub_exg_available') }}</span>
                     </div>
                     <div
                       v-else-if="exgStatusByIndex[idx].state === 'cooldown'"
                       class="exg-status-block"
                     >
-                      <div class="exg-status-tag exg-status-tag--cooldown">
-                        ⏳ {{ t('map_sub_exg_cooldown') }}
+                      <div class="exg-status-tag exg-status-tag--cooldown exg-pill--withicon">
+                        <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                          <path d="M12 5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Zm0 3a.75.75 0 0 0-.743.648l-.007.102v4.5l.007.102a.75.75 0 0 0 1.486 0l.007-.102v-4.5l-.007-.102A.75.75 0 0 0 12 8Zm7.17-2.877.082.061 1.149 1a.75.75 0 0 1-.904 1.193l-.081-.061-1.149-1a.75.75 0 0 1 .903-1.193ZM14.25 2.5a.75.75 0 0 1 .102 1.493L14.25 4h-4.5a.75.75 0 0 1-.102-1.493L9.75 2.5h4.5Z" fill="currentColor"/>
+                        </svg>
+                        <div class="exg-pill-text">
+                          <div class="exg-pill-line1">{{ t('map_sub_exg_cooldown') }}</div>
+                          <div class="exg-pill-line2">{{ exgStatusByIndex[idx].compactTime }}</div>
+                        </div>
                       </div>
-                      <div class="exg-status-time">{{ exgStatusByIndex[idx].compactTime }}</div>
                       <div v-if="exgStatusByIndex[idx].progress !== null" class="exg-status-progress">
                         <div class="exg-status-progress-bar" :style="{ width: `${exgStatusByIndex[idx].progress * 100}%` }"></div>
                       </div>
@@ -2724,6 +2732,24 @@ const submitFeedback = () => {
   font-size: 13px;
   font-weight: 600;
   text-align: center;
+}
+
+.sub-container .exg-pill--withicon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sub-container .exg-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.sub-container .exg-pill-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .sub-container .exg-status-tag--available {
