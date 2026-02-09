@@ -362,15 +362,17 @@
                       <div class="sub-map-val" v-if="row.displayName">{{ row.displayName }}</div>
                     </div>
                     <div class="sub-actions">
-                      <label v-if="mapSubMultiSelectMode" class="sub-fluent-checkbox" @click.stop>
+                      <label v-if="mapSubMultiSelectMode" class="fd-check" @click.stop>
                         <input
+                          class="fd-check__input"
                           type="checkbox"
-                          :checked="mapSubSelectedKeys.has(row.key)"
-                          @change="toggleMapSubSelection(row)"
-                        >
-                        <span class="sub-fluent-checkbox-box" aria-hidden="true">
-                          <svg width="24" height="24" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6.25 3A3.25 3.25 0 0 0 3 6.25v11.5A3.25 3.25 0 0 0 6.25 21h11.5A3.25 3.25 0 0 0 21 17.75V6.25A3.25 3.25 0 0 0 17.75 3H6.25Zm10.03 6.78-5 5a.75.75 0 0 1-1.06 0l-2.004-2.004a.75.75 0 1 1 1.06-1.06l1.474 1.473 4.47-4.47a.75.75 0 1 1 1.06 1.061Z" fill="currentColor"/>
+                          :checked="isSelected(row.key)"
+                          @change="toggleSelected(row.key)"
+                          :aria-label="`选择 ${row.key}`"
+                        />
+                        <span class="fd-check__box" aria-hidden="true">
+                          <svg class="fd-check__icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill="currentColor" d="M6.25 3A3.25 3.25 0 0 0 3 6.25v11.5A3.25 3.25 0 0 0 6.25 21h11.5A3.25 3.25 0 0 0 21 17.75V6.25A3.25 3.25 0 0 0 17.75 3H6.25Zm10.03 6.78-5 5a.75.75 0 0 1-1.06 0l-2.004-2.004a.75.75 0 1 1 1.06-1.06l1.474 1.473 4.47-4.47a.75.75 0 1 1 1.06 1.061Z"/>
                           </svg>
                         </span>
                       </label>
@@ -2550,6 +2552,14 @@ const toggleMapSubSelection = (row) => {
   mapSubSelectedKeys.value = next;
 };
 
+const isSelected = (mapKey) => mapSubSelectedKeys.value.has(mapKey);
+
+const toggleSelected = (mapKey) => {
+  const row = mapSubResults.value.find((item) => item.key === mapKey);
+  if (!row) return;
+  toggleMapSubSelection(row);
+};
+
 const onMapSubRowClick = (event, row) => {
   if (!mapSubMultiSelectMode.value) return;
   const target = event?.target;
@@ -3160,7 +3170,26 @@ const submitFeedback = () => {
   --sub-card-max: 980px;
   --sub-rail-w: 220px;
   --sub-rail-gap: 16px;
-  --sub-checkbox-check: #fff;
+}
+
+:global(:root) {
+  --fd-accent: var(--accent, #0a84ff);
+  --fd-check-border: rgba(0, 0, 0, 0.38);
+  --fd-check-border-hover: rgba(0, 0, 0, 0.62);
+  --fd-check-bg: transparent;
+  --fd-check-focus: rgba(10, 132, 255, 0.35);
+  --fd-check-shadow: rgba(0, 0, 0, 0.08);
+  --fd-check-checked-bg: var(--fd-accent);
+  --fd-check-checked-icon: #fff;
+}
+
+:global(body.dark),
+:global([data-theme="dark"]) {
+  --fd-check-border: rgba(255, 255, 255, 0.42);
+  --fd-check-border-hover: rgba(255, 255, 255, 0.72);
+  --fd-check-bg: transparent;
+  --fd-check-focus: rgba(10, 132, 255, 0.42);
+  --fd-check-shadow: rgba(0, 0, 0, 0.25);
 }
 
 .sub-search-box {
@@ -3216,67 +3245,68 @@ const submitFeedback = () => {
   cursor: pointer;
 }
 
-.map-sub-view .sub-fluent-checkbox {
-  display: inline-flex;
-  align-items: center;
-  position: relative;
-  cursor: pointer;
-  color: var(--text-secondary);
-}
-
-.map-sub-view .sub-fluent-checkbox input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  opacity: 0;
-}
-
-.map-sub-view .sub-fluent-checkbox-box {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: 1.5px solid currentColor;
-  background: transparent;
+.map-sub-view .fd-check {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  cursor: pointer;
+  user-select: none;
 }
 
-.map-sub-view .sub-fluent-checkbox-box svg {
-  width: 20px;
-  height: 20px;
+.map-sub-view .fd-check__input {
+  position: absolute;
   opacity: 0;
-  transition: opacity 0.15s ease;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
 }
 
-.map-sub-view .sub-fluent-checkbox:hover .sub-fluent-checkbox-box {
-  border-color: color-mix(in srgb, var(--accent) 65%, currentColor);
+.map-sub-view .fd-check__box {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid var(--fd-check-border);
+  background: var(--fd-check-bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  transition: background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease;
 }
 
-.map-sub-view .sub-fluent-checkbox:active .sub-fluent-checkbox-box {
-  transform: scale(0.97);
+.map-sub-view .fd-check__icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  color: var(--fd-check-checked-icon);
 }
 
-.map-sub-view .sub-fluent-checkbox input:focus-visible + .sub-fluent-checkbox-box {
-  border-color: color-mix(in srgb, var(--accent) 70%, currentColor);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+.map-sub-view .fd-check:hover .fd-check__box {
+  border-color: var(--fd-check-border-hover);
+  box-shadow: 0 1px 10px var(--fd-check-shadow);
 }
 
-.map-sub-view .sub-fluent-checkbox input:checked + .sub-fluent-checkbox-box {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--sub-checkbox-check);
+.map-sub-view .fd-check__input:focus-visible + .fd-check__box {
+  box-shadow: 0 0 0 3px var(--fd-check-focus);
 }
 
-.map-sub-view .sub-fluent-checkbox input:checked + .sub-fluent-checkbox-box svg {
+.map-sub-view .fd-check__input:checked + .fd-check__box {
+  background: var(--fd-check-checked-bg);
+  border-color: var(--fd-check-checked-bg);
+}
+
+.map-sub-view .fd-check__input:checked + .fd-check__box .fd-check__icon {
   opacity: 1;
 }
 
-.map-sub-view .sub-fluent-checkbox input:not(:checked) + .sub-fluent-checkbox-box svg {
-  opacity: 0;
+.map-sub-view .fd-check__input:disabled + .fd-check__box {
+  opacity: 0.55;
+}
+
+.map-sub-view .fd-check__input:disabled ~ .fd-check__box,
+.map-sub-view .fd-check__input:disabled ~ .fd-check__box * {
+  cursor: not-allowed;
 }
 
 .map-sub-view .sub-action-btn {
