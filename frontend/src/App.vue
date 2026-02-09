@@ -274,35 +274,10 @@
                   @input="onMapSubSearchInput"
                 >
                 <button class="sub-multi-toggle" type="button" @click="toggleMapSubMultiSelect">
-                  {{ mapSubMultiSelectMode ? t('map_sub_cancel_btn') : t('map_sub_select_multiple') }}
+                  {{ mapSubMultiSelectMode ? t('map_sub_cancel') : t('map_sub_bulk_mode') }}
                 </button>
               </div>
 
-              <div class="sub-filter-row">
-                <div class="sub-filter-label">{{ t('sub_select_comm') }}</div>
-                <div class="comm-options">
-                  <div
-                    class="comm-pill"
-                    :class="{active: mapSubCommunityFilters.length === 0}"
-                    @click="clearMapSubCommunityFilters"
-                  >
-                    {{ t('all_comm') }}
-                  </div>
-                  <div
-                    class="comm-pill"
-                    :class="{active: mapSubCommunityFilters.includes(c.id)}"
-                    v-for="c in communities"
-                    :key="c.id"
-                    @click="toggleMapSubCommunityFilter(c.id)"
-                  >
-                    {{ c.short_name || c.name }}
-                  </div>
-                </div>
-              </div>
-
-              <div v-if="mapSubSearchMinLengthHint" class="sub-search-hint">
-                {{ t('map_sub_search_min_length_msg') }}
-              </div>
               <div v-if="mapSubSearchTruncated" class="sub-search-hint">
                 {{ t('map_sub_search_full_too_many') }}
               </div>
@@ -354,11 +329,15 @@
                   </div>
                 </div>
                 <div class="sub-actions">
-                  <button v-if="row.isSubscribed" class="btn-unsub" @click="handleMapSubUnsubscribe(row)">
-                    {{ t('map_sub_unsubscribe_btn') }}
+                  <button v-if="row.isSubscribed" class="sub-action-btn sub-action-btn--unsubscribe" @click="handleMapSubUnsubscribe(row)">
+                    {{ t('map_sub_unsubscribe') }}
                   </button>
-                  <button v-else class="btn btn-primary" @click="handleMapSubSubscribe(row)">
-                    {{ t('map_sub_subscribe_btn') }}
+                  <button
+                    v-else
+                    class="sub-action-btn sub-action-btn--subscribe"
+                    @click="handleMapSubSubscribe($event, row)"
+                  >
+                    {{ t('map_sub_subscribe') }}
                   </button>
                 </div>
               </div>
@@ -411,11 +390,15 @@
                     </div>
                   </div>
                   <div class="sub-actions">
-                    <button v-if="row.isSubscribed" class="btn-unsub" @click="handleMapSubUnsubscribe(row)">
-                      {{ t('map_sub_unsubscribe_btn') }}
+                    <button v-if="row.isSubscribed" class="sub-action-btn sub-action-btn--unsubscribe" @click="handleMapSubUnsubscribe(row)">
+                      {{ t('map_sub_unsubscribe') }}
                     </button>
-                    <button v-else class="btn btn-primary" @click="handleMapSubSubscribe(row)">
-                      {{ t('map_sub_subscribe_btn') }}
+                    <button
+                      v-else
+                      class="sub-action-btn sub-action-btn--subscribe"
+                      @click="handleMapSubSubscribe($event, row)"
+                    >
+                      {{ t('map_sub_subscribe') }}
                     </button>
                   </div>
                 </div>
@@ -425,13 +408,13 @@
             <div class="sub-test-btn" @click="testNotification">{{ t('test_notify') }}</div>
             <div v-if="mapSubMultiSelectMode" class="sub-bulk-bar">
               <div class="sub-bulk-count">
-                {{ formatTemplate(t('map_sub_bulk_selected'), { count: mapSubSelectedCount }) }}
+                {{ formatTemplate(t('map_sub_selected_count'), { count: mapSubSelectedCount }) }}
               </div>
-              <button class="btn btn-primary" :disabled="mapSubSelectedCount === 0" @click="bulkSubscribe">
-                {{ t('map_sub_bulk_subscribe_to') }}
+              <button class="btn btn-primary" :disabled="mapSubSelectedCount === 0" @click="openBulkSubscribePopover">
+                {{ t('map_sub_bulk_subscribe') }}
               </button>
               <button class="btn btn-sec" @click="cancelMapSubMultiSelect">
-                {{ t('map_sub_cancel_btn') }}
+                {{ t('map_sub_cancel') }}
               </button>
               <button class="btn btn-sec" @click="selectAllMapSub">
                 {{ t('map_sub_select_all') }}
@@ -440,6 +423,47 @@
                 {{ t('map_sub_clear_all') }}
               </button>
             </div>
+          </div>
+        </div>
+
+        <div v-if="mapSubPopoverOpen" class="sub-popover-backdrop" @click="closeMapSubPopover"></div>
+        <div
+          v-if="mapSubPopoverOpen"
+          class="sub-popover-panel"
+          :style="mapSubPopoverStyle"
+          @click.stop
+        >
+          <div class="sub-popover-title">{{ t('map_sub_choose_communities_title') }}</div>
+          <div class="sub-popover-hint" v-if="mapSubPopoverSelectedCount === 0">
+            {{ t('map_sub_choose_communities_required_hint') }}
+          </div>
+          <div class="sub-popover-list">
+            <label class="sub-checkbox sub-popover-checkbox" v-for="comm in communities" :key="comm.id">
+              <input
+                type="checkbox"
+                :checked="mapSubPopoverSelected.has(comm.id)"
+                @change="toggleMapSubPopoverCommunity(comm.id)"
+              >
+              <span class="sub-checkbox-box"></span>
+              <span class="sub-popover-label">{{ comm.name }}</span>
+            </label>
+          </div>
+          <div class="sub-popover-footer">
+            <span class="sub-popover-count">
+              {{ formatTemplate(t('map_sub_selected_count'), { count: mapSubPopoverSelectedCount }) }}
+            </span>
+          </div>
+          <div class="sub-popover-actions">
+            <button class="sub-popover-btn sub-popover-btn--cancel" @click="closeMapSubPopover">
+              {{ t('map_sub_cancel') }}
+            </button>
+            <button
+              class="sub-popover-btn sub-popover-btn--confirm"
+              :disabled="mapSubPopoverSelectedCount === 0"
+              @click="confirmMapSubPopover"
+            >
+              {{ t('map_sub_confirm') }}
+            </button>
           </div>
         </div>
 
@@ -711,11 +735,16 @@ const mapIndexConverter = createOpenCCConverter();
 const subscriptions = ref([]);
 const subscriptionSet = ref(new Set());
 const mapSearchIndexByKey = ref(new Map());
-const mapSubCommunityFilters = ref([]);
 const mapSubMultiSelectMode = ref(false);
 const mapSubSelectedKeys = ref(new Set());
 const mapSubResults = ref([]);
 const mapSubSearchTruncated = ref(false);
+const hiddenAfterUnsub = ref(new Set<string>());
+const mapSubPopoverOpen = ref(false);
+const mapSubPopoverAnchor = ref<DOMRect | null>(null);
+const mapSubPopoverMode = ref<'single' | 'bulk'>('single');
+const mapSubPopoverRow = ref(null);
+const mapSubPopoverSelected = ref(new Set());
 const lastNotifiedMaps = ref({});
 const hasNotification = typeof Notification !== 'undefined';
 const notificationPermission = ref(hasNotification ? Notification.permission : 'denied');
@@ -845,6 +874,11 @@ watch(curView, (nextView, prevView) => {
   }
   if (nextView === 'servers' && prevView !== 'servers') {
     restoreServersScroll();
+  }
+  if (prevView === 'map_sub' && nextView !== 'map_sub') {
+    hiddenAfterUnsub.value = new Set();
+    mapSubPopoverOpen.value = false;
+    mapSubPopoverSelected.value = new Set();
   }
   if (nextView === 'map_cooldown') {
     mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
@@ -1128,6 +1162,7 @@ const closeDropdowns = () => {
   showLangMenu.value = false;
   showSubPopover.value = false;
   showProfileMenu.value = false;
+  mapSubPopoverOpen.value = false;
 };
 
 const toggleViewMode = () => {
@@ -2261,30 +2296,36 @@ const getMapSubStatusFromEntry = (entry) => {
 
 const mapSubSearchQueryTrimmed = computed(() => subSearchQuery.value.trim());
 const mapSubQueryNorm = computed(() => normalizeSearchText(mapSubSearchQueryTrimmed.value));
-const mapSubSearchMinLengthHint = computed(() => (
-  mapSubCommunityFilters.value.length > 0 && mapSubQueryNorm.value.length < 2
-));
 const mapSubSelectedCount = computed(() => mapSubSelectedKeys.value.size);
 const mapSubSubscribedRows = computed(() => mapSubResults.value.filter(row => row.group === 'subscribed'));
 const mapSubUnsubscribedRows = computed(() => mapSubResults.value.filter(row => row.group === 'full'));
+const mapSubPopoverSelectedCount = computed(() => mapSubPopoverSelected.value.size);
+const mapSubPopoverStyle = computed(() => {
+  if (mapSubPopoverMode.value === 'bulk') {
+    return {
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)'
+    };
+  }
+  const anchor = mapSubPopoverAnchor.value;
+  if (!anchor) {
+    return {
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)'
+    };
+  }
+  const top = Math.min(window.innerHeight - 24, anchor.bottom + 8);
+  const left = Math.min(window.innerWidth - 24, anchor.left + anchor.width / 2);
+  return {
+    top: `${top}px`,
+    left: `${left}px`,
+    transform: 'translate(-50%, 0)'
+  };
+});
 
 const getMapSubAvailabilityGroup = (status) => (status && status.type === 'available' ? 'available' : 'cooldown');
-
-const getMapSubEntryCommunities = (mapKey) => {
-  const entry = mapIndex.value?.[mapKey];
-  if (!entry || typeof entry !== 'object') return [];
-  const raw = entry.communities ?? entry.comms ?? entry.community_ids ?? entry.community_id ?? entry.community ?? entry.comm ?? null;
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw.map(item => String(item).toLowerCase());
-  return [String(raw).toLowerCase()];
-};
-
-const mapSubCommunityMatch = (mapKey) => {
-  if (mapSubCommunityFilters.value.length === 0) return true;
-  const entryComms = getMapSubEntryCommunities(mapKey);
-  if (!entryComms.length) return false;
-  return mapSubCommunityFilters.value.some((cid) => entryComms.includes(String(cid).toLowerCase()));
-};
 
 const buildSubscribedMapRows = () => {
   const query = mapSubSearchQueryTrimmed.value;
@@ -2293,6 +2334,7 @@ const buildSubscribedMapRows = () => {
   subscriptions.value.forEach((sub) => {
     const rawKey = normalizeMapKey(sub.map || '') || sub.map || '';
     if (!rawKey) return;
+    if (hiddenAfterUnsub.value.has(rawKey)) return;
     const entry = getSearchEntryByKey(rawKey);
     const match = hasQuery ? getSearchMatch(entry, query) : { rank: 0, score: 0 };
     if (hasQuery && !match) return;
@@ -2324,7 +2366,6 @@ const buildFullMapRows = () => {
   const query = mapSubSearchQueryTrimmed.value;
   const normalizedQuery = mapSubQueryNorm.value;
   if (!normalizedQuery) return [];
-  if (mapSubCommunityFilters.value.length > 0 && normalizedQuery.length < 2) return [];
 
   const broadPrefix = normalizedQuery.startsWith('ze_') && normalizedQuery.length < 4;
   const allowFullSearch = normalizedQuery.length >= 3 && !broadPrefix;
@@ -2342,7 +2383,7 @@ const buildFullMapRows = () => {
     scanned += 1;
     const mapKey = entry?.key;
     if (!mapKey || subscriptionSet.value.has(mapKey)) continue;
-    if (!mapSubCommunityMatch(mapKey)) continue;
+    if (hiddenAfterUnsub.value.has(mapKey)) continue;
 
     const match = getSearchMatch(entry, query, {
       requireExact,
@@ -2392,12 +2433,14 @@ const onMapSubSearchInput = () => {
   refreshMapSubResults();
 };
 
-const updateMapSubResultSubscriptionState = (mapKey, isSubscribed) => {
+const updateMapSubResultSubscriptionState = (mapKey, isSubscribed, comms = []) => {
   mapSubResults.value = mapSubResults.value.map((row) => {
     if (row.key !== mapKey) return row;
     const next = { ...row, isSubscribed };
     if (!isSubscribed) {
       next.commsLabel = '';
+    } else if (comms.length) {
+      next.commsLabel = formatSubComms(comms);
     }
     return next;
   });
@@ -2407,17 +2450,19 @@ const persistSubscriptions = () => {
   localStorage.setItem('map_subs', JSON.stringify(subscriptions.value));
 };
 
-const addSubscriptionByKey = (mapKey, { silent = false } = {}) => {
+const addSubscriptionByKey = (mapKey, { silent = false, comms = [] } = {}) => {
   const normalizedKey = normalizeMapKey(mapKey) || mapKey;
   if (!normalizedKey) return;
+  const finalComms = comms.length ? comms : ['all'];
   if (!subscriptionSet.value.has(normalizedKey)) {
-    subscriptions.value.push({ map: normalizedKey, comms: ['all'] });
+    subscriptions.value.push({ map: normalizedKey, comms: finalComms });
     subscriptionSet.value.add(normalizedKey);
     persistSubscriptions();
   }
-  updateMapSubResultSubscriptionState(normalizedKey, true);
+  hiddenAfterUnsub.value.delete(normalizedKey);
+  updateMapSubResultSubscriptionState(normalizedKey, true, finalComms);
   if (!silent) {
-    showToast(formatTemplate(t('map_sub_subscribed_toast'), { map: normalizedKey }), 2000);
+    showToast(formatTemplate(t('map_sub_toast_subscribed'), { map: normalizedKey }), 2000);
   }
   if (embedMode) {
     postEmbedMessage('CS2ZE_SUBSCRIBE_MAP', { map: normalizedKey });
@@ -2427,36 +2472,65 @@ const addSubscriptionByKey = (mapKey, { silent = false } = {}) => {
 const removeSubscriptionByKey = (mapKey) => {
   const normalizedKey = normalizeMapKey(mapKey) || mapKey;
   if (!normalizedKey) return;
+  hiddenAfterUnsub.value.add(normalizedKey);
   if (subscriptionSet.value.has(normalizedKey)) {
     subscriptions.value = subscriptions.value.filter(sub => normalizeMapKey(sub.map) !== normalizedKey);
     subscriptionSet.value.delete(normalizedKey);
     persistSubscriptions();
   }
+  mapSubResults.value = mapSubResults.value.filter((row) => row.key !== normalizedKey);
   updateMapSubResultSubscriptionState(normalizedKey, false);
-  showToast(formatTemplate(t('map_sub_unsubscribed_toast'), { map: normalizedKey }), 2000);
+  showToast(formatTemplate(t('map_sub_toast_unsubscribed'), { map: normalizedKey }), 2000);
 };
 
-const handleMapSubSubscribe = (row) => {
+const openMapSubPopover = (event, { mode = 'single', row = null } = {}) => {
+  mapSubPopoverMode.value = mode;
+  mapSubPopoverRow.value = row;
+  mapSubPopoverSelected.value = new Set();
+  mapSubPopoverAnchor.value = event?.currentTarget?.getBoundingClientRect?.() || null;
+  mapSubPopoverOpen.value = true;
+};
+
+const closeMapSubPopover = () => {
+  mapSubPopoverOpen.value = false;
+  mapSubPopoverSelected.value = new Set();
+  mapSubPopoverRow.value = null;
+  mapSubPopoverAnchor.value = null;
+};
+
+const toggleMapSubPopoverCommunity = (commId) => {
+  const next = new Set(mapSubPopoverSelected.value);
+  if (next.has(commId)) next.delete(commId);
+  else next.add(commId);
+  mapSubPopoverSelected.value = next;
+};
+
+const confirmMapSubPopover = () => {
+  const comms = Array.from(mapSubPopoverSelected.value);
+  if (!comms.length) return;
+  if (mapSubPopoverMode.value === 'bulk') {
+    const keys = Array.from(mapSubSelectedKeys.value);
+    if (!keys.length) {
+      closeMapSubPopover();
+      return;
+    }
+    keys.forEach((key) => addSubscriptionByKey(key, { silent: true, comms }));
+    mapSubSelectedKeys.value = new Set();
+    showToast(formatTemplate(t('map_sub_toast_bulk_subscribed'), { count: keys.length }), 2200);
+  } else if (mapSubPopoverRow.value) {
+    addSubscriptionByKey(mapSubPopoverRow.value.key, { comms });
+  }
+  closeMapSubPopover();
+};
+
+const handleMapSubSubscribe = (event, row) => {
   if (!row || row.isSubscribed) return;
-  addSubscriptionByKey(row.key);
+  openMapSubPopover(event, { mode: 'single', row });
 };
 
 const handleMapSubUnsubscribe = (row) => {
   if (!row || !row.isSubscribed) return;
   removeSubscriptionByKey(row.key);
-};
-
-const toggleMapSubCommunityFilter = (id) => {
-  const next = new Set(mapSubCommunityFilters.value);
-  if (next.has(id)) next.delete(id);
-  else next.add(id);
-  mapSubCommunityFilters.value = Array.from(next);
-  refreshMapSubResults();
-};
-
-const clearMapSubCommunityFilters = () => {
-  mapSubCommunityFilters.value = [];
-  refreshMapSubResults();
 };
 
 const toggleMapSubMultiSelect = () => {
@@ -2491,12 +2565,9 @@ const clearMapSubSelection = () => {
   mapSubSelectedKeys.value = new Set();
 };
 
-const bulkSubscribe = () => {
-  const keys = Array.from(mapSubSelectedKeys.value);
-  if (!keys.length) return;
-  keys.forEach((key) => addSubscriptionByKey(key, { silent: true }));
-  mapSubSelectedKeys.value = new Set();
-  showToast(formatTemplate(t('map_sub_bulk_subscribed_toast'), { count: keys.length }), 2200);
+const openBulkSubscribePopover = (event) => {
+  if (mapSubSelectedKeys.value.size === 0) return;
+  openMapSubPopover(event, { mode: 'bulk' });
 };
 
 const removeSubscriptionByMap = (mapName) => {
@@ -3090,18 +3161,6 @@ const submitFeedback = () => {
   gap: 12px;
 }
 
-.map-sub-view .sub-filter-row {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.map-sub-view .sub-filter-label {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
 .map-sub-view .sub-search-hint {
   margin-top: 10px;
   font-size: 12px;
@@ -3168,6 +3227,143 @@ const submitFeedback = () => {
   border: solid currentColor;
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
+}
+
+.map-sub-view .sub-action-btn {
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.map-sub-view .sub-action-btn--subscribe {
+  background: color-mix(in srgb, var(--accent) 85%, transparent);
+  color: white;
+  border-color: color-mix(in srgb, var(--accent) 85%, transparent);
+}
+
+.map-sub-view .sub-action-btn--subscribe:hover {
+  background: color-mix(in srgb, var(--accent) 92%, transparent);
+}
+
+.map-sub-view .sub-action-btn--unsubscribe {
+  background: transparent;
+  color: var(--status-offline);
+  border-color: color-mix(in srgb, var(--status-offline) 85%, transparent);
+}
+
+.map-sub-view .sub-action-btn--unsubscribe:hover {
+  background: color-mix(in srgb, var(--status-offline) 15%, transparent);
+}
+
+.sub-popover-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 30;
+}
+
+.sub-popover-panel {
+  position: fixed;
+  min-width: 260px;
+  max-width: min(420px, 92vw);
+  max-height: 70vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+  z-index: 31;
+}
+
+.sub-popover-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.sub-popover-hint {
+  font-size: 12px;
+  color: var(--status-offline);
+}
+
+.sub-popover-list {
+  display: grid;
+  gap: 10px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.sub-popover-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sub-popover-label {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.sub-popover-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sub-popover-count {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.sub-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.sub-popover-btn {
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--card-border);
+  background: rgba(128, 128, 128, 0.08);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.sub-popover-btn:hover {
+  background: rgba(128, 128, 128, 0.16);
+}
+
+.sub-popover-btn--confirm {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--text-primary);
+}
+
+.sub-popover-btn--confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sub-popover-btn--cancel {
+  border-color: var(--card-border);
 }
 
 .map-sub-view .exg-inline-status {
