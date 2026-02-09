@@ -92,6 +92,8 @@ const buildRows = (payload: any, buildId?: number) => {
         ? toAvailability(deadline, durationSec, nowEpochSec, durationRaw)
         : 'unavailable';
       const sortGroup = availability === 'cooling' ? 0 : availability === 'available' ? 1 : 2;
+      const deadlineText = hasExgFields ? formatDeadline(deadline, formatter) : '-';
+      const durationText = hasExgFields ? formatDurationHuman(durationSec, locale) : '-';
       const mapCnRaw = stripBracketSegments(typeof data?.map_cn === 'string' ? data.map_cn : '');
       const mapLine2 = resolveMapLine2(key, data);
       const achievement = typeof data.achievement === 'string' ? data.achievement : '';
@@ -104,9 +106,9 @@ const buildRows = (payload: any, buildId?: number) => {
         mapLine2,
         achievement,
         deadlineEpochSec: deadline,
-        deadlineText: formatDeadline(deadline, formatter),
+        deadlineText,
         durationSec,
-        durationText: formatDurationHuman(durationSec, locale),
+        durationText,
         availability,
         availabilityTitle: availability === 'available' ? availabilityLabels.available : availabilityLabels.unavailable,
         sortGroup,
