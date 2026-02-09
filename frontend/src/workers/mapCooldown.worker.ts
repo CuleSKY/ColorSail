@@ -79,11 +79,15 @@ const buildRows = (payload: any, buildId?: number) => {
       const data = entry && typeof entry === 'object' ? entry : {};
       const hasExgFields = ['deadline', 'cooldown_end_epoch', 'duration_raw', 'duration_sec']
         .some((field) => Object.prototype.hasOwnProperty.call(data, field));
-      const deadline = typeof data.cooldown_end_epoch === 'number'
-        ? data.cooldown_end_epoch
-        : (typeof data.deadline === 'number' ? data.deadline : null);
-      const durationSec = typeof data.duration_sec === 'number' ? data.duration_sec : null;
-      const durationRaw = Object.prototype.hasOwnProperty.call(data, 'duration_raw') ? data.duration_raw ?? null : null;
+      const deadline = hasExgFields
+        ? (typeof data.cooldown_end_epoch === 'number'
+          ? data.cooldown_end_epoch
+          : (typeof data.deadline === 'number' ? data.deadline : null))
+        : null;
+      const durationSec = hasExgFields && typeof data.duration_sec === 'number' ? data.duration_sec : null;
+      const durationRaw = hasExgFields && Object.prototype.hasOwnProperty.call(data, 'duration_raw')
+        ? data.duration_raw ?? null
+        : null;
       const availability = hasExgFields
         ? toAvailability(deadline, durationSec, nowEpochSec, durationRaw)
         : 'unavailable';
