@@ -657,6 +657,7 @@ if (embedMode && paramTheme) {
   if (themeValue === 'dark') isDark.value = true;
   if (themeValue === 'light') isDark.value = false;
 }
+document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light');
 if (isEmbedDense) {
   document.documentElement.classList.add('embed-dense');
 }
@@ -897,7 +898,7 @@ onMounted(async () => {
   window.addEventListener('message', handleSteamMessage);
   document.addEventListener('visibilitychange', handleVisibilityChange);
 
-  if (isDark.value) document.documentElement.setAttribute('data-theme', 'dark');
+  document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light');
   updateFavicon();
 
   try {
@@ -1363,6 +1364,7 @@ let mapCooldownSearchTimer = null;
 let mapCooldownHighlightTimer = null;
 let mapCooldownContainerResizeObserver = null;
 let mapCooldownLastNonZeroViewportHeight = mapCooldownEstimatedRowHeight;
+let mapCooldownScrollInitDone = false;
 const mapCooldownHeightByKey = new Map();
 const mapCooldownRowElByKey = new Map();
 
@@ -1455,6 +1457,11 @@ const updateMapCooldownVisibleRows = () => {
   mapCooldownVisibleRows.value = nextVisibleRows;
   mapCooldownTopSpacerPx.value = start * rowHeight;
   mapCooldownBottomSpacerPx.value = Math.max(0, totalHeight - end * rowHeight);
+  if (total > 0 && mapCooldownVisibleRows.value.length === 0) {
+    nextTick(() => {
+      updateMapCooldownWindow(mapCooldownLatestScrollTop, { force: true });
+    });
+  }
 };
 
 const clearMapCooldownSearch = () => {
@@ -1739,7 +1746,7 @@ const resetMapCooldownScrollState = () => {
 
 const onMapCooldownScroll = (event) => {
   const target = event?.target;
-  mapCooldownLatestScrollTop = target?.scrollTop ?? mapCooldownScrollRef.value?.scrollTop ?? 0;
+  mapCooldownLatestScrollTop = mapCooldownScrollRef.value?.scrollTop ?? target?.scrollTop ?? 0;
   if (mapCooldownIsApplyingScrollAdjust) return;
   scheduleMapCooldownRaf();
 };
@@ -1834,6 +1841,15 @@ const teardownMapCooldownContainerObserver = () => {
   mapCooldownContainerResizeObserver.disconnect();
   mapCooldownContainerResizeObserver = null;
 };
+
+watch(mapCooldownScrollRef, (scrollEl) => {
+  if (!scrollEl || mapCooldownScrollInitDone) return;
+  mapCooldownScrollInitDone = true;
+  setupMapCooldownResizeObserver();
+  setupMapCooldownContainerObserver();
+  clampMapCooldownScrollTop({ force: true });
+  updateMapCooldownWindow(scrollEl.scrollTop ?? 0, { force: true });
+});
 
 const ensureMapCooldownWorker = () => {
   if (mapCooldownWorker) return;
@@ -2772,6 +2788,14 @@ const submitFeedback = () => {
 
 .map-sub-view .exg-inline-status--unavailable {
   color: var(--status-offline);
+}
+
+.map-sub-view .exg-pill.is-online {
+  color: var(--status-online, #107c10);
+}
+
+.map-sub-view .exg-pill.is-offline {
+  color: var(--status-offline, #0078d4);
 }
 
 .sub-container {
