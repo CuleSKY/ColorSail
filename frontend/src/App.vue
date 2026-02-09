@@ -283,53 +283,55 @@
             <div style="border-top:1px solid var(--card-border); margin: 30px 0;"></div>
 
             <h3 style="margin-bottom:16px; opacity:0.8">{{ t('map_sub_subscribed_section') }}</h3>
-            <div class="sub-table" v-if="mapSubSubscribedRows.length > 0">
-              <div class="sub-row" v-for="row in mapSubSubscribedRows" :key="row.key">
-                <div class="sub-col-info">
-                  <div class="sub-map-key-row">
-                    <div class="sub-map-key">{{ row.key }}</div>
-                  </div>
-                  <div class="sub-map-val" v-if="row.displayName">{{ row.displayName }}</div>
-                  <div class="sub-tags">
-                    <div class="sub-comms" v-if="row.commsLabel">{{ row.commsLabel }}</div>
-                    <div
-                      v-if="row.status"
-                      class="exg-inline-status"
-                      :class="row.status.className"
-                    >
-                      <template v-if="row.status.type === 'available'">
-                        <svg class="exg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                          <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2Zm3.22 6.97-4.47 4.47-1.97-1.97a.75.75 0 0 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5-5a.75.75 0 1 0-1.06-1.06Z" fill="currentColor"/>
-                        </svg>
-                      </template>
-                      <template v-else-if="row.status.type === 'cooldown'">
-                        <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M12 5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Zm0 3a.75.75 0 0 0-.743.648l-.007.102v4.5l.007.102a.75.75 0 0 0 1.486 0l.007-.102v-4.5l-.007-.102A.75.75 0 0 0 12 8Zm7.17-2.877.082.061 1.149 1a.75.75 0 0 1-.904 1.193l-.081-.061-1.149-1a.75.75 0 0 1 .903-1.193ZM14.25 2.5a.75.75 0 0 1 .102 1.493L14.25 4h-4.5a.75.75 0 0 1-.102-1.493L9.75 2.5h4.5Z" fill="currentColor"/>
-                        </svg>
-                      </template>
-                      <template v-else>
-                        <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-                        </svg>
-                      </template>
-                      <span class="exg-inline-label">{{ row.status.label }}</span>
-                      <span v-if="row.status.time" class="exg-inline-time">{{ row.status.time }}</span>
+            <div class="sub-card-surface">
+              <div class="sub-table" v-if="mapSubSubscribedRows.length > 0">
+                <div class="sub-row" v-for="row in mapSubSubscribedRows" :key="row.key">
+                  <div class="sub-col-info">
+                    <div class="sub-map-key-row">
+                      <div class="sub-map-key">{{ row.key }}</div>
+                    </div>
+                    <div class="sub-map-val" v-if="row.displayName">{{ row.displayName }}</div>
+                    <div class="sub-tags">
+                      <div class="sub-comms" v-if="row.commsLabel">{{ row.commsLabel }}</div>
+                      <div
+                        v-if="row.status"
+                        class="exg-inline-status"
+                        :class="row.status.className"
+                      >
+                        <template v-if="row.status.type === 'available'">
+                          <svg class="exg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2Zm3.22 6.97-4.47 4.47-1.97-1.97a.75.75 0 0 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5-5a.75.75 0 1 0-1.06-1.06Z" fill="currentColor"/>
+                          </svg>
+                        </template>
+                        <template v-else-if="row.status.type === 'cooldown'">
+                          <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Zm0 3a.75.75 0 0 0-.743.648l-.007.102v4.5l.007.102a.75.75 0 0 0 1.486 0l.007-.102v-4.5l-.007-.102A.75.75 0 0 0 12 8Zm7.17-2.877.082.061 1.149 1a.75.75 0 0 1-.904 1.193l-.081-.061-1.149-1a.75.75 0 0 1 .903-1.193ZM14.25 2.5a.75.75 0 0 1 .102 1.493L14.25 4h-4.5a.75.75 0 0 1-.102-1.493L9.75 2.5h4.5Z" fill="currentColor"/>
+                          </svg>
+                        </template>
+                        <template v-else>
+                          <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                          </svg>
+                        </template>
+                        <span class="exg-inline-label">{{ row.status.label }}</span>
+                        <span v-if="row.status.time" class="exg-inline-time">{{ row.status.time }}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div class="sub-actions">
-                  <button class="sub-action-btn sub-action-btn--unsubscribe" @click="handleMapSubUnsubscribe(row)">
-                    {{ t('map_sub_unsubscribe') }}
-                  </button>
+                  <div class="sub-actions">
+                    <button class="sub-action-btn sub-action-btn--unsubscribe" @click="handleMapSubUnsubscribe(row)">
+                      {{ t('map_sub_unsubscribe') }}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div v-else style="text-align: center; padding: 40px; color: var(--text-secondary);">
-              {{ t('no_subs') }}
+              <div v-else style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                {{ t('no_subs') }}
+              </div>
             </div>
 
             <div v-if="mapSubUnsubscribedRows.length > 0" class="sub-unsubscribed-shell">
-              <div class="sub-unsubscribed-card">
+              <div class="sub-unsubscribed-card sub-card-surface">
                 <div class="sub-card-header">
                   <h3 class="sub-card-title">{{ t('map_sub_unsubscribed_section') }}</h3>
                   <button
@@ -2463,7 +2465,7 @@ const removeSubscriptionByKey = (mapKey) => {
   showToast(formatTemplate(t('map_sub_toast_unsubscribed'), { map: normalizedKey }), 2000);
 };
 
-const openMapSubPopover = (event, { mode = 'single', row = null } = {}) => {
+const openMapSubPopover = ({ mode = 'single', row = null } = {}) => {
   mapSubPopoverMode.value = mode;
   mapSubPopoverRow.value = row;
   mapSubPopoverSelected.value = new Set();
@@ -2520,7 +2522,7 @@ const handleMapSubSubscribe = (event, row) => {
     });
   }
   if (!row || subscribedMapKeys.value.has(row.key)) return;
-  openMapSubPopover(event, { mode: 'single', row });
+  openMapSubPopover({ mode: 'single', row });
 };
 
 const handleMapSubUnsubscribe = (row) => {
@@ -2569,7 +2571,7 @@ const clearMapSubSelection = () => {
 
 const openBulkSubscribePopover = (event) => {
   if (mapSubSelectedKeys.value.size === 0) return;
-  openMapSubPopover(event, { mode: 'bulk' });
+  openMapSubPopover({ mode: 'bulk' });
 };
 
 const removeSubscriptionByMap = (mapName) => {
@@ -3154,6 +3156,13 @@ const submitFeedback = () => {
   --page-center-max: 1100px;
 }
 
+.map-sub-view {
+  --sub-card-max: 980px;
+  --sub-rail-w: 220px;
+  --sub-rail-gap: 16px;
+  --sub-checkbox-check: #fff;
+}
+
 .sub-search-box {
   width: 100%;
   max-width: 600px;
@@ -3217,8 +3226,11 @@ const submitFeedback = () => {
 
 .map-sub-view .sub-fluent-checkbox input {
   position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
   opacity: 0;
-  pointer-events: none;
 }
 
 .map-sub-view .sub-fluent-checkbox-box {
@@ -3242,7 +3254,6 @@ const submitFeedback = () => {
 
 .map-sub-view .sub-fluent-checkbox:hover .sub-fluent-checkbox-box {
   border-color: color-mix(in srgb, var(--accent) 65%, currentColor);
-  box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .map-sub-view .sub-fluent-checkbox:active .sub-fluent-checkbox-box {
@@ -3257,12 +3268,15 @@ const submitFeedback = () => {
 .map-sub-view .sub-fluent-checkbox input:checked + .sub-fluent-checkbox-box {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--card-bg);
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--sub-checkbox-check);
 }
 
 .map-sub-view .sub-fluent-checkbox input:checked + .sub-fluent-checkbox-box svg {
   opacity: 1;
+}
+
+.map-sub-view .sub-fluent-checkbox input:not(:checked) + .sub-fluent-checkbox-box svg {
+  opacity: 0;
 }
 
 .map-sub-view .sub-action-btn {
@@ -3304,7 +3318,7 @@ const submitFeedback = () => {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.3);
-  z-index: 30;
+  z-index: 9990;
 }
 
 .sub-popover-panel {
@@ -3312,7 +3326,8 @@ const submitFeedback = () => {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(720px, 92vw);
+  width: 100%;
+  max-width: min(820px, calc(100vw - 32px));
   max-height: min(70vh, 720px);
   overflow: hidden;
   display: flex;
@@ -3324,7 +3339,7 @@ const submitFeedback = () => {
   border: 1px solid var(--card-border);
   box-shadow: 0 20px 45px rgba(0, 0, 0, 0.18);
   backdrop-filter: blur(10px);
-  z-index: 31;
+  z-index: 10000;
 }
 
 .sub-popover-header {
@@ -3502,16 +3517,11 @@ const submitFeedback = () => {
 }
 
 .map-sub-view .sub-unsubscribed-shell {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 220px;
-  gap: 24px;
-  align-items: start;
   position: relative;
   margin-top: 28px;
 }
 
 .map-sub-view .sub-unsubscribed-card {
-  width: 100%;
   min-width: 0;
 }
 
@@ -3574,8 +3584,12 @@ const submitFeedback = () => {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 4px 0 0;
+  padding: 12px;
   min-width: 140px;
+  border-radius: 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
 }
 
 .map-sub-view .sub-bulk-toolbar-title {
@@ -3636,26 +3650,24 @@ const submitFeedback = () => {
 }
 
 .map-sub-view .sub-bulk-rail {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: var(--sub-rail-w);
+  transform: translateX(calc(var(--sub-card-max) / 2 + var(--sub-rail-gap)));
   min-width: 0;
   padding: 0;
 }
 
 .map-sub-view .sub-bulk-rail.is-active {
-  border-radius: 16px;
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
-  padding: 12px;
 }
 
-@media (max-width: 980px) {
-  .map-sub-view .sub-unsubscribed-shell {
-    grid-template-columns: 1fr;
-  }
-
+@media (max-width: 1180px) {
   .map-sub-view .sub-bulk-rail {
+    position: static;
+    transform: none;
     width: 100%;
-    margin-top: 16px;
+    margin-top: 12px;
   }
 
   .map-sub-view .sub-bulk-toolbar {
@@ -3666,9 +3678,16 @@ const submitFeedback = () => {
 
 .sub-container {
   width: 100%;
-  max-width: var(--page-center-max);
+  max-width: var(--sub-card-max);
   margin: 0 auto;
   padding: 0 16px;
+}
+
+.sub-card-surface {
+  max-width: var(--sub-card-max);
+  width: 100%;
+  margin: 0 auto;
+  min-width: 0;
 }
 
 .mapcd-page {
