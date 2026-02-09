@@ -387,31 +387,33 @@
                   </div>
                 </div>
               </div>
-              <div v-if="mapSubMultiSelectMode" class="sub-bulk-toolbar">
-                <div class="sub-bulk-toolbar-title">
-                  {{ formatTemplate(t('map_sub_selected_count'), { count: mapSubSelectedCount }) }}
+              <aside class="sub-bulk-rail">
+                <div v-if="mapSubMultiSelectMode" class="sub-bulk-toolbar">
+                  <div class="sub-bulk-toolbar-title">
+                    {{ formatTemplate(t('map_sub_selected_count'), { count: mapSubSelectedCount }) }}
+                  </div>
+                  <button
+                    class="sub-bulk-tool-btn sub-bulk-tool-btn--primary"
+                    :disabled="mapSubSelectedCount === 0"
+                    @click.stop="openBulkSubscribePopover($event)"
+                  >
+                    <span class="sub-bulk-tool-icon" v-html="icons.check"></span>
+                    {{ t('map_sub_bulk_subscribe') }}
+                  </button>
+                  <button class="sub-bulk-tool-btn" @click="cancelMapSubMultiSelect">
+                    <span class="sub-bulk-tool-icon" v-html="icons.cross"></span>
+                    {{ t('map_sub_cancel') }}
+                  </button>
+                  <button class="sub-bulk-tool-btn" @click="selectAllMapSub">
+                    <span class="sub-bulk-tool-icon" v-html="icons.list"></span>
+                    {{ t('map_sub_select_all') }}
+                  </button>
+                  <button class="sub-bulk-tool-btn" @click="clearMapSubSelection">
+                    <span class="sub-bulk-tool-icon" v-html="icons.trash"></span>
+                    {{ t('map_sub_clear_all') }}
+                  </button>
                 </div>
-                <button
-                  class="sub-bulk-tool-btn sub-bulk-tool-btn--primary"
-                  :disabled="mapSubSelectedCount === 0"
-                  @click.stop="openBulkSubscribePopover($event)"
-                >
-                  <span class="sub-bulk-tool-icon" v-html="icons.check"></span>
-                  {{ t('map_sub_bulk_subscribe') }}
-                </button>
-                <button class="sub-bulk-tool-btn" @click="cancelMapSubMultiSelect">
-                  <span class="sub-bulk-tool-icon" v-html="icons.cross"></span>
-                  {{ t('map_sub_cancel') }}
-                </button>
-                <button class="sub-bulk-tool-btn" @click="selectAllMapSub">
-                  <span class="sub-bulk-tool-icon" v-html="icons.list"></span>
-                  {{ t('map_sub_select_all') }}
-                </button>
-                <button class="sub-bulk-tool-btn" @click="clearMapSubSelection">
-                  <span class="sub-bulk-tool-icon" v-html="icons.trash"></span>
-                  {{ t('map_sub_clear_all') }}
-                </button>
-              </div>
+              </aside>
             </div>
 
             <div class="sub-test-btn" @click="testNotification">{{ t('test_notify') }}</div>
@@ -422,8 +424,6 @@
         <div
           v-if="mapSubPopoverOpen"
           class="sub-popover-panel"
-          :style="mapSubPopoverStyle"
-          ref="mapSubPopoverPanelRef"
           @click.stop
         >
           <div class="sub-popover-title">{{ mapSubPopoverTitle }}</div>
@@ -431,15 +431,17 @@
             {{ t('map_sub_choose_communities_required_hint') }}
           </div>
           <div class="sub-popover-list">
-            <label class="sub-checkbox sub-popover-checkbox" v-for="comm in mapSubPopoverCommunities" :key="comm.id">
-              <input
-                type="checkbox"
-                :checked="mapSubPopoverSelected.has(comm.id)"
-                @change="toggleMapSubPopoverCommunity(comm.id)"
-              >
-              <span class="sub-checkbox-box"></span>
-              <span class="sub-popover-label">{{ comm.name }}</span>
-            </label>
+            <button
+              v-for="comm in mapSubPopoverCommunities"
+              :key="comm.id"
+              type="button"
+              class="sub-popover-chip"
+              :class="{ 'is-selected': mapSubPopoverSelected.has(comm.id) }"
+              @click="toggleMapSubPopoverCommunity(comm.id)"
+            >
+              <span class="sub-popover-chip-text">{{ comm.name }}</span>
+              <span v-if="mapSubPopoverSelected.has(comm.id)" class="sub-popover-chip-icon" v-html="icons.check"></span>
+            </button>
           </div>
           <div class="sub-popover-footer">
             <span class="sub-popover-count">
@@ -584,9 +586,9 @@
                       <div class="mapcd-cell mapcd-col-availability">
                         <span
                           class="mapcd-availability"
-                          :class="row.availability === 'available' ? 'is-available' : 'is-cooldown'"
+                          :class="getMapCooldownAvailability(row) === 'available' ? 'is-available' : 'is-cooldown'"
                         >
-                          <span v-if="row.availability === 'available'" class="mapcd-availability-icon" v-html="icons.check"></span>
+                          <span v-if="getMapCooldownAvailability(row) === 'available'" class="mapcd-availability-icon" v-html="icons.check"></span>
                           <span v-else class="mapcd-availability-icon" v-html="icons.cross"></span>
                         </span>
                       </div>
@@ -734,9 +736,6 @@ const mapSubResults = ref([]);
 const mapSubSearchTruncated = ref(false);
 const hiddenAfterUnsub = ref(new Set<string>());
 const mapSubPopoverOpen = ref(false);
-const mapSubPopoverAnchor = ref<DOMRect | null>(null);
-const mapSubPopoverPanelRef = ref<HTMLElement | null>(null);
-const mapSubPopoverSize = ref({ width: 320, height: 320 });
 const mapSubPopoverMode = ref<'single' | 'bulk'>('single');
 const mapSubPopoverRow = ref(null);
 const mapSubPopoverSelected = ref(new Set());
@@ -919,9 +918,6 @@ watch(curLang, () => document.title = t('app_title'), { immediate: true });
 const handleResize = () => {
   viewportWidth.value = window.innerWidth;
   isMobile.value = window.innerWidth <= 768;
-  if (mapSubPopoverOpen.value) {
-    updateMapSubPopoverSize();
-  }
   if (curView.value === 'map_cooldown') {
     mapCooldownLatestScrollTop = mapCooldownScrollRef.value?.scrollTop || mapCooldownLatestScrollTop;
     nextTick(() => {
@@ -1618,6 +1614,13 @@ const mapcdQueryTrimmed = computed(() => mapCooldownQueryInput.value.trim());
 const mapCooldownSearchQueryTrimmed = computed(() => mapCooldownSearchQuery.value.trim());
 const mapCooldownSearchQueryNorm = computed(() => normalizeSearchText(mapCooldownSearchQuery.value));
 const mapCooldownBaseRows = computed(() => (coolingOnly.value ? mapCooldownRowsCooling.value : mapCooldownRowsAll.value));
+const getMapCooldownAvailability = (row) => {
+  const deadline = row?.deadlineEpochSec;
+  if (typeof deadline === 'number') {
+    return deadline > mapCooldownNowEpoch.value ? 'cooling' : 'available';
+  }
+  return row?.availability || 'unavailable';
+};
 const mapCooldownMatchesQuery = (row) => {
   if (!mapCooldownSearchQueryNorm.value) return true;
   const entry = getSearchEntryByKey(row?.key || '');
@@ -1647,8 +1650,8 @@ const mapcdDisplayedRows = computed(() => {
     return baseRows.slice().sort((a, b) => {
       const aCooldownEpoch = a.deadlineEpochSec;
       const bCooldownEpoch = b.deadlineEpochSec;
-      const aCooling = a.availability === 'cooling' || (typeof aCooldownEpoch === 'number' && aCooldownEpoch > 0);
-      const bCooling = b.availability === 'cooling' || (typeof bCooldownEpoch === 'number' && bCooldownEpoch > 0);
+      const aCooling = getMapCooldownAvailability(a) === 'cooling';
+      const bCooling = getMapCooldownAvailability(b) === 'cooling';
       if (aCooling !== bCooling) return aCooling ? 1 : -1;
       if (!aCooling) return compareName(a, b);
       if (aCooldownEpoch == null && bCooldownEpoch == null) return compareName(a, b);
@@ -2175,19 +2178,21 @@ const requestMapCooldownBuild = ({ reason = 'update' } = {}) => {
 };
 
 const buildCooldownRows = ({ rebuildAll = false, reason = 'update' } = {}) => {
-  if (!rebuildAll && mapCooldownNeedsRebuild.value) return;
+  if (!rebuildAll && !mapCooldownNeedsRebuild.value) return;
   requestMapCooldownBuild({ reason });
+  mapCooldownNeedsRebuild.value = false;
 };
 
 const startMapCooldownTimer = () => {
   if (mapCooldownTimer) return;
   mapCooldownTimer = setInterval(() => {
     mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
+    if (!mapCooldownNeedsRebuild.value) return;
     if (mapCooldownIsFastScrolling.value) {
       mapCooldownPendingRebuild.value = true;
       return;
     }
-    buildCooldownRows({ rebuildAll: false, reason: 'timer' });
+    buildCooldownRows({ rebuildAll: true, reason: 'timer-needs-rebuild' });
   }, 5000);
 };
 
@@ -2312,40 +2317,6 @@ const mapSubPopoverCommunities = computed(() => {
   const base = communities.value || [];
   if (base.some((comm) => comm.id === 'all')) return base;
   return [{ id: 'all', name: t('all_comm') }, ...base];
-});
-const mapSubPopoverStyle = computed(() => {
-  const padding = 12;
-  const gap = 8;
-  const viewportW = window.innerWidth;
-  const viewportH = window.innerHeight;
-  const { width, height } = mapSubPopoverSize.value;
-  const anchor = mapSubPopoverAnchor.value;
-  if (!anchor) {
-    return {
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)'
-    };
-  }
-  const canShowRight = anchor.right + gap + width + padding <= viewportW;
-  const canShowLeft = anchor.left - gap - width - padding >= 0;
-  const canShowBottom = anchor.bottom + gap + height + padding <= viewportH;
-  const canShowTop = anchor.top - gap - height - padding >= 0;
-
-  let left = anchor.left + anchor.width / 2 - width / 2;
-  if (canShowRight) left = anchor.right + gap;
-  else if (canShowLeft) left = anchor.left - width - gap;
-  else left = Math.min(Math.max(padding, left), viewportW - width - padding);
-
-  let top = anchor.bottom + gap;
-  if (canShowBottom) top = anchor.bottom + gap;
-  else if (canShowTop) top = anchor.top - height - gap;
-  else top = Math.min(Math.max(padding, anchor.top + anchor.height / 2 - height / 2), viewportH - height - padding);
-  return {
-    top: `${top}px`,
-    left: `${left}px`,
-    transform: 'none'
-  };
 });
 
 const getMapSubAvailabilityGroup = (status) => (status && status.type === 'available' ? 'available' : 'cooldown');
@@ -2515,19 +2486,13 @@ const openMapSubPopover = (event, { mode = 'single', row = null } = {}) => {
   mapSubPopoverMode.value = mode;
   mapSubPopoverRow.value = row;
   mapSubPopoverSelected.value = new Set();
-  const anchorRect = event?.currentTarget?.getBoundingClientRect?.() || null;
-  mapSubPopoverAnchor.value = anchorRect && anchorRect.width && anchorRect.height ? anchorRect : null;
   mapSubPopoverOpen.value = true;
-  nextTick(() => {
-    updateMapSubPopoverSize();
-  });
 };
 
 const closeMapSubPopover = () => {
   mapSubPopoverOpen.value = false;
   mapSubPopoverSelected.value = new Set();
   mapSubPopoverRow.value = null;
-  mapSubPopoverAnchor.value = null;
 };
 
 const toggleMapSubPopoverCommunity = (commId) => {
@@ -2617,14 +2582,6 @@ const clearMapSubSelection = () => {
 const openBulkSubscribePopover = (event) => {
   if (mapSubSelectedKeys.value.size === 0) return;
   openMapSubPopover(event, { mode: 'bulk' });
-};
-
-const updateMapSubPopoverSize = () => {
-  if (!mapSubPopoverPanelRef.value) return;
-  const rect = mapSubPopoverPanelRef.value.getBoundingClientRect();
-  if (rect.width && rect.height) {
-    mapSubPopoverSize.value = { width: rect.width, height: rect.height };
-  }
 };
 
 const removeSubscriptionByMap = (mapName) => {
@@ -3339,18 +3296,21 @@ const submitFeedback = () => {
 
 .sub-popover-panel {
   position: fixed;
-  min-width: 260px;
-  max-width: min(420px, 92vw);
-  max-height: 70vh;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(720px, 92vw);
+  max-height: min(70vh, 720px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
-  border-radius: 12px;
-  background: var(--card-bg);
+  padding: 18px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--card-bg) 92%, transparent);
   border: 1px solid var(--card-border);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(10px);
   z-index: 31;
 }
 
@@ -3366,21 +3326,49 @@ const submitFeedback = () => {
 }
 
 .sub-popover-list {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   overflow: auto;
   padding-right: 4px;
 }
 
-.sub-popover-checkbox {
-  display: flex;
+.sub-popover-chip {
+  border-radius: 999px;
+  border: 1px solid var(--card-border);
+  background: rgba(128, 128, 128, 0.08);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.sub-popover-label {
-  font-size: 13px;
-  color: var(--text-primary);
+.sub-popover-chip.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.sub-popover-chip-text {
+  font-size: 12px;
+}
+
+.sub-popover-chip-icon {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  align-items: center;
+  justify-content: center;
+}
+
+.sub-popover-chip-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
 .sub-popover-footer {
@@ -3488,6 +3476,10 @@ const submitFeedback = () => {
 }
 
 .map-sub-view .sub-unsubscribed-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 24px;
+  align-items: start;
   position: relative;
   margin-top: 28px;
 }
@@ -3536,10 +3528,8 @@ const submitFeedback = () => {
 }
 
 .map-sub-view .sub-bulk-toolbar {
-  position: absolute;
-  top: 0;
-  right: 0;
-  transform: translateX(calc(100% + 16px));
+  position: sticky;
+  top: 96px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -3606,6 +3596,25 @@ const submitFeedback = () => {
 .map-sub-view .sub-bulk-tool-btn--primary {
   border-color: color-mix(in srgb, var(--accent) 60%, transparent);
   background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.map-sub-view .sub-bulk-rail {
+  min-width: 0;
+}
+
+@media (max-width: 980px) {
+  .map-sub-view .sub-unsubscribed-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .map-sub-view .sub-bulk-rail {
+    width: 100%;
+  }
+
+  .map-sub-view .sub-bulk-toolbar {
+    position: static;
+    margin-top: 16px;
+  }
 }
 
 .sub-container {

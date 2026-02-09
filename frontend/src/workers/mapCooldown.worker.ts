@@ -79,14 +79,14 @@ const buildRows = (payload: any, buildId?: number) => {
       const data = entry && typeof entry === 'object' ? entry : {};
       const hasExgFields = ['deadline', 'cooldown_end_epoch', 'duration_raw', 'duration_sec']
         .some((field) => Object.prototype.hasOwnProperty.call(data, field));
-      if (!hasExgFields) return;
       const deadline = typeof data.cooldown_end_epoch === 'number'
         ? data.cooldown_end_epoch
         : (typeof data.deadline === 'number' ? data.deadline : null);
       const durationSec = typeof data.duration_sec === 'number' ? data.duration_sec : null;
       const durationRaw = Object.prototype.hasOwnProperty.call(data, 'duration_raw') ? data.duration_raw ?? null : null;
-      if (deadline === null && durationRaw === null && durationSec === null) return;
-      const availability = toAvailability(deadline, durationSec, nowEpochSec, durationRaw);
+      const availability = hasExgFields
+        ? toAvailability(deadline, durationSec, nowEpochSec, durationRaw)
+        : 'unavailable';
       const sortGroup = availability === 'cooling' ? 0 : availability === 'available' ? 1 : 2;
       const mapCnRaw = stripBracketSegments(typeof data?.map_cn === 'string' ? data.map_cn : '');
       const mapLine2 = resolveMapLine2(key, data);
