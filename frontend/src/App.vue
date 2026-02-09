@@ -255,7 +255,7 @@
           </div>
         </div>
 
-        <div v-show="curView === 'map_sub' && isLoggedIn" ref="mapSubViewRef" class="animate-enter map-sub-view">
+        <div v-show="curView === 'map_sub' && isLoggedIn" class="animate-enter map-sub-view">
           <div class="sub-container">
             <div class="perm-warning" v-if="notificationPermission !== 'granted'" @click="requestPerm">
               {{ t('notify_warn') }}
@@ -398,14 +398,12 @@
               </div>
             </div>
 
-            <div class="sub-test-btn" @click="testNotification">{{ t('test_notify') }}</div>
-          </div>
-          <aside
-            v-if="mapSubUnsubscribedRows.length > 0"
-            class="sub-bulk-rail"
-            :class="{ 'is-active': mapSubMultiSelectMode }"
-          >
-            <div v-if="mapSubMultiSelectMode" class="sub-bulk-toolbar">
+            <div
+              v-if="mapSubMultiSelectMode && mapSubUnsubscribedRows.length > 0"
+              ref="bulkToolbarRef"
+              class="sub-bulk-toolbar"
+              :style="bulkToolbarStyle"
+            >
               <div class="sub-bulk-toolbar-title">
                 {{ formatTemplate(t('map_sub_selected_count'), { count: mapSubSelectedCount }) }}
               </div>
@@ -430,7 +428,9 @@
                 {{ t('map_sub_clear_all') }}
               </button>
             </div>
-          </aside>
+
+            <div class="sub-test-btn" @click="testNotification">{{ t('test_notify') }}</div>
+          </div>
         </div>
 
         <div v-if="mapSubPopoverOpen" class="sub-popover-backdrop" @click="closeMapSubPopover">
@@ -638,7 +638,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, isProxy, nextTick, onMounted, onUnmounted, ref, toRaw, watch } from 'vue';
+import { computed, isProxy, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, toRaw, watch } from 'vue';
 import { buildMapSearchIndex, createOpenCCConverter, formatExgDateTime, getExgStatusState, normalizeSearchText, scoreSearchEntry, stripBracketSegments, validateMapIndexEntry } from './mapSearchUtils';
 
 const props = defineProps({
@@ -758,8 +758,9 @@ const mapSubPopoverMode = ref<'single' | 'bulk'>('single');
 const mapSubPopoverRow = ref(null);
 const mapSubPopoverSelected = ref(new Set());
 const lastNotifiedMaps = ref({});
-const mapSubViewRef = ref<HTMLElement | null>(null);
 const mapSubUnsubscribedRef = ref<HTMLElement | null>(null);
+const bulkToolbarRef = ref<HTMLElement | null>(null);
+const bulkToolbarStyle = ref<Record<string, string>>({});
 const hasNotification = typeof Notification !== 'undefined';
 const notificationPermission = ref(hasNotification ? Notification.permission : 'denied');
 const draggedIndex = ref(null);
@@ -933,7 +934,7 @@ watch(curLang, () => document.title = t('app_title'), { immediate: true });
 const handleResize = () => {
   viewportWidth.value = window.innerWidth;
   isMobile.value = window.innerWidth <= 768;
-  updateMapSubRailPosition();
+  updateBulkToolbarPosition();
   if (curView.value === 'map_cooldown') {
     mapCooldownLatestScrollTop = mapCooldownScrollRef.value?.scrollTop || mapCooldownLatestScrollTop;
     nextTick(() => {
@@ -1045,42 +1046,46 @@ const handleSteamMessage = async (event) => {
   }
 };
 
-let mapSubRailObserver: ResizeObserver | null = null;
-const updateMapSubRailPosition = () => {
-  if (!mapSubViewRef.value || !mapSubUnsubscribedRef.value) return;
-  const viewRect = mapSubViewRef.value.getBoundingClientRect();
-  const unsubRect = mapSubUnsubscribedRef.value.getBoundingClientRect();
-  const offset = unsubRect.top - viewRect.top;
-  mapSubViewRef.value.style.setProperty('--sub-rail-offset', `${Math.max(offset, 0)}px`);
+const BULK_TOOLBAR_GAP = 16;
+const BULK_TOOLBAR_TOP = 120;
+const updateBulkToolbarPosition = () => {
+  if (!mapSubMultiSelectMode.value) return;
+  const shellEl = mapSubUnsubscribedRef.value;
+  const toolbarEl = bulkToolbarRef.value;
+  if (!shellEl || !toolbarEl) return;
+  const shellRect = shellEl.getBoundingClientRect();
+  const toolbarRect = toolbarEl.getBoundingClientRect();
+  const toolbarWidth = toolbarRect.width || toolbarEl.offsetWidth || 0;
+  const viewportWidthValue = window.innerWidth;
+  let left = shellRect.right + BULK_TOOLBAR_GAP;
+  if (left + toolbarWidth > viewportWidthValue - BULK_TOOLBAR_GAP) {
+    left = Math.max(BULK_TOOLBAR_GAP, viewportWidthValue - toolbarWidth - BULK_TOOLBAR_GAP);
+  }
+  bulkToolbarStyle.value = {
+    left: `${left}px`,
+    top: `${BULK_TOOLBAR_TOP}px`
+  };
 };
 
-let mapSubPopoverScrollY = 0;
 let isBodyScrollLocked = false;
+let bodyOverflowSnapshot = '';
 const lockBodyScroll = () => {
   if (isBodyScrollLocked) return;
-  mapSubPopoverScrollY = window.scrollY || window.pageYOffset || 0;
   const bodyStyle = document.body.style;
-  bodyStyle.position = 'fixed';
-  bodyStyle.top = `-${mapSubPopoverScrollY}px`;
-  bodyStyle.left = '0';
-  bodyStyle.right = '0';
-  bodyStyle.width = '100%';
+  bodyOverflowSnapshot = bodyStyle.overflow;
+  bodyStyle.overflow = 'hidden';
   isBodyScrollLocked = true;
 };
 const unlockBodyScroll = () => {
   if (!isBodyScrollLocked) return;
   const bodyStyle = document.body.style;
-  bodyStyle.position = '';
-  bodyStyle.top = '';
-  bodyStyle.left = '';
-  bodyStyle.right = '';
-  bodyStyle.width = '';
-  window.scrollTo(0, mapSubPopoverScrollY);
+  bodyStyle.overflow = bodyOverflowSnapshot;
   isBodyScrollLocked = false;
 };
 
 onMounted(async () => {
   window.addEventListener('resize', handleResize);
+  window.addEventListener('scroll', updateBulkToolbarPosition, { passive: true });
   window.addEventListener('click', handleGlobalClick);
   window.addEventListener('keydown', handleGlobalKeydown);
   window.addEventListener('message', handleSteamMessage);
@@ -1129,16 +1134,7 @@ onMounted(async () => {
   refreshMapSubResults();
   await fetchConfig();
   await nextTick();
-  updateMapSubRailPosition();
-  mapSubRailObserver = new ResizeObserver(() => {
-    updateMapSubRailPosition();
-  });
-  if (mapSubViewRef.value) {
-    mapSubRailObserver.observe(mapSubViewRef.value);
-  }
-  if (mapSubUnsubscribedRef.value) {
-    mapSubRailObserver.observe(mapSubUnsubscribedRef.value);
-  }
+  updateBulkToolbarPosition();
   if ((initialView === 'map_sub' || initialView === 'stats' || initialView === 'feedback') && !isLoggedIn.value) {
     curView.value = 'servers';
     showToast(t('login_required_title'));
@@ -1155,6 +1151,10 @@ onMounted(async () => {
   if (embedMode) {
     sendEmbedReady();
   }
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', updateBulkToolbarPosition);
 });
 
 onUnmounted(() => {
@@ -1176,10 +1176,6 @@ onUnmounted(() => {
   if (mapCooldownHighlightTimer) {
     clearTimeout(mapCooldownHighlightTimer);
     mapCooldownHighlightTimer = null;
-  }
-  if (mapSubRailObserver) {
-    mapSubRailObserver.disconnect();
-    mapSubRailObserver = null;
   }
   unlockBodyScroll();
 });
@@ -2390,11 +2386,16 @@ const getMapSubAvailabilityGroup = (status) => (status && status.type === 'avail
 
 watch([mapSubUnsubscribedRows, mapSubMultiSelectMode, curView], () => {
   nextTick(() => {
-    updateMapSubRailPosition();
-    if (mapSubRailObserver && mapSubUnsubscribedRef.value) {
-      mapSubRailObserver.observe(mapSubUnsubscribedRef.value);
-    }
+    updateBulkToolbarPosition();
   });
+});
+
+watch(mapSubMultiSelectMode, (isActive) => {
+  if (isActive) {
+    nextTick(() => updateBulkToolbarPosition());
+  } else {
+    bulkToolbarStyle.value = {};
+  }
 });
 
 watch(mapSubPopoverOpen, (isOpen) => {
@@ -3263,6 +3264,7 @@ const submitFeedback = () => {
   --checkbox-bg-checked: var(--fd-accent);
   --checkbox-shadow-focus: rgba(10, 132, 255, 0.35);
   --checkbox-shadow-hover: rgba(0, 0, 0, 0.08);
+  --popover-solid-bg: #ffffff;
 }
 
 :global(body.dark),
@@ -3272,6 +3274,7 @@ const submitFeedback = () => {
   --checkbox-bg-checked: var(--fd-accent);
   --checkbox-shadow-focus: rgba(10, 132, 255, 0.42);
   --checkbox-shadow-hover: rgba(0, 0, 0, 0.25);
+  --popover-solid-bg: #2b2b2b;
 }
 
 .sub-search-box {
@@ -3440,10 +3443,10 @@ const submitFeedback = () => {
   gap: 12px;
   padding: 18px;
   border-radius: 18px;
-  background: color-mix(in srgb, var(--card-bg) 92%, transparent);
+  background: var(--popover-solid-bg);
+  opacity: 1;
   border: 1px solid var(--card-border);
   box-shadow: 0 20px 45px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(10px);
   z-index: 10000;
 }
 
@@ -3686,8 +3689,8 @@ const submitFeedback = () => {
 }
 
 .map-sub-view .sub-bulk-toolbar {
-  position: sticky;
-  top: 96px;
+  position: fixed;
+  z-index: 50;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -3756,32 +3759,7 @@ const submitFeedback = () => {
   background: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
-.map-sub-view .sub-bulk-rail {
-  width: var(--sub-rail-w);
-  min-width: 0;
-  padding: 0;
-  position: absolute;
-  top: var(--sub-rail-offset, 0px);
-  left: calc(50% + (var(--sub-card-width) / 2) + var(--sub-rail-gap));
-  z-index: 2;
-}
-
-.map-sub-view .sub-bulk-rail.is-active {
-}
-
 @media (max-width: 980px) {
-  .map-sub-view .sub-bulk-rail {
-    position: static;
-    width: 100%;
-    max-width: var(--sub-card-width);
-    margin: 12px auto 0;
-  }
-
-  .map-sub-view .sub-bulk-toolbar {
-    position: static;
-    top: auto;
-  }
-
   .map-sub-view .sub-unsubscribed-shell {
     max-width: 100%;
   }
