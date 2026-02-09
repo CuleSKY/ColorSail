@@ -371,8 +371,17 @@
                           :aria-label="`选择 ${row.key}`"
                         />
                         <span class="fd-check__box" aria-hidden="true">
-                          <svg class="fd-check__icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <path fill="currentColor" d="M6.25 3A3.25 3.25 0 0 0 3 6.25v11.5A3.25 3.25 0 0 0 6.25 21h11.5A3.25 3.25 0 0 0 21 17.75V6.25A3.25 3.25 0 0 0 17.75 3H6.25Zm10.03 6.78-5 5a.75.75 0 0 1-1.06 0l-2.004-2.004a.75.75 0 1 1 1.06-1.06l1.474 1.473 4.47-4.47a.75.75 0 1 1 1.06 1.061Z"/>
+                          <svg
+                            v-if="isSelected(row.key)"
+                            class="fd-check__icon"
+                            width="24"
+                            height="24"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                            aria-hidden="true"
+                          >
+                            <path d="m8.5 16.586-3.793-3.793a1 1 0 0 0-1.414 1.414l4.5 4.5a1 1 0 0 0 1.414 0l11-11a1 1 0 0 0-1.414-1.414L8.5 16.586Z" fill="#fff"/>
                           </svg>
                         </span>
                       </label>
@@ -3169,28 +3178,26 @@ const submitFeedback = () => {
 .map-sub-view {
   --sub-card-max: 980px;
   --sub-rail-w: 220px;
-  --sub-rail-gap: 16px;
+  --sub-rail-gap: 24px;
   --sub-page-max: calc(var(--sub-card-max) + var(--sub-rail-w) + var(--sub-rail-gap));
 }
 
 :global(:root) {
   --fd-accent: var(--accent, #0a84ff);
-  --fd-check-border: rgba(0, 0, 0, 0.38);
-  --fd-check-border-hover: rgba(0, 0, 0, 0.62);
-  --fd-check-bg: transparent;
-  --fd-check-focus: rgba(10, 132, 255, 0.35);
-  --fd-check-shadow: rgba(0, 0, 0, 0.08);
-  --fd-check-checked-bg: var(--fd-accent);
-  --fd-check-checked-icon: #fff;
+  --checkbox-border: rgba(0, 0, 0, 0.38);
+  --checkbox-border-hover: rgba(0, 0, 0, 0.62);
+  --checkbox-bg-checked: var(--fd-accent);
+  --checkbox-shadow-focus: rgba(10, 132, 255, 0.35);
+  --checkbox-shadow-hover: rgba(0, 0, 0, 0.08);
 }
 
 :global(body.dark),
 :global([data-theme="dark"]) {
-  --fd-check-border: rgba(255, 255, 255, 0.42);
-  --fd-check-border-hover: rgba(255, 255, 255, 0.72);
-  --fd-check-bg: transparent;
-  --fd-check-focus: rgba(10, 132, 255, 0.42);
-  --fd-check-shadow: rgba(0, 0, 0, 0.25);
+  --checkbox-border: rgba(255, 255, 255, 0.42);
+  --checkbox-border-hover: rgba(255, 255, 255, 0.72);
+  --checkbox-bg-checked: var(--fd-accent);
+  --checkbox-shadow-focus: rgba(10, 132, 255, 0.42);
+  --checkbox-shadow-hover: rgba(0, 0, 0, 0.25);
 }
 
 .sub-search-box {
@@ -3266,8 +3273,8 @@ const submitFeedback = () => {
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  border: 2px solid var(--fd-check-border);
-  background: var(--fd-check-bg);
+  border: 2px solid var(--checkbox-border);
+  background: transparent;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3278,27 +3285,21 @@ const submitFeedback = () => {
 .map-sub-view .fd-check__icon {
   width: 16px;
   height: 16px;
-  opacity: 0;
-  transition: opacity 0.12s ease;
-  color: var(--fd-check-checked-icon);
+  display: block;
 }
 
 .map-sub-view .fd-check:hover .fd-check__box {
-  border-color: var(--fd-check-border-hover);
-  box-shadow: 0 1px 10px var(--fd-check-shadow);
+  border-color: var(--checkbox-border-hover);
+  box-shadow: 0 1px 10px var(--checkbox-shadow-hover);
 }
 
 .map-sub-view .fd-check__input:focus-visible + .fd-check__box {
-  box-shadow: 0 0 0 3px var(--fd-check-focus);
+  box-shadow: 0 0 0 3px var(--checkbox-shadow-focus);
 }
 
 .map-sub-view .fd-check__input:checked + .fd-check__box {
-  background: var(--fd-check-checked-bg);
-  border-color: var(--fd-check-checked-bg);
-}
-
-.map-sub-view .fd-check__input:checked + .fd-check__box .fd-check__icon {
-  opacity: 1;
+  background: var(--checkbox-bg-checked);
+  border-color: var(--checkbox-bg-checked);
 }
 
 .map-sub-view .fd-check__input:disabled + .fd-check__box {
@@ -3549,15 +3550,14 @@ const submitFeedback = () => {
 
 .map-sub-view .sub-unsubscribed-shell {
   margin-top: 28px;
-  display: grid;
-  grid-template-columns: minmax(0, var(--sub-card-max)) auto;
-  column-gap: var(--sub-rail-gap);
-  justify-content: start;
-  align-items: start;
+  position: relative;
+  width: 100%;
+  max-width: var(--sub-card-max);
 }
 
 .map-sub-view .sub-unsubscribed-card {
   min-width: 0;
+  width: 100%;
 }
 
 .map-sub-view .sub-card-header {
@@ -3688,16 +3688,19 @@ const submitFeedback = () => {
   width: var(--sub-rail-w);
   min-width: 0;
   padding: 0;
+  position: absolute;
+  top: 0;
+  left: calc(100% + var(--sub-rail-gap));
 }
 
 .map-sub-view .sub-bulk-rail.is-active {
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 980px) {
   .map-sub-view .sub-bulk-rail {
     width: 100%;
-    grid-column: 1 / -1;
     margin-top: 12px;
+    position: static;
   }
 
   .map-sub-view .sub-bulk-toolbar {
@@ -3706,7 +3709,7 @@ const submitFeedback = () => {
   }
 
   .map-sub-view .sub-unsubscribed-shell {
-    grid-template-columns: minmax(0, 1fr);
+    max-width: 100%;
   }
 }
 
