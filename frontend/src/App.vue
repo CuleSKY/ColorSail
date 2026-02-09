@@ -265,73 +265,101 @@
             </div>
 
             <div class="sub-search-area">
-              <input type="text" class="sub-search-box" v-model="subSearchQuery" :placeholder="t('sub_search_ph')" @input="searchMaps">
-
-              <div class="search-results-panel" v-if="searchResults.length > 0">
-                <div class="search-res-item" :class="{selected: selectedMap === m.key}" v-for="m in searchResults" @click="selectMapToSub(m)">
-                  <b>{{ m.key }}</b> <span v-if="m.val" style="opacity:0.8">({{ m.val }})</span>
-                </div>
+              <div class="sub-search-row">
+                <input
+                  type="text"
+                  class="sub-search-box"
+                  v-model="subSearchQuery"
+                  :placeholder="t('map_sub_search_prompt')"
+                  @input="onMapSubSearchInput"
+                >
+                <button class="sub-multi-toggle" type="button" @click="toggleMapSubMultiSelect">
+                  {{ mapSubMultiSelectMode ? t('map_sub_cancel_btn') : t('map_sub_select_multiple') }}
+                </button>
               </div>
 
-              <div class="comm-select-area" v-if="selectedMap">
-                <div style="font-weight:600; margin-bottom:8px;">{{ t('sub_confirm_title') }}: <span style="color:var(--accent)">{{ selectedMap }}</span></div>
-                <div style="font-size:12px; color:var(--text-secondary); margin-bottom:8px;">{{ t('sub_select_comm') }}:</div>
-
+              <div class="sub-filter-row">
+                <div class="sub-filter-label">{{ t('sub_select_comm') }}</div>
                 <div class="comm-options">
-                  <div class="comm-pill" :class="{active: newSubComms.includes('all')}" @click="toggleSubComm('all')">
+                  <div
+                    class="comm-pill"
+                    :class="{active: mapSubCommunityFilters.length === 0}"
+                    @click="clearMapSubCommunityFilters"
+                  >
                     {{ t('all_comm') }}
                   </div>
-                  <div class="comm-pill" :class="{active: newSubComms.includes(c.id)}" v-for="c in communities" @click="toggleSubComm(c.id)">
+                  <div
+                    class="comm-pill"
+                    :class="{active: mapSubCommunityFilters.includes(c.id)}"
+                    v-for="c in communities"
+                    :key="c.id"
+                    @click="toggleMapSubCommunityFilter(c.id)"
+                  >
                     {{ c.short_name || c.name }}
                   </div>
                 </div>
+              </div>
 
-                <button class="btn btn-primary" style="margin-top:16px; width:100%" @click="addSubscription">
-                  {{ t('subscribe_confirm') }}
-                </button>
+              <div v-if="mapSubSearchMinLengthHint" class="sub-search-hint">
+                {{ t('map_sub_search_min_length_msg') }}
+              </div>
+              <div v-if="mapSubSearchTruncated" class="sub-search-hint">
+                {{ t('map_sub_search_full_too_many') }}
               </div>
             </div>
 
             <div style="border-top:1px solid var(--card-border); margin: 30px 0;"></div>
 
-            <h3 style="margin-bottom:16px; opacity:0.8">{{ t('my_subs') }}</h3>
-            <div class="sub-table" v-if="subscriptions.length > 0">
-              <div class="sub-row" v-for="(sub, idx) in subscriptions" :key="idx">
+            <h3 style="margin-bottom:16px; opacity:0.8">{{ t('map_sub_subscribed_section') }}</h3>
+            <div class="sub-table" v-if="mapSubSubscribedRows.length > 0">
+              <div class="sub-row" v-for="row in mapSubSubscribedRows" :key="row.key">
                 <div class="sub-col-info">
-                  <div class="sub-map-key">{{ sub.map }}</div>
-                  <div class="sub-map-val" v-if="isChineseLang && getMapIndexDisplayName(sub.map)">{{ getMapIndexDisplayName(sub.map) }}</div>
+                  <div class="sub-map-key-row">
+                    <label v-if="mapSubMultiSelectMode && !row.isSubscribed" class="sub-checkbox">
+                      <input
+                        type="checkbox"
+                        :checked="mapSubSelectedKeys.has(row.key)"
+                        @change="toggleMapSubSelection(row)"
+                      >
+                      <span class="sub-checkbox-box"></span>
+                    </label>
+                    <div class="sub-map-key">{{ row.key }}</div>
+                  </div>
+                  <div class="sub-map-val" v-if="row.displayName">{{ row.displayName }}</div>
                   <div class="sub-tags">
-                    <div class="sub-comms">{{ formatSubComms(sub.comms) }}</div>
+                    <div class="sub-comms" v-if="row.commsLabel">{{ row.commsLabel }}</div>
                     <div
-                      v-if="exgStatusByIndex[idx]"
+                      v-if="row.status"
                       class="exg-inline-status"
-                      :class="{
-                        'exg-inline-status--available': exgStatusByIndex[idx].state === 'available',
-                        'exg-inline-status--cooldown': exgStatusByIndex[idx].state === 'cooldown',
-                        'exg-inline-status--unavailable': exgStatusByIndex[idx].state !== 'available' && exgStatusByIndex[idx].state !== 'cooldown'
-                      }"
+                      :class="row.status.className"
                     >
-                      <template v-if="exgStatusByIndex[idx].state === 'available'">
-                        <svg class="exg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <template v-if="row.status.type === 'available'">
+                        <svg class="exg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                           <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2Zm3.22 6.97-4.47 4.47-1.97-1.97a.75.75 0 0 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5-5a.75.75 0 1 0-1.06-1.06Z" fill="currentColor"/>
                         </svg>
-                        <span class="exg-inline-label">{{ t('map_sub_exg_available') }}</span>
                       </template>
-                      <template v-else-if="exgStatusByIndex[idx].state === 'cooldown'">
-                        <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <template v-else-if="row.status.type === 'cooldown'">
+                        <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                           <path d="M12 5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Zm0 3a.75.75 0 0 0-.743.648l-.007.102v4.5l.007.102a.75.75 0 0 0 1.486 0l.007-.102v-4.5l-.007-.102A.75.75 0 0 0 12 8Zm7.17-2.877.082.061 1.149 1a.75.75 0 0 1-.904 1.193l-.081-.061-1.149-1a.75.75 0 0 1 .903-1.193ZM14.25 2.5a.75.75 0 0 1 .102 1.493L14.25 4h-4.5a.75.75 0 0 1-.102-1.493L9.75 2.5h4.5Z" fill="currentColor"/>
                         </svg>
-                        <span class="exg-inline-label">{{ t('map_sub_exg_cooldown') }}</span>
-                        <span class="exg-inline-time">{{ exgStatusByIndex[idx].compactTime }}</span>
                       </template>
                       <template v-else>
-                        <span class="exg-inline-label">{{ exgStatusByIndex[idx].label }}</span>
+                        <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                        </svg>
                       </template>
+                      <span class="exg-inline-label">{{ row.status.label }}</span>
+                      <span v-if="row.status.time" class="exg-inline-time">{{ row.status.time }}</span>
                     </div>
                   </div>
                 </div>
                 <div class="sub-actions">
-                  <button class="btn-unsub" @click="removeSubscription(idx)">{{ t('unsubscribe') }}</button>
+                  <button v-if="row.isSubscribed" class="btn-unsub" @click="handleMapSubUnsubscribe(row)">
+                    {{ t('map_sub_unsubscribe_btn') }}
+                  </button>
+                  <button v-else class="btn btn-primary" @click="handleMapSubSubscribe(row)">
+                    {{ t('map_sub_subscribe_btn') }}
+                  </button>
                 </div>
               </div>
             </div>
@@ -339,7 +367,79 @@
               {{ t('no_subs') }}
             </div>
 
+            <div v-if="mapSubUnsubscribedRows.length > 0">
+              <h3 style="margin: 28px 0 16px; opacity:0.8">{{ t('map_sub_unsubscribed_section') }}</h3>
+              <div class="sub-table">
+                <div class="sub-row" v-for="row in mapSubUnsubscribedRows" :key="row.key">
+                  <div class="sub-col-info">
+                    <div class="sub-map-key-row">
+                      <label v-if="mapSubMultiSelectMode && !row.isSubscribed" class="sub-checkbox">
+                        <input
+                          type="checkbox"
+                          :checked="mapSubSelectedKeys.has(row.key)"
+                          @change="toggleMapSubSelection(row)"
+                        >
+                        <span class="sub-checkbox-box"></span>
+                      </label>
+                      <div class="sub-map-key">{{ row.key }}</div>
+                    </div>
+                    <div class="sub-map-val" v-if="row.displayName">{{ row.displayName }}</div>
+                    <div class="sub-tags">
+                      <div
+                        v-if="row.status"
+                        class="exg-inline-status"
+                        :class="row.status.className"
+                      >
+                        <template v-if="row.status.type === 'available'">
+                          <svg class="exg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2Zm3.22 6.97-4.47 4.47-1.97-1.97a.75.75 0 0 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5-5a.75.75 0 1 0-1.06-1.06Z" fill="currentColor"/>
+                          </svg>
+                        </template>
+                        <template v-else-if="row.status.type === 'cooldown'">
+                          <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Zm0 3a.75.75 0 0 0-.743.648l-.007.102v4.5l.007.102a.75.75 0 0 0 1.486 0l.007-.102v-4.5l-.007-.102A.75.75 0 0 0 12 8Zm7.17-2.877.082.061 1.149 1a.75.75 0 0 1-.904 1.193l-.081-.061-1.149-1a.75.75 0 0 1 .903-1.193ZM14.25 2.5a.75.75 0 0 1 .102 1.493L14.25 4h-4.5a.75.75 0 0 1-.102-1.493L9.75 2.5h4.5Z" fill="currentColor"/>
+                          </svg>
+                        </template>
+                        <template v-else>
+                          <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                          </svg>
+                        </template>
+                        <span class="exg-inline-label">{{ row.status.label }}</span>
+                        <span v-if="row.status.time" class="exg-inline-time">{{ row.status.time }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sub-actions">
+                    <button v-if="row.isSubscribed" class="btn-unsub" @click="handleMapSubUnsubscribe(row)">
+                      {{ t('map_sub_unsubscribe_btn') }}
+                    </button>
+                    <button v-else class="btn btn-primary" @click="handleMapSubSubscribe(row)">
+                      {{ t('map_sub_subscribe_btn') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="sub-test-btn" @click="testNotification">{{ t('test_notify') }}</div>
+            <div v-if="mapSubMultiSelectMode" class="sub-bulk-bar">
+              <div class="sub-bulk-count">
+                {{ formatTemplate(t('map_sub_bulk_selected'), { count: mapSubSelectedCount }) }}
+              </div>
+              <button class="btn btn-primary" :disabled="mapSubSelectedCount === 0" @click="bulkSubscribe">
+                {{ t('map_sub_bulk_subscribe_to') }}
+              </button>
+              <button class="btn btn-sec" @click="cancelMapSubMultiSelect">
+                {{ t('map_sub_cancel_btn') }}
+              </button>
+              <button class="btn btn-sec" @click="selectAllMapSub">
+                {{ t('map_sub_select_all') }}
+              </button>
+              <button class="btn btn-sec" @click="clearMapSubSelection">
+                {{ t('map_sub_clear_all') }}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -422,7 +522,8 @@
                 </div>
               </div>
 
-              <div v-if="mapcdAutoShowAll" class="mapcd-hint">{{ t('mapcd_hint_auto_all') }}</div>
+              <div v-if="mapcdAutoShowAll" class="mapcd-hint">{{ t('mapcd_auto_all_hint') }}</div>
+              <div v-if="mapcdSortMode === 'availability'" class="mapcd-hint mapcd-sort-hint">{{ t('mapcd_sort_hint') }}</div>
 
               <div class="mapcd-container">
                 <div class="mapcd-table">
@@ -434,7 +535,7 @@
                       :class="{ active: mapcdSortMode === 'availability' }"
                       @click="onMapcdCooldownEndHeaderClick"
                     >
-                      <span class="sort-label">{{ t('cooldown_deadline') }}</span>
+                      <span class="sort-label">{{ t('mapcd_col_cooldown_end') }}</span>
                       <span class="sort-tri" aria-hidden="true">▲</span>
                     </div>
                     <div class="mapcd-cell mapcd-col-length">{{ t('cooldown_length') }}</div>
@@ -467,7 +568,6 @@
                         <span
                           class="mapcd-availability"
                           :class="row.availability === 'available' ? 'is-available' : 'is-cooldown'"
-                          :title="mapCooldownIsFastScrolling ? '' : row.availabilityTitle"
                         >
                           <span v-if="row.availability === 'available'" class="mapcd-availability-icon" v-html="icons.check"></span>
                           <span v-else class="mapcd-availability-icon" v-html="icons.cross"></span>
@@ -475,8 +575,8 @@
                       </div>
                     </div>
                     <div class="mapcd-bottom-spacer" :style="{ height: `${mapCooldownBottomSpacerPx}px` }"></div>
-                    <div v-if="mapCooldownRows.length === 0 && !mapCooldownIsBuilding && !mapCooldownSearchQueryTrimmed" class="mapcd-empty">
-                      {{ t('no_data') }}
+                    <div v-if="mapCooldownRows.length === 0 && !mapCooldownIsBuilding" class="mapcd-empty">
+                      {{ mapCooldownSearchQueryTrimmed ? t('mapcd_no_results') : t('no_data') }}
                     </div>
                     <div class="mapcd-edge-fade mapcd-edge-fade--top"></div>
                     <div class="mapcd-edge-fade mapcd-edge-fade--bottom"></div>
@@ -502,7 +602,7 @@
 
 <script setup lang="ts">
 import { computed, isProxy, nextTick, onMounted, onUnmounted, ref, toRaw, watch } from 'vue';
-import { buildMapSearchIndex, createOpenCCConverter, formatExgDate, formatExgDateTime, getExgStatusState, normalizeSearchText, normalizeZh, scoreSearchEntry, shouldShowExgStatus, stripBracketSegments, validateMapIndexEntry } from './mapSearchUtils';
+import { buildMapSearchIndex, createOpenCCConverter, formatExgDateTime, getExgStatusState, normalizeSearchText, scoreSearchEntry, stripBracketSegments, validateMapIndexEntry } from './mapSearchUtils';
 
 const props = defineProps({
   initialConfig: {
@@ -608,10 +708,14 @@ const mapTranslations = ref({});
 const mapIndex = ref({});
 const mapSearchIndex = ref([]);
 const mapIndexConverter = createOpenCCConverter();
-const searchResults = ref([]);
-const selectedMap = ref(null);
-const newSubComms = ref(['all']);
 const subscriptions = ref([]);
+const subscriptionSet = ref(new Set());
+const mapSearchIndexByKey = ref(new Map());
+const mapSubCommunityFilters = ref([]);
+const mapSubMultiSelectMode = ref(false);
+const mapSubSelectedKeys = ref(new Set());
+const mapSubResults = ref([]);
+const mapSubSearchTruncated = ref(false);
 const lastNotifiedMaps = ref({});
 const hasNotification = typeof Notification !== 'undefined';
 const notificationPermission = ref(hasNotification ? Notification.permission : 'denied');
@@ -927,6 +1031,7 @@ onMounted(async () => {
     localStorage.removeItem('map_subs');
     subscriptions.value = [];
   }
+  subscriptionSet.value = new Set(subscriptions.value.map((sub) => normalizeMapKey(sub.map)));
 
   if (hasNotification) {
     try {
@@ -937,6 +1042,7 @@ onMounted(async () => {
   await loadLanguage();
   await loadTranslations();
   await loadMapIndex();
+  refreshMapSubResults();
   await fetchConfig();
   if ((initialView === 'map_sub' || initialView === 'stats' || initialView === 'feedback') && !isLoggedIn.value) {
     curView.value = 'servers';
@@ -953,12 +1059,6 @@ onMounted(async () => {
   }
   if (embedMode) {
     sendEmbedReady();
-  }
-});
-
-watch(curLang, () => {
-  if (subSearchQuery.value) {
-    searchMaps();
   }
 });
 
@@ -1207,6 +1307,14 @@ const loadMapIndex = async () => {
   }
 };
 
+watch(mapSearchIndex, (next) => {
+  const nextMap = new Map();
+  (next || []).forEach((entry) => {
+    if (entry && entry.key) nextMap.set(entry.key, entry);
+  });
+  mapSearchIndexByKey.value = nextMap;
+}, { immediate: true });
+
 const normalizeMapKey = (value) => {
   if (!value) return '';
   let mapKey = value.toString().trim().toLowerCase();
@@ -1293,6 +1401,100 @@ const getMapIndexDisplayName = (mapName) => {
   return '';
 };
 
+const buildFallbackSearchEntry = (mapKey) => {
+  const normalizedKey = normalizeSearchText(mapKey);
+  return {
+    key: mapKey,
+    mapCn: '',
+    mapTw: '',
+    aliases: [],
+    achievement: '',
+    deadline: null,
+    durationRaw: null,
+    durationSec: null,
+    normalized: {
+      key: normalizedKey,
+      mapCn: '',
+      mapTw: '',
+      aliases: [],
+      achievement: ''
+    },
+    tokens: [],
+    pinyin: { full: '', initials: '' }
+  };
+};
+
+const getSearchEntryByKey = (mapKey) => {
+  if (!mapKey) return buildFallbackSearchEntry('');
+  return mapSearchIndexByKey.value.get(mapKey) || buildFallbackSearchEntry(mapKey);
+};
+
+const getSearchMatch = (entry, query, {
+  requireExact = false,
+  allowSubstring = true,
+  allowAlias = true,
+  allowPinyin = true
+} = {}) => {
+  if (!entry || !query) return null;
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return null;
+  const key = entry.normalized?.key || '';
+  const aliases = entry.normalized?.aliases || [];
+  const mapCn = entry.normalized?.mapCn || '';
+  const mapTw = entry.normalized?.mapTw || '';
+  const achievement = entry.normalized?.achievement || '';
+
+  if (requireExact) {
+    const keyExact = key === normalizedQuery;
+    const aliasExact = aliases.includes(normalizedQuery);
+    if (!keyExact && !aliasExact) return null;
+    const rank = keyExact ? 0 : 2;
+    const baseScore = keyExact ? 1000 : 700;
+    return { rank, score: baseScore + normalizedQuery.length };
+  }
+
+  let rank = null;
+  let baseScore = 0;
+
+  if (key.startsWith(normalizedQuery)) {
+    rank = 0;
+    baseScore = 1000;
+  } else if (allowSubstring && key.includes(normalizedQuery)) {
+    rank = 1;
+    baseScore = 900;
+  }
+
+  const otherMatch = allowSubstring && (mapCn.includes(normalizedQuery) || mapTw.includes(normalizedQuery) || achievement.includes(normalizedQuery));
+  if (rank === null && otherMatch) {
+    rank = 1;
+    baseScore = 860;
+  }
+
+  if (rank === null && allowAlias) {
+    const aliasMatch = aliases.some(alias => alias === normalizedQuery || (allowSubstring && alias.includes(normalizedQuery)));
+    if (aliasMatch) {
+      rank = 2;
+      baseScore = 800;
+    }
+  }
+
+  if (rank === null && allowPinyin) {
+    const pinyinFull = entry.pinyin?.full || '';
+    const pinyinInitials = entry.pinyin?.initials || '';
+    const pinyinMatch = pinyinFull.startsWith(normalizedQuery)
+      || pinyinInitials.startsWith(normalizedQuery)
+      || (allowSubstring && (pinyinFull.includes(normalizedQuery) || pinyinInitials.includes(normalizedQuery)));
+    if (pinyinMatch) {
+      rank = 3;
+      baseScore = 720;
+    }
+  }
+
+  if (rank === null) return null;
+  const detailScore = scoreSearchEntry(entry, query);
+  return { rank, score: baseScore + detailScore };
+};
+
 const formatExgCompactTime = (datetimeString) => {
   if (!datetimeString) return '';
   const normalized = datetimeString.replace(' - ', ' ').trim();
@@ -1304,14 +1506,6 @@ const formatExgCompactTime = (datetimeString) => {
   const time = timePart.slice(0, 5);
   if (!month || !day || !time) return datetimeString;
   return `${month}/${day} ${time}`;
-};
-
-const getExgCooldownProgress = (deadline, durationSec) => {
-  if (!deadline || typeof durationSec !== 'number' || durationSec <= 0) return null;
-  const nowEpoch = Math.floor(Date.now() / 1000);
-  const remaining = Math.max(0, deadline - nowEpoch);
-  const progress = 1 - Math.min(1, remaining / durationSec);
-  return Math.max(0, Math.min(1, progress));
 };
 
 const mapCooldownScrollRef = ref(null);
@@ -1382,19 +1576,22 @@ const mapCooldownProgressText = computed(() => {
 
 const mapcdQueryTrimmed = computed(() => mapCooldownQueryInput.value.trim());
 const mapCooldownSearchQueryTrimmed = computed(() => mapCooldownSearchQuery.value.trim());
-const mapCooldownSearchQueryNorm = computed(() => normalizeZh(mapCooldownSearchQuery.value));
+const mapCooldownSearchQueryNorm = computed(() => normalizeSearchText(mapCooldownSearchQuery.value));
 const mapCooldownBaseRows = computed(() => (coolingOnly.value ? mapCooldownRowsCooling.value : mapCooldownRowsAll.value));
+const mapCooldownMatchesQuery = (row) => {
+  if (!mapCooldownSearchQueryNorm.value) return true;
+  const entry = getSearchEntryByKey(row?.key || '');
+  return Boolean(getSearchMatch(entry, mapCooldownSearchQuery.value));
+};
 const mapCooldownFilteredRows = computed(() => {
   const baseRows = mapCooldownBaseRows.value;
-  const queryNorm = mapCooldownSearchQueryNorm.value;
-  if (!queryNorm) return baseRows;
-  return baseRows.filter((row) => (row.searchTextNorm || '').includes(queryNorm));
+  if (!mapCooldownSearchQueryNorm.value) return baseRows;
+  return baseRows.filter((row) => mapCooldownMatchesQuery(row));
 });
 const mapcdAllMatches = computed(() => {
   const baseRows = mapCooldownRowsAll.value;
-  const queryNorm = mapCooldownSearchQueryNorm.value;
-  if (!queryNorm) return baseRows;
-  return baseRows.filter((row) => (row.searchTextNorm || '').includes(queryNorm));
+  if (!mapCooldownSearchQueryNorm.value) return baseRows;
+  return baseRows.filter((row) => mapCooldownMatchesQuery(row));
 });
 const mapcdAutoShowAll = computed(() =>
   coolingOnly.value &&
@@ -2027,34 +2224,17 @@ const hasMapIndexExgFields = (entry) => (
     .some((field) => Object.prototype.hasOwnProperty.call(entry, field))
 );
 
-const getExgStatus = (sub) => {
-  if (!sub) return null;
-  const mapKey = normalizeMapKey(sub.map || '');
-  const comms = sub.comms || [];
-  const commsNorm = Array.isArray(comms)
-    ? comms
-      .map((value) => {
-        if (typeof value === 'string') return value;
-        if (value && typeof value === 'object') {
-          return value.id ?? value.community_id ?? value.value ?? value.name ?? null;
-        }
-        return value !== null && value !== undefined ? String(value) : null;
-      })
-      .filter(Boolean)
-    : [];
-  const shouldShow = shouldShowExgStatus({
-    mapKey,
-    comms: commsNorm,
-    viewportWidth: viewportWidth.value
-  });
-  if (!shouldShow) return null;
-  const entry = getMapIndexEntry(mapKey);
+const getMapSubStatusFromEntry = (entry) => {
   if (!entry || !hasMapIndexExgFields(entry)) return null;
   const deadline = typeof entry.cooldown_end_epoch === 'number'
     ? entry.cooldown_end_epoch
     : (typeof entry.deadline === 'number' ? entry.deadline : null);
-  const durationRaw = Object.prototype.hasOwnProperty.call(entry, 'duration_raw') ? entry.duration_raw ?? null : null;
-  const durationSec = typeof entry.duration_sec === 'number' ? entry.duration_sec : null;
+  const durationRaw = Object.prototype.hasOwnProperty.call(entry, 'durationRaw')
+    ? entry.durationRaw ?? null
+    : (Object.prototype.hasOwnProperty.call(entry, 'duration_raw') ? entry.duration_raw ?? null : null);
+  const durationSec = typeof entry.durationSec === 'number'
+    ? entry.durationSec
+    : (typeof entry.duration_sec === 'number' ? entry.duration_sec : null);
   if (
     (deadline === null || deadline === undefined)
     && (durationRaw === null || durationRaw === undefined)
@@ -2063,112 +2243,271 @@ const getExgStatus = (sub) => {
     return null;
   }
   const state = getExgStatusState(deadline, durationSec, undefined, durationRaw);
-  if (state === 'cooldown' && deadline !== null && deadline !== undefined) {
-    const date = formatExgDate(deadline);
-    const datetime = formatExgDateTime(deadline);
-    const compactTime = formatExgCompactTime(datetime);
-    const progress = getExgCooldownProgress(deadline, durationSec);
-    return {
-      state,
-      date,
-      datetime,
-      compactTime,
-      progress
-    };
-  }
-  if (state === 'available') {
-    return { state, label: t('map.exg.available') };
-  }
-  if (state === 'not_available') {
-    return { state, label: t('map.exg.not_available') };
-  }
-  return null;
+  if (state === 'hidden') return null;
+  const type = state === 'cooldown' ? 'cooldown' : (state === 'available' ? 'available' : 'unavailable');
+  const label = type === 'available'
+    ? t('map_sub_exg_available')
+    : (type === 'cooldown' ? t('map_sub_exg_cooldown') : t('unavailable'));
+  const time = type === 'cooldown' && deadline
+    ? formatExgCompactTime(formatExgDateTime(deadline))
+    : '';
+  return {
+    type,
+    label,
+    time,
+    className: `exg-inline-status--${type}`
+  };
 };
-const exgStatusByIndex = computed(() => subscriptions.value.map(sub => getExgStatus(sub)));
 
-const searchMaps = () => {
-  if (!subSearchQuery.value) {
-    searchResults.value = [];
-    return;
-  }
-  const query = subSearchQuery.value.trim();
-  if (!query) {
-    searchResults.value = [];
-    return;
-  }
-  const matches = [];
-  mapSearchIndex.value.forEach((entry) => {
-    const score = scoreSearchEntry(entry, query);
-    if (score > 0) {
-      const displayName = isChineseLang.value ? (curLang.value === 'zh-TW' ? entry.mapTw : entry.mapCn) : '';
-      matches.push({ key: entry.key, val: displayName, score });
-    }
+const mapSubSearchQueryTrimmed = computed(() => subSearchQuery.value.trim());
+const mapSubQueryNorm = computed(() => normalizeSearchText(mapSubSearchQueryTrimmed.value));
+const mapSubSearchMinLengthHint = computed(() => (
+  mapSubCommunityFilters.value.length > 0 && mapSubQueryNorm.value.length < 2
+));
+const mapSubSelectedCount = computed(() => mapSubSelectedKeys.value.size);
+const mapSubSubscribedRows = computed(() => mapSubResults.value.filter(row => row.group === 'subscribed'));
+const mapSubUnsubscribedRows = computed(() => mapSubResults.value.filter(row => row.group === 'full'));
+
+const getMapSubAvailabilityGroup = (status) => (status && status.type === 'available' ? 'available' : 'cooldown');
+
+const getMapSubEntryCommunities = (mapKey) => {
+  const entry = mapIndex.value?.[mapKey];
+  if (!entry || typeof entry !== 'object') return [];
+  const raw = entry.communities ?? entry.comms ?? entry.community_ids ?? entry.community_id ?? entry.community ?? entry.comm ?? null;
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.map(item => String(item).toLowerCase());
+  return [String(raw).toLowerCase()];
+};
+
+const mapSubCommunityMatch = (mapKey) => {
+  if (mapSubCommunityFilters.value.length === 0) return true;
+  const entryComms = getMapSubEntryCommunities(mapKey);
+  if (!entryComms.length) return false;
+  return mapSubCommunityFilters.value.some((cid) => entryComms.includes(String(cid).toLowerCase()));
+};
+
+const buildSubscribedMapRows = () => {
+  const query = mapSubSearchQueryTrimmed.value;
+  const hasQuery = Boolean(mapSubQueryNorm.value);
+  const rows = [];
+  subscriptions.value.forEach((sub) => {
+    const rawKey = normalizeMapKey(sub.map || '') || sub.map || '';
+    if (!rawKey) return;
+    const entry = getSearchEntryByKey(rawKey);
+    const match = hasQuery ? getSearchMatch(entry, query) : { rank: 0, score: 0 };
+    if (hasQuery && !match) return;
+    const status = getMapSubStatusFromEntry(entry);
+    rows.push({
+      key: rawKey,
+      displayName: isChineseLang.value ? getMapIndexDisplayName(rawKey) : '',
+      commsLabel: formatSubComms(sub.comms || []),
+      status,
+      isSubscribed: subscriptionSet.value.has(rawKey),
+      group: 'subscribed',
+      rank: match?.rank ?? 0,
+      score: match?.score ?? 0,
+      availabilityGroup: getMapSubAvailabilityGroup(status)
+    });
   });
-  matches.sort((a, b) => (b.score - a.score) || a.key.localeCompare(b.key));
-  searchResults.value = matches.slice(0, 20);
+  rows.sort((a, b) => {
+    if (a.availabilityGroup !== b.availabilityGroup) {
+      return a.availabilityGroup === 'available' ? -1 : 1;
+    }
+    if (a.rank !== b.rank) return a.rank - b.rank;
+    if (b.score !== a.score) return b.score - a.score;
+    return a.key.localeCompare(b.key);
+  });
+  return rows;
 };
 
-const selectMapToSub = (m) => {
-  selectedMap.value = m.key;
-  searchResults.value = [];
-};
+const buildFullMapRows = () => {
+  const query = mapSubSearchQueryTrimmed.value;
+  const normalizedQuery = mapSubQueryNorm.value;
+  if (!normalizedQuery) return [];
+  if (mapSubCommunityFilters.value.length > 0 && normalizedQuery.length < 2) return [];
 
-const toggleSubComm = (id) => {
-  if (id === 'all') {
-    if (newSubComms.value.includes('all')) newSubComms.value = [];
-    else newSubComms.value = ['all'];
-  } else {
-    if (newSubComms.value.includes('all')) newSubComms.value = [];
-    if (newSubComms.value.includes(id)) newSubComms.value = newSubComms.value.filter(c => c !== id);
-    else newSubComms.value.push(id);
-  }
-};
+  const broadPrefix = normalizedQuery.startsWith('ze_') && normalizedQuery.length < 4;
+  const allowFullSearch = normalizedQuery.length >= 3 && !broadPrefix;
+  const requireExact = normalizedQuery.length < 3;
+  if (!allowFullSearch && !requireExact) return [];
 
-const addSubscription = () => {
-  if (!selectedMap.value || newSubComms.value.length === 0) return;
-  const nextMap = selectedMap.value;
-  const nextComms = [...newSubComms.value];
-  const existingIdx = subscriptions.value.findIndex(s => s.map === selectedMap.value);
-  if (existingIdx !== -1) {
-    subscriptions.value[existingIdx].comms = [...nextComms];
-  } else {
-    subscriptions.value.push({ map: nextMap, comms: [...nextComms] });
-  }
-  localStorage.setItem('map_subs', JSON.stringify(subscriptions.value));
-  selectedMap.value = null;
-  newSubComms.value = ['all'];
-  subSearchQuery.value = '';
-  searchResults.value = [];
-  showToast(t('subscribed'), 2000);
-  if (embedMode) {
-    postEmbedMessage('CS2ZE_SUBSCRIBE_MAP', {
-      map: nextMap
+  const maxScan = 10000;
+  const maxResults = 30;
+  const results = [];
+  let scanned = 0;
+  mapSubSearchTruncated.value = false;
+
+  for (const entry of mapSearchIndex.value) {
+    if (scanned >= maxScan) break;
+    scanned += 1;
+    const mapKey = entry?.key;
+    if (!mapKey || subscriptionSet.value.has(mapKey)) continue;
+    if (!mapSubCommunityMatch(mapKey)) continue;
+
+    const match = getSearchMatch(entry, query, {
+      requireExact,
+      allowSubstring: allowFullSearch,
+      allowAlias: true,
+      allowPinyin: allowFullSearch
+    });
+    if (!match) continue;
+    const status = getMapSubStatusFromEntry(entry);
+    results.push({
+      key: mapKey,
+      displayName: isChineseLang.value ? getMapIndexDisplayName(mapKey) : '',
+      commsLabel: '',
+      status,
+      isSubscribed: subscriptionSet.value.has(mapKey),
+      group: 'full',
+      rank: match.rank,
+      score: match.score,
+      availabilityGroup: getMapSubAvailabilityGroup(status)
     });
   }
+
+  results.sort((a, b) => {
+    if (a.rank !== b.rank) return a.rank - b.rank;
+    if (b.score !== a.score) return b.score - a.score;
+    return a.key.localeCompare(b.key);
+  });
+
+  if (results.length > maxResults) {
+    mapSubSearchTruncated.value = true;
+  }
+  return results.slice(0, maxResults);
 };
 
-const removeSubscription = (idx) => {
-  subscriptions.value.splice(idx, 1);
+const refreshMapSubResults = () => {
+  mapSubSearchTruncated.value = false;
+  const subscribedRows = buildSubscribedMapRows();
+  const fullRows = buildFullMapRows();
+  mapSubResults.value = [...subscribedRows, ...fullRows];
+};
+
+watch([mapSearchIndex, curLang], () => {
+  refreshMapSubResults();
+});
+
+const onMapSubSearchInput = () => {
+  refreshMapSubResults();
+};
+
+const updateMapSubResultSubscriptionState = (mapKey, isSubscribed) => {
+  mapSubResults.value = mapSubResults.value.map((row) => {
+    if (row.key !== mapKey) return row;
+    const next = { ...row, isSubscribed };
+    if (!isSubscribed) {
+      next.commsLabel = '';
+    }
+    return next;
+  });
+};
+
+const persistSubscriptions = () => {
   localStorage.setItem('map_subs', JSON.stringify(subscriptions.value));
 };
+
+const addSubscriptionByKey = (mapKey, { silent = false } = {}) => {
+  const normalizedKey = normalizeMapKey(mapKey) || mapKey;
+  if (!normalizedKey) return;
+  if (!subscriptionSet.value.has(normalizedKey)) {
+    subscriptions.value.push({ map: normalizedKey, comms: ['all'] });
+    subscriptionSet.value.add(normalizedKey);
+    persistSubscriptions();
+  }
+  updateMapSubResultSubscriptionState(normalizedKey, true);
+  if (!silent) {
+    showToast(formatTemplate(t('map_sub_subscribed_toast'), { map: normalizedKey }), 2000);
+  }
+  if (embedMode) {
+    postEmbedMessage('CS2ZE_SUBSCRIBE_MAP', { map: normalizedKey });
+  }
+};
+
+const removeSubscriptionByKey = (mapKey) => {
+  const normalizedKey = normalizeMapKey(mapKey) || mapKey;
+  if (!normalizedKey) return;
+  if (subscriptionSet.value.has(normalizedKey)) {
+    subscriptions.value = subscriptions.value.filter(sub => normalizeMapKey(sub.map) !== normalizedKey);
+    subscriptionSet.value.delete(normalizedKey);
+    persistSubscriptions();
+  }
+  updateMapSubResultSubscriptionState(normalizedKey, false);
+  showToast(formatTemplate(t('map_sub_unsubscribed_toast'), { map: normalizedKey }), 2000);
+};
+
+const handleMapSubSubscribe = (row) => {
+  if (!row || row.isSubscribed) return;
+  addSubscriptionByKey(row.key);
+};
+
+const handleMapSubUnsubscribe = (row) => {
+  if (!row || !row.isSubscribed) return;
+  removeSubscriptionByKey(row.key);
+};
+
+const toggleMapSubCommunityFilter = (id) => {
+  const next = new Set(mapSubCommunityFilters.value);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  mapSubCommunityFilters.value = Array.from(next);
+  refreshMapSubResults();
+};
+
+const clearMapSubCommunityFilters = () => {
+  mapSubCommunityFilters.value = [];
+  refreshMapSubResults();
+};
+
+const toggleMapSubMultiSelect = () => {
+  mapSubMultiSelectMode.value = !mapSubMultiSelectMode.value;
+  if (!mapSubMultiSelectMode.value) {
+    mapSubSelectedKeys.value = new Set();
+  }
+};
+
+const cancelMapSubMultiSelect = () => {
+  mapSubMultiSelectMode.value = false;
+  mapSubSelectedKeys.value = new Set();
+};
+
+const toggleMapSubSelection = (row) => {
+  if (!row || row.isSubscribed) return;
+  const next = new Set(mapSubSelectedKeys.value);
+  if (next.has(row.key)) next.delete(row.key);
+  else next.add(row.key);
+  mapSubSelectedKeys.value = next;
+};
+
+const selectAllMapSub = () => {
+  const next = new Set();
+  mapSubResults.value.forEach((row) => {
+    if (!row.isSubscribed) next.add(row.key);
+  });
+  mapSubSelectedKeys.value = next;
+};
+
+const clearMapSubSelection = () => {
+  mapSubSelectedKeys.value = new Set();
+};
+
+const bulkSubscribe = () => {
+  const keys = Array.from(mapSubSelectedKeys.value);
+  if (!keys.length) return;
+  keys.forEach((key) => addSubscriptionByKey(key, { silent: true }));
+  mapSubSelectedKeys.value = new Set();
+  showToast(formatTemplate(t('map_sub_bulk_subscribed_toast'), { count: keys.length }), 2200);
+};
+
 const removeSubscriptionByMap = (mapName) => {
-  const idx = subscriptions.value.findIndex((sub) => sub.map === mapName);
-  if (idx >= 0) {
-    removeSubscription(idx);
-  }
+  if (!mapName) return;
+  removeSubscriptionByKey(mapName);
 };
 
-const isSubscribed = (mapName) => subscriptions.value.some(s => s.map === mapName);
-const toggleSubscription = (mapName) => {
-  if (isSubscribed(mapName)) {
-    subscriptions.value = subscriptions.value.filter(s => s.map !== mapName);
-  } else {
-    subscriptions.value.push({ map: mapName, comms: ['all'] });
-  }
-  localStorage.setItem('map_subs', JSON.stringify(subscriptions.value));
-};
+const isSubscribed = (mapName) => subscriptionSet.value.has(normalizeMapKey(mapName));
 
 const formatSubComms = (comms) => {
+  if (!Array.isArray(comms) || comms.length === 0) return '';
   if (comms.includes('all')) return t('all_comm');
   return comms.map(cid => {
     const c = communities.value.find(cm => cm.id === cid);
@@ -2745,12 +3084,98 @@ const submitFeedback = () => {
   flex-wrap: wrap;
 }
 
+.map-sub-view .sub-search-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.map-sub-view .sub-filter-row {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-sub-view .sub-filter-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.map-sub-view .sub-search-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.map-sub-view .sub-multi-toggle {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: rgba(128, 128, 128, 0.08);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.map-sub-view .sub-multi-toggle:hover {
+  background: rgba(128, 128, 128, 0.16);
+}
+
+.map-sub-view .sub-map-key-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.map-sub-view .sub-checkbox {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.map-sub-view .sub-checkbox input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.map-sub-view .sub-checkbox-box {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid var(--card-border);
+  background: rgba(128, 128, 128, 0.12);
+  display: inline-block;
+  position: relative;
+}
+
+.map-sub-view .sub-checkbox input:checked + .sub-checkbox-box {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.map-sub-view .sub-checkbox input:checked + .sub-checkbox-box::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  width: 4px;
+  height: 8px;
+  border: solid currentColor;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
 .map-sub-view .exg-inline-status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  line-height: 30px;
+  line-height: 28px;
   font-weight: 600;
   padding: 0;
   background: none;
@@ -2798,6 +3223,28 @@ const submitFeedback = () => {
   color: var(--status-offline, #0078d4);
 }
 
+.map-sub-view .sub-bulk-bar {
+  position: sticky;
+  bottom: 12px;
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card-bg) 92%, transparent 8%);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
+  z-index: 2;
+}
+
+.map-sub-view .sub-bulk-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
 .sub-container {
   width: 100%;
   max-width: 980px;
@@ -2814,6 +3261,8 @@ const submitFeedback = () => {
   flex-direction: column;
   gap: 0;
   padding: 0 0 16px;
+  height: 100%;
+  min-height: 0;
 }
 
 .mapcd-view {
@@ -2824,6 +3273,8 @@ const submitFeedback = () => {
   display: flex;
   flex-direction: column;
   gap: 0;
+  flex: 1;
+  min-height: 0;
 }
 
 .mapcd-view .mapcd-search-area {
@@ -2971,6 +3422,8 @@ const submitFeedback = () => {
   border-radius: var(--mapcd-surface-radius);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  flex: 1;
+  min-height: 0;
 }
 
 .mapcd-card-header {
@@ -3030,11 +3483,16 @@ const submitFeedback = () => {
   border: none;
   box-shadow: none;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .mapcd-body {
   position: relative;
-  height: 70vh;
+  height: auto;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   scrollbar-gutter: stable;
   contain: layout paint;
