@@ -339,14 +339,20 @@
                   >
                     <span class="sub-bulk-entry-icon" aria-hidden="true">
                       <svg width="24" height="24" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M21.707 3.293a1 1 0 0 0-1.414 0L19 4.586l-.293-.293a1 1 0 1 0-1.414 1.414l1 1a1 1 0 0 0 1.414 0l2-2a1 1 0 0 0 0-1.414ZM14.004 17H3l-.117.007A1 1 0 0 0 3 19h11.004l.117-.007A1 1 0 0 0 14.003 17Zm0-6H3l-.117.007A1 1 0 0 0 3 13h11.004l.117-.007A1 1 0 0 0 14.003 11Zm0-6H3l-.117.007A1 1 0 0 0 3 7h11.004l.117-.007A1 1 0 0 0 14.003 5Zm7.703 11.293a1 1 0 0 0-1.414 0L19 17.586l-.293-.293a1 1 0 0 0-1.414 1.414l1 1a1 1 0 0 0 1.414 0l2-2a1 1 0 0 0 0-1.414Zm-1.414-6.5a1 1 0 1 1 1.414 1.414l-2 2a1 1 0 0 1-1.414 0l-1-1a1 1 0 0 1 1.414-1.414l.293.293 1.293-1.293Z" fill="#fff"/>
+                        <path d="M21.707 3.293a1 1 0 0 0-1.414 0L19 4.586l-.293-.293a1 1 0 1 0-1.414 1.414l1 1a1 1 0 0 0 1.414 0l2-2a1 1 0 0 0 0-1.414ZM14.004 17H3l-.117.007A1 1 0 0 0 3 19h11.004l.117-.007A1 1 0 0 0 14.003 17Zm0-6H3l-.117.007A1 1 0 0 0 3 13h11.004l.117-.007A1 1 0 0 0 14.003 11Zm0-6H3l-.117.007A1 1 0 0 0 3 7h11.004l.117-.007A1 1 0 0 0 14.003 5Zm7.703 11.293a1 1 0 0 0-1.414 0L19 17.586l-.293-.293a1 1 0 0 0-1.414 1.414l1 1a1 1 0 0 0 1.414 0l2-2a1 1 0 0 0 0-1.414Zm-1.414-6.5a1 1 0 1 1 1.414 1.414l-2 2a1 1 0 0 1-1.414 0l-1-1a1 1 0 0 1 1.414-1.414l.293.293 1.293-1.293Z" fill="currentColor"/>
                       </svg>
                     </span>
                     {{ mapSubMultiSelectMode ? t('map_sub_cancel') : t('map_sub_bulk_mode') }}
                   </button>
                 </div>
                 <div class="sub-table">
-                  <div class="sub-row" v-for="row in mapSubUnsubscribedRows" :key="row.key">
+                  <div
+                    class="sub-row"
+                    :class="{ 'is-selectable': mapSubMultiSelectMode }"
+                    v-for="row in mapSubUnsubscribedRows"
+                    :key="row.key"
+                    @click="onMapSubRowClick($event, row)"
+                  >
                     <div class="sub-col-info">
                       <div class="sub-map-key-row">
                         <div class="sub-map-key">{{ row.key }}</div>
@@ -354,7 +360,7 @@
                       <div class="sub-map-val" v-if="row.displayName">{{ row.displayName }}</div>
                     </div>
                     <div class="sub-actions">
-                      <label v-if="mapSubMultiSelectMode" class="sub-fluent-checkbox">
+                      <label v-if="mapSubMultiSelectMode" class="sub-fluent-checkbox" @click.stop>
                         <input
                           type="checkbox"
                           :checked="mapSubSelectedKeys.has(row.key)"
@@ -362,7 +368,7 @@
                         >
                         <span class="sub-fluent-checkbox-box" aria-hidden="true">
                           <svg width="24" height="24" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6.25 3A3.25 3.25 0 0 0 3 6.25v11.5A3.25 3.25 0 0 0 6.25 21h11.5A3.25 3.25 0 0 0 21 17.75V6.25A3.25 3.25 0 0 0 17.75 3H6.25Zm10.03 6.78-5 5a.75.75 0 0 1-1.06 0l-2.004-2.004a.75.75 0 1 1 1.06-1.06l1.474 1.473 4.47-4.47a.75.75 0 1 1 1.06 1.061Z" fill="#fff"/>
+                            <path d="M6.25 3A3.25 3.25 0 0 0 3 6.25v11.5A3.25 3.25 0 0 0 6.25 21h11.5A3.25 3.25 0 0 0 21 17.75V6.25A3.25 3.25 0 0 0 17.75 3H6.25Zm10.03 6.78-5 5a.75.75 0 0 1-1.06 0l-2.004-2.004a.75.75 0 1 1 1.06-1.06l1.474 1.473 4.47-4.47a.75.75 0 1 1 1.06 1.061Z" fill="currentColor"/>
                           </svg>
                         </span>
                       </label>
@@ -2231,6 +2237,9 @@ watch(coolingOnly, () => {
   resetMapCooldownScrollState();
   resetMapCooldownFeedState();
   mapCooldownHeightByKey.clear();
+  if (!coolingOnly.value) {
+    buildCooldownRows({ rebuildAll: mapCooldownNeedsRebuild.value || mapCooldownRowsAll.value.length === 0, reason: 'toggle-all' });
+  }
   nextTick(() => {
     setupMapCooldownResizeObserver();
     setupMapCooldownContainerObserver();
@@ -2539,6 +2548,13 @@ const toggleMapSubSelection = (row) => {
   if (next.has(row.key)) next.delete(row.key);
   else next.add(row.key);
   mapSubSelectedKeys.value = next;
+};
+
+const onMapSubRowClick = (event, row) => {
+  if (!mapSubMultiSelectMode.value) return;
+  const target = event?.target;
+  if (target?.closest?.('button, a, input, label')) return;
+  toggleMapSubSelection(row);
 };
 
 const selectAllMapSub = () => {
@@ -3136,6 +3152,10 @@ const submitFeedback = () => {
 </script>
 
 <style scoped>
+.content-wrapper {
+  --page-center-max: 1100px;
+}
+
 .sub-search-box {
   width: 100%;
   max-width: 600px;
@@ -3185,11 +3205,16 @@ const submitFeedback = () => {
   gap: 12px;
 }
 
+.map-sub-view .sub-row.is-selectable {
+  cursor: pointer;
+}
+
 .map-sub-view .sub-fluent-checkbox {
   display: inline-flex;
   align-items: center;
   position: relative;
   cursor: pointer;
+  color: var(--text-secondary);
 }
 
 .map-sub-view .sub-fluent-checkbox input {
@@ -3202,12 +3227,12 @@ const submitFeedback = () => {
   width: 24px;
   height: 24px;
   border-radius: 6px;
-  border: 1.5px solid color-mix(in srgb, var(--accent) 70%, var(--card-border));
+  border: 1.5px solid currentColor;
   background: transparent;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 
 .map-sub-view .sub-fluent-checkbox-box svg {
@@ -3217,9 +3242,24 @@ const submitFeedback = () => {
   transition: opacity 0.15s ease;
 }
 
+.map-sub-view .sub-fluent-checkbox:hover .sub-fluent-checkbox-box {
+  border-color: color-mix(in srgb, var(--accent) 65%, currentColor);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.map-sub-view .sub-fluent-checkbox:active .sub-fluent-checkbox-box {
+  transform: scale(0.97);
+}
+
+.map-sub-view .sub-fluent-checkbox input:focus-visible + .sub-fluent-checkbox-box {
+  border-color: color-mix(in srgb, var(--accent) 70%, currentColor);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
 .map-sub-view .sub-fluent-checkbox input:checked + .sub-fluent-checkbox-box {
   background: var(--accent);
   border-color: var(--accent);
+  color: var(--card-bg);
   box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
@@ -3628,7 +3668,7 @@ const submitFeedback = () => {
 
 .sub-container {
   width: 100%;
-  max-width: 980px;
+  max-width: var(--page-center-max);
   margin: 0 auto;
   padding: 0 16px;
 }
@@ -3637,7 +3677,7 @@ const submitFeedback = () => {
   --mapcd-surface-bg: var(--card-bg);
   --mapcd-surface-border: var(--card-border);
   --mapcd-surface-radius: 14px;
-  --mapcd-card-max: 980px;
+  --mapcd-card-max: var(--page-center-max);
   display: flex;
   flex-direction: column;
   gap: 0;
