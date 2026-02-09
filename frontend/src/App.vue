@@ -2237,9 +2237,7 @@ watch(coolingOnly, () => {
   resetMapCooldownScrollState();
   resetMapCooldownFeedState();
   mapCooldownHeightByKey.clear();
-  if (!coolingOnly.value) {
-    buildCooldownRows({ rebuildAll: mapCooldownNeedsRebuild.value || mapCooldownRowsAll.value.length === 0, reason: 'toggle-all' });
-  }
+  buildCooldownRows({ rebuildAll: true, reason: coolingOnly.value ? 'toggle-cooling' : 'toggle-all' });
   nextTick(() => {
     setupMapCooldownResizeObserver();
     setupMapCooldownContainerObserver();
