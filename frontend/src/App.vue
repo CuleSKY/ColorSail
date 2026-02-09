@@ -264,16 +264,16 @@
               {{ t('keep_open_hint') }}
             </div>
 
-            <div class="sub-search-area">
-              <div class="sub-search-row">
-                <input
-                  type="text"
-                  class="sub-search-box"
-                  v-model="subSearchQuery"
-                  :placeholder="t('map_sub_search_prompt')"
-                  @input="onMapSubSearchInput"
-                >
-              </div>
+            <div class="sub-search-area mapcd-search-area">
+              <input
+                type="text"
+                class="sub-search-box"
+                v-model="subSearchQuery"
+                :placeholder="t('map_sub_search_prompt')"
+                autocomplete="off"
+                spellcheck="false"
+                @input="onMapSubSearchInput"
+              >
 
               <div v-if="mapSubSearchTruncated" class="sub-search-hint">
                 {{ t('map_sub_search_full_too_many') }}
@@ -332,7 +332,7 @@
                   <button
                     v-else
                     class="sub-action-btn sub-action-btn--subscribe"
-                    @click="handleMapSubSubscribe($event, row)"
+                    @click.stop="handleMapSubSubscribe($event, row)"
                   >
                     {{ t('map_sub_subscribe') }}
                   </button>
@@ -379,7 +379,7 @@
                       <button
                         v-else
                         class="sub-action-btn sub-action-btn--subscribe"
-                        @click="handleMapSubSubscribe($event, row)"
+                        @click.stop="handleMapSubSubscribe($event, row)"
                       >
                         {{ t('map_sub_subscribe') }}
                       </button>
@@ -394,17 +394,21 @@
                 <button
                   class="sub-bulk-tool-btn sub-bulk-tool-btn--primary"
                   :disabled="mapSubSelectedCount === 0"
-                  @click="openBulkSubscribePopover($event)"
+                  @click.stop="openBulkSubscribePopover($event)"
                 >
+                  <span class="sub-bulk-tool-icon" v-html="icons.check"></span>
                   {{ t('map_sub_bulk_subscribe') }}
                 </button>
                 <button class="sub-bulk-tool-btn" @click="cancelMapSubMultiSelect">
+                  <span class="sub-bulk-tool-icon" v-html="icons.cross"></span>
                   {{ t('map_sub_cancel') }}
                 </button>
                 <button class="sub-bulk-tool-btn" @click="selectAllMapSub">
+                  <span class="sub-bulk-tool-icon" v-html="icons.list"></span>
                   {{ t('map_sub_select_all') }}
                 </button>
                 <button class="sub-bulk-tool-btn" @click="clearMapSubSelection">
+                  <span class="sub-bulk-tool-icon" v-html="icons.trash"></span>
                   {{ t('map_sub_clear_all') }}
                 </button>
               </div>
@@ -2511,7 +2515,8 @@ const openMapSubPopover = (event, { mode = 'single', row = null } = {}) => {
   mapSubPopoverMode.value = mode;
   mapSubPopoverRow.value = row;
   mapSubPopoverSelected.value = new Set();
-  mapSubPopoverAnchor.value = event?.currentTarget?.getBoundingClientRect?.() || null;
+  const anchorRect = event?.currentTarget?.getBoundingClientRect?.() || null;
+  mapSubPopoverAnchor.value = anchorRect && anchorRect.width && anchorRect.height ? anchorRect : null;
   mapSubPopoverOpen.value = true;
   nextTick(() => {
     updateMapSubPopoverSize();
@@ -2560,6 +2565,14 @@ const confirmMapSubPopover = () => {
 };
 
 const handleMapSubSubscribe = (event, row) => {
+  if (import.meta.env.DEV) {
+    console.debug('[map-sub] subscribe click', {
+      mapKey: row?.map_key ?? row?.key,
+      mode: mapSubPopoverMode.value,
+      multiSelect: mapSubMultiSelectMode.value,
+      popoverOpen: mapSubPopoverOpen.value
+    });
+  }
   if (!row || row.isSubscribed) return;
   openMapSubPopover(event, { mode: 'single', row });
 };
@@ -3224,6 +3237,11 @@ const submitFeedback = () => {
   gap: 12px;
 }
 
+.map-sub-view .mapcd-search-area {
+  margin-top: 58px;
+  margin-bottom: 30px;
+}
+
 .map-sub-view .sub-search-hint {
   margin-top: 10px;
   font-size: 12px;
@@ -3232,13 +3250,13 @@ const submitFeedback = () => {
 
 .map-sub-view .sub-map-key-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 12px;
 }
 
 .map-sub-view .sub-checkbox {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   cursor: pointer;
 }
 
@@ -3470,14 +3488,12 @@ const submitFeedback = () => {
 }
 
 .map-sub-view .sub-unsubscribed-shell {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
+  position: relative;
   margin-top: 28px;
 }
 
 .map-sub-view .sub-unsubscribed-card {
-  flex: 1;
+  width: 100%;
   min-width: 0;
 }
 
@@ -3520,8 +3536,10 @@ const submitFeedback = () => {
 }
 
 .map-sub-view .sub-bulk-toolbar {
-  position: sticky;
-  top: 12px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform: translateX(calc(100% + 16px));
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -3550,7 +3568,26 @@ const submitFeedback = () => {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.map-sub-view .sub-bulk-tool-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  opacity: 0.8;
+}
+
+.map-sub-view .sub-bulk-tool-icon svg {
+  width: 14px;
+  height: 14px;
+  display: block;
 }
 
 .map-sub-view .sub-bulk-tool-btn:hover {
