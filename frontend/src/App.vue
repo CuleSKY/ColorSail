@@ -273,9 +273,6 @@
                   :placeholder="t('map_sub_search_prompt')"
                   @input="onMapSubSearchInput"
                 >
-                <button class="sub-multi-toggle" type="button" @click="toggleMapSubMultiSelect">
-                  {{ mapSubMultiSelectMode ? t('map_sub_cancel') : t('map_sub_bulk_mode') }}
-                </button>
               </div>
 
               <div v-if="mapSubSearchTruncated" class="sub-search-hint">
@@ -346,83 +343,74 @@
               {{ t('no_subs') }}
             </div>
 
-            <div v-if="mapSubUnsubscribedRows.length > 0">
-              <h3 style="margin: 28px 0 16px; opacity:0.8">{{ t('map_sub_unsubscribed_section') }}</h3>
-              <div class="sub-table">
-                <div class="sub-row" v-for="row in mapSubUnsubscribedRows" :key="row.key">
-                  <div class="sub-col-info">
-                    <div class="sub-map-key-row">
-                      <label v-if="mapSubMultiSelectMode && !row.isSubscribed" class="sub-checkbox">
-                        <input
-                          type="checkbox"
-                          :checked="mapSubSelectedKeys.has(row.key)"
-                          @change="toggleMapSubSelection(row)"
-                        >
-                        <span class="sub-checkbox-box"></span>
-                      </label>
-                      <div class="sub-map-key">{{ row.key }}</div>
-                    </div>
-                    <div class="sub-map-val" v-if="row.displayName">{{ row.displayName }}</div>
-                    <div class="sub-tags">
-                      <div
-                        v-if="row.status"
-                        class="exg-inline-status"
-                        :class="row.status.className"
-                      >
-                        <template v-if="row.status.type === 'available'">
-                          <svg class="exg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2Zm3.22 6.97-4.47 4.47-1.97-1.97a.75.75 0 0 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5-5a.75.75 0 1 0-1.06-1.06Z" fill="currentColor"/>
-                          </svg>
-                        </template>
-                        <template v-else-if="row.status.type === 'cooldown'">
-                          <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12 5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Zm0 3a.75.75 0 0 0-.743.648l-.007.102v4.5l.007.102a.75.75 0 0 0 1.486 0l.007-.102v-4.5l-.007-.102A.75.75 0 0 0 12 8Zm7.17-2.877.082.061 1.149 1a.75.75 0 0 1-.904 1.193l-.081-.061-1.149-1a.75.75 0 0 1 .903-1.193ZM14.25 2.5a.75.75 0 0 1 .102 1.493L14.25 4h-4.5a.75.75 0 0 1-.102-1.493L9.75 2.5h4.5Z" fill="currentColor"/>
-                          </svg>
-                        </template>
-                        <template v-else>
-                          <svg class="exg-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-                          </svg>
-                        </template>
-                        <span class="exg-inline-label">{{ row.status.label }}</span>
-                        <span v-if="row.status.time" class="exg-inline-time">{{ row.status.time }}</span>
+            <div v-if="mapSubUnsubscribedRows.length > 0" class="sub-unsubscribed-shell">
+              <div class="sub-unsubscribed-card">
+                <div class="sub-card-header">
+                  <h3 class="sub-card-title">{{ t('map_sub_unsubscribed_section') }}</h3>
+                  <button
+                    v-if="!mapSubMultiSelectMode"
+                    class="sub-bulk-entry"
+                    type="button"
+                    @click="toggleMapSubMultiSelect"
+                  >
+                    {{ t('map_sub_bulk_mode') }}
+                  </button>
+                </div>
+                <div class="sub-table">
+                  <div class="sub-row" v-for="row in mapSubUnsubscribedRows" :key="row.key">
+                    <div class="sub-col-info">
+                      <div class="sub-map-key-row">
+                        <label v-if="mapSubMultiSelectMode && !row.isSubscribed" class="sub-checkbox">
+                          <input
+                            type="checkbox"
+                            :checked="mapSubSelectedKeys.has(row.key)"
+                            @change="toggleMapSubSelection(row)"
+                          >
+                          <span class="sub-checkbox-box"></span>
+                        </label>
+                        <div class="sub-map-key">{{ row.key }}</div>
                       </div>
+                      <div class="sub-map-val" v-if="row.displayName">{{ row.displayName }}</div>
                     </div>
-                  </div>
-                  <div class="sub-actions">
-                    <button v-if="row.isSubscribed" class="sub-action-btn sub-action-btn--unsubscribe" @click="handleMapSubUnsubscribe(row)">
-                      {{ t('map_sub_unsubscribe') }}
-                    </button>
-                    <button
-                      v-else
-                      class="sub-action-btn sub-action-btn--subscribe"
-                      @click="handleMapSubSubscribe($event, row)"
-                    >
-                      {{ t('map_sub_subscribe') }}
-                    </button>
+                    <div class="sub-actions">
+                      <button v-if="row.isSubscribed" class="sub-action-btn sub-action-btn--unsubscribe" @click="handleMapSubUnsubscribe(row)">
+                        {{ t('map_sub_unsubscribe') }}
+                      </button>
+                      <button
+                        v-else
+                        class="sub-action-btn sub-action-btn--subscribe"
+                        @click="handleMapSubSubscribe($event, row)"
+                      >
+                        {{ t('map_sub_subscribe') }}
+                      </button>
+                    </div>
                   </div>
                 </div>
+              </div>
+              <div v-if="mapSubMultiSelectMode" class="sub-bulk-toolbar">
+                <div class="sub-bulk-toolbar-title">
+                  {{ formatTemplate(t('map_sub_selected_count'), { count: mapSubSelectedCount }) }}
+                </div>
+                <button
+                  class="sub-bulk-tool-btn sub-bulk-tool-btn--primary"
+                  :disabled="mapSubSelectedCount === 0"
+                  @click="openBulkSubscribePopover($event)"
+                >
+                  {{ t('map_sub_bulk_subscribe') }}
+                </button>
+                <button class="sub-bulk-tool-btn" @click="cancelMapSubMultiSelect">
+                  {{ t('map_sub_cancel') }}
+                </button>
+                <button class="sub-bulk-tool-btn" @click="selectAllMapSub">
+                  {{ t('map_sub_select_all') }}
+                </button>
+                <button class="sub-bulk-tool-btn" @click="clearMapSubSelection">
+                  {{ t('map_sub_clear_all') }}
+                </button>
               </div>
             </div>
 
             <div class="sub-test-btn" @click="testNotification">{{ t('test_notify') }}</div>
-            <div v-if="mapSubMultiSelectMode" class="sub-bulk-bar">
-              <div class="sub-bulk-count">
-                {{ formatTemplate(t('map_sub_selected_count'), { count: mapSubSelectedCount }) }}
-              </div>
-              <button class="btn btn-primary" :disabled="mapSubSelectedCount === 0" @click="openBulkSubscribePopover">
-                {{ t('map_sub_bulk_subscribe') }}
-              </button>
-              <button class="btn btn-sec" @click="cancelMapSubMultiSelect">
-                {{ t('map_sub_cancel') }}
-              </button>
-              <button class="btn btn-sec" @click="selectAllMapSub">
-                {{ t('map_sub_select_all') }}
-              </button>
-              <button class="btn btn-sec" @click="clearMapSubSelection">
-                {{ t('map_sub_clear_all') }}
-              </button>
-            </div>
           </div>
         </div>
 
@@ -431,14 +419,15 @@
           v-if="mapSubPopoverOpen"
           class="sub-popover-panel"
           :style="mapSubPopoverStyle"
+          ref="mapSubPopoverPanelRef"
           @click.stop
         >
-          <div class="sub-popover-title">{{ t('map_sub_choose_communities_title') }}</div>
+          <div class="sub-popover-title">{{ mapSubPopoverTitle }}</div>
           <div class="sub-popover-hint" v-if="mapSubPopoverSelectedCount === 0">
             {{ t('map_sub_choose_communities_required_hint') }}
           </div>
           <div class="sub-popover-list">
-            <label class="sub-checkbox sub-popover-checkbox" v-for="comm in communities" :key="comm.id">
+            <label class="sub-checkbox sub-popover-checkbox" v-for="comm in mapSubPopoverCommunities" :key="comm.id">
               <input
                 type="checkbox"
                 :checked="mapSubPopoverSelected.has(comm.id)"
@@ -742,6 +731,8 @@ const mapSubSearchTruncated = ref(false);
 const hiddenAfterUnsub = ref(new Set<string>());
 const mapSubPopoverOpen = ref(false);
 const mapSubPopoverAnchor = ref<DOMRect | null>(null);
+const mapSubPopoverPanelRef = ref<HTMLElement | null>(null);
+const mapSubPopoverSize = ref({ width: 320, height: 320 });
 const mapSubPopoverMode = ref<'single' | 'bulk'>('single');
 const mapSubPopoverRow = ref(null);
 const mapSubPopoverSelected = ref(new Set());
@@ -924,6 +915,9 @@ watch(curLang, () => document.title = t('app_title'), { immediate: true });
 const handleResize = () => {
   viewportWidth.value = window.innerWidth;
   isMobile.value = window.innerWidth <= 768;
+  if (mapSubPopoverOpen.value) {
+    updateMapSubPopoverSize();
+  }
   if (curView.value === 'map_cooldown') {
     mapCooldownLatestScrollTop = mapCooldownScrollRef.value?.scrollTop || mapCooldownLatestScrollTop;
     nextTick(() => {
@@ -940,6 +934,11 @@ const handleGlobalClick = (e) => {
     showLangMenu.value = false;
     showSubPopover.value = false;
     showProfileMenu.value = false;
+  }
+};
+const handleGlobalKeydown = (event) => {
+  if (event.key === 'Escape' && mapSubPopoverOpen.value) {
+    closeMapSubPopover();
   }
 };
 const handleVisibilityChange = () => {
@@ -1033,6 +1032,7 @@ const handleSteamMessage = async (event) => {
 onMounted(async () => {
   window.addEventListener('resize', handleResize);
   window.addEventListener('click', handleGlobalClick);
+  window.addEventListener('keydown', handleGlobalKeydown);
   window.addEventListener('message', handleSteamMessage);
   document.addEventListener('visibilitychange', handleVisibilityChange);
 
@@ -1099,6 +1099,7 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
   window.removeEventListener('click', handleGlobalClick);
+  window.removeEventListener('keydown', handleGlobalKeydown);
   window.removeEventListener('message', handleSteamMessage);
   document.removeEventListener('visibilitychange', handleVisibilityChange);
   stopSteamLoginWatcher();
@@ -2300,14 +2301,20 @@ const mapSubSelectedCount = computed(() => mapSubSelectedKeys.value.size);
 const mapSubSubscribedRows = computed(() => mapSubResults.value.filter(row => row.group === 'subscribed'));
 const mapSubUnsubscribedRows = computed(() => mapSubResults.value.filter(row => row.group === 'full'));
 const mapSubPopoverSelectedCount = computed(() => mapSubPopoverSelected.value.size);
+const mapSubPopoverTitle = computed(() => (mapSubPopoverMode.value === 'bulk'
+  ? t('map_sub_choose_communities_bulk_title')
+  : t('map_sub_choose_communities_title')));
+const mapSubPopoverCommunities = computed(() => {
+  const base = communities.value || [];
+  if (base.some((comm) => comm.id === 'all')) return base;
+  return [{ id: 'all', name: t('all_comm') }, ...base];
+});
 const mapSubPopoverStyle = computed(() => {
-  if (mapSubPopoverMode.value === 'bulk') {
-    return {
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)'
-    };
-  }
+  const padding = 12;
+  const gap = 8;
+  const viewportW = window.innerWidth;
+  const viewportH = window.innerHeight;
+  const { width, height } = mapSubPopoverSize.value;
   const anchor = mapSubPopoverAnchor.value;
   if (!anchor) {
     return {
@@ -2316,12 +2323,24 @@ const mapSubPopoverStyle = computed(() => {
       transform: 'translate(-50%, -50%)'
     };
   }
-  const top = Math.min(window.innerHeight - 24, anchor.bottom + 8);
-  const left = Math.min(window.innerWidth - 24, anchor.left + anchor.width / 2);
+  const canShowRight = anchor.right + gap + width + padding <= viewportW;
+  const canShowLeft = anchor.left - gap - width - padding >= 0;
+  const canShowBottom = anchor.bottom + gap + height + padding <= viewportH;
+  const canShowTop = anchor.top - gap - height - padding >= 0;
+
+  let left = anchor.left + anchor.width / 2 - width / 2;
+  if (canShowRight) left = anchor.right + gap;
+  else if (canShowLeft) left = anchor.left - width - gap;
+  else left = Math.min(Math.max(padding, left), viewportW - width - padding);
+
+  let top = anchor.bottom + gap;
+  if (canShowBottom) top = anchor.bottom + gap;
+  else if (canShowTop) top = anchor.top - height - gap;
+  else top = Math.min(Math.max(padding, anchor.top + anchor.height / 2 - height / 2), viewportH - height - padding);
   return {
     top: `${top}px`,
     left: `${left}px`,
-    transform: 'translate(-50%, 0)'
+    transform: 'none'
   };
 });
 
@@ -2338,11 +2357,13 @@ const buildSubscribedMapRows = () => {
     const entry = getSearchEntryByKey(rawKey);
     const match = hasQuery ? getSearchMatch(entry, query) : { rank: 0, score: 0 };
     if (hasQuery && !match) return;
-    const status = getMapSubStatusFromEntry(entry);
+    const comms = Array.isArray(sub.comms) ? sub.comms : [];
+    const shouldShowStatus = comms.includes('all') || comms.includes('exg');
+    const status = shouldShowStatus ? getMapSubStatusFromEntry(entry) : null;
     rows.push({
       key: rawKey,
       displayName: isChineseLang.value ? getMapIndexDisplayName(rawKey) : '',
-      commsLabel: formatSubComms(sub.comms || []),
+      commsLabel: formatSubComms(comms),
       status,
       isSubscribed: subscriptionSet.value.has(rawKey),
       group: 'subscribed',
@@ -2392,17 +2413,16 @@ const buildFullMapRows = () => {
       allowPinyin: allowFullSearch
     });
     if (!match) continue;
-    const status = getMapSubStatusFromEntry(entry);
     results.push({
       key: mapKey,
       displayName: isChineseLang.value ? getMapIndexDisplayName(mapKey) : '',
       commsLabel: '',
-      status,
+      status: null,
       isSubscribed: subscriptionSet.value.has(mapKey),
       group: 'full',
       rank: match.rank,
       score: match.score,
-      availabilityGroup: getMapSubAvailabilityGroup(status)
+      availabilityGroup: getMapSubAvailabilityGroup(null)
     });
   }
 
@@ -2437,11 +2457,15 @@ const updateMapSubResultSubscriptionState = (mapKey, isSubscribed, comms = []) =
   mapSubResults.value = mapSubResults.value.map((row) => {
     if (row.key !== mapKey) return row;
     const next = { ...row, isSubscribed };
+    const shouldShowStatus = comms.includes('all') || comms.includes('exg');
     if (!isSubscribed) {
       next.commsLabel = '';
+      next.status = null;
     } else if (comms.length) {
       next.commsLabel = formatSubComms(comms);
+      next.status = shouldShowStatus ? getMapSubStatusFromEntry(getSearchEntryByKey(mapKey)) : null;
     }
+    next.availabilityGroup = getMapSubAvailabilityGroup(next.status);
     return next;
   });
 };
@@ -2489,6 +2513,9 @@ const openMapSubPopover = (event, { mode = 'single', row = null } = {}) => {
   mapSubPopoverSelected.value = new Set();
   mapSubPopoverAnchor.value = event?.currentTarget?.getBoundingClientRect?.() || null;
   mapSubPopoverOpen.value = true;
+  nextTick(() => {
+    updateMapSubPopoverSize();
+  });
 };
 
 const closeMapSubPopover = () => {
@@ -2499,9 +2526,18 @@ const closeMapSubPopover = () => {
 };
 
 const toggleMapSubPopoverCommunity = (commId) => {
-  const next = new Set(mapSubPopoverSelected.value);
-  if (next.has(commId)) next.delete(commId);
-  else next.add(commId);
+  let next = new Set(mapSubPopoverSelected.value);
+  if (commId === 'all') {
+    if (next.has('all')) {
+      next.delete('all');
+    } else {
+      next = new Set(['all']);
+    }
+  } else {
+    if (next.has(commId)) next.delete(commId);
+    else next.add(commId);
+    next.delete('all');
+  }
   mapSubPopoverSelected.value = next;
 };
 
@@ -2568,6 +2604,14 @@ const clearMapSubSelection = () => {
 const openBulkSubscribePopover = (event) => {
   if (mapSubSelectedKeys.value.size === 0) return;
   openMapSubPopover(event, { mode: 'bulk' });
+};
+
+const updateMapSubPopoverSize = () => {
+  if (!mapSubPopoverPanelRef.value) return;
+  const rect = mapSubPopoverPanelRef.value.getBoundingClientRect();
+  if (rect.width && rect.height) {
+    mapSubPopoverSize.value = { width: rect.width, height: rect.height };
+  }
 };
 
 const removeSubscriptionByMap = (mapName) => {
@@ -3148,6 +3192,25 @@ const submitFeedback = () => {
 </script>
 
 <style scoped>
+.sub-search-box {
+  width: 100%;
+  max-width: 600px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.sub-search-box:focus {
+  border-color: color-mix(in srgb, var(--accent) 65%, transparent);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+}
+
 .map-sub-view .sub-tags {
   display: flex;
   align-items: center;
@@ -3167,27 +3230,10 @@ const submitFeedback = () => {
   color: var(--text-secondary);
 }
 
-.map-sub-view .sub-multi-toggle {
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 10px;
-  border: 1px solid var(--card-border);
-  background: rgba(128, 128, 128, 0.08);
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.map-sub-view .sub-multi-toggle:hover {
-  background: rgba(128, 128, 128, 0.16);
-}
-
 .map-sub-view .sub-map-key-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .map-sub-view .sub-checkbox {
@@ -3203,12 +3249,14 @@ const submitFeedback = () => {
 }
 
 .map-sub-view .sub-checkbox-box {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 4px;
   border: 1px solid var(--card-border);
   background: rgba(128, 128, 128, 0.12);
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
 }
 
@@ -3220,8 +3268,8 @@ const submitFeedback = () => {
 .map-sub-view .sub-checkbox input:checked + .sub-checkbox-box::after {
   content: '';
   position: absolute;
-  top: 2px;
-  left: 5px;
+  top: 3px;
+  left: 6px;
   width: 4px;
   height: 8px;
   border: solid currentColor;
@@ -3232,6 +3280,7 @@ const submitFeedback = () => {
 .map-sub-view .sub-action-btn {
   height: 34px;
   padding: 0 16px;
+  min-width: 96px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
@@ -3378,6 +3427,7 @@ const submitFeedback = () => {
   border: none;
   cursor: default;
   pointer-events: none;
+  color: var(--text-secondary);
 }
 
 .map-sub-view .exg-inline-time {
@@ -3419,26 +3469,106 @@ const submitFeedback = () => {
   color: var(--status-offline, #0078d4);
 }
 
-.map-sub-view .sub-bulk-bar {
-  position: sticky;
-  bottom: 12px;
-  margin-top: 20px;
+.map-sub-view .sub-unsubscribed-shell {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  padding: 12px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--card-bg) 92%, transparent 8%);
-  border: 1px solid var(--card-border);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
-  z-index: 2;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 28px;
 }
 
-.map-sub-view .sub-bulk-count {
+.map-sub-view .sub-unsubscribed-card {
+  flex: 1;
+  min-width: 0;
+}
+
+.map-sub-view .sub-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.map-sub-view .sub-card-title {
+  margin: 0;
+  opacity: 0.8;
+}
+
+.map-sub-view .sub-bulk-entry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  min-height: 38px;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.map-sub-view .sub-bulk-entry:hover {
+  background: rgba(128, 128, 128, 0.12);
+}
+
+.map-sub-view .sub-bulk-entry:active {
+  transform: translateY(1px);
+}
+
+.map-sub-view .sub-bulk-toolbar {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
+  min-width: 140px;
+}
+
+.map-sub-view .sub-bulk-toolbar-title {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.map-sub-view .sub-bulk-tool-btn {
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: rgba(128, 128, 128, 0.08);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.map-sub-view .sub-bulk-tool-btn:hover {
+  background: rgba(128, 128, 128, 0.16);
+}
+
+.map-sub-view .sub-bulk-tool-btn:active {
+  transform: translateY(1px);
+}
+
+.map-sub-view .sub-bulk-tool-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.map-sub-view .sub-bulk-tool-btn--primary {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .sub-container {
