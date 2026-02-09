@@ -3170,6 +3170,7 @@ const submitFeedback = () => {
   --sub-card-max: 980px;
   --sub-rail-w: 220px;
   --sub-rail-gap: 16px;
+  --sub-page-max: calc(var(--sub-card-max) + var(--sub-rail-w) + var(--sub-rail-gap));
 }
 
 :global(:root) {
@@ -3547,8 +3548,12 @@ const submitFeedback = () => {
 }
 
 .map-sub-view .sub-unsubscribed-shell {
-  position: relative;
   margin-top: 28px;
+  display: grid;
+  grid-template-columns: minmax(0, var(--sub-card-max)) auto;
+  column-gap: var(--sub-rail-gap);
+  justify-content: start;
+  align-items: start;
 }
 
 .map-sub-view .sub-unsubscribed-card {
@@ -3680,11 +3685,7 @@ const submitFeedback = () => {
 }
 
 .map-sub-view .sub-bulk-rail {
-  position: absolute;
-  top: 0;
-  left: 50%;
   width: var(--sub-rail-w);
-  transform: translateX(calc(var(--sub-card-max) / 2 + var(--sub-rail-gap)));
   min-width: 0;
   padding: 0;
 }
@@ -3692,11 +3693,10 @@ const submitFeedback = () => {
 .map-sub-view .sub-bulk-rail.is-active {
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1100px) {
   .map-sub-view .sub-bulk-rail {
-    position: static;
-    transform: none;
     width: 100%;
+    grid-column: 1 / -1;
     margin-top: 12px;
   }
 
@@ -3704,11 +3704,15 @@ const submitFeedback = () => {
     position: static;
     top: auto;
   }
+
+  .map-sub-view .sub-unsubscribed-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .sub-container {
   width: 100%;
-  max-width: var(--sub-card-max);
+  max-width: var(--sub-page-max);
   margin: 0 auto;
   padding: 0 16px;
 }
@@ -3716,7 +3720,7 @@ const submitFeedback = () => {
 .sub-card-surface {
   max-width: var(--sub-card-max);
   width: 100%;
-  margin: 0 auto;
+  margin: 0;
   min-width: 0;
 }
 
