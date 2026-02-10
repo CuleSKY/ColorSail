@@ -61,7 +61,7 @@ def export_map_index(settings: "Settings", logger: "logging.Logger", db: "MySQLC
     payload: dict[str, dict[str, object]] = {}
     unknown_duration_samples: set[str] = set()
     for record in sorted(records, key=lambda item: item.map_key):
-        map_cn = (record.name_zh_cn or "").strip()
+        map_cn = record.name_zh_cn or record.map_key
         entry: dict[str, object] = {
             "map_cn": map_cn,
             "deadline": record.cooldown_end_epoch,
