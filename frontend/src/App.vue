@@ -665,7 +665,7 @@
 
 <script setup lang="ts">
 import { computed, isProxy, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, toRaw, watch } from 'vue';
-import { buildMapSearchIndex, createOpenCCConverter, formatExgDateTime, getExgStatusState, normalizeSearchText, normalizeZh, scoreSearchEntry, stripBracketSegments, validateMapIndexEntry, shouldShowExgStatus } from './mapSearchUtils';
+import { buildMapSearchIndex, createOpenCCConverter, formatExgDateTime, getExgStatusState, normalizeSearchText, scoreSearchEntry, stripBracketSegments, validateMapIndexEntry, shouldShowExgStatus } from './mapSearchUtils';
 
 // [ADDED] Mobile Profile Click Handler
 const handleMobileProfileClick = () => {
@@ -939,12 +939,7 @@ watch(curView, (nextView, prevView) => {
   }
   if (nextView === 'map_cooldown') {
     mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
-    if (mapCooldownNeedsRebuild.value) {
-      buildCooldownRows({ rebuildAll: true, reason: 'enter-view' });
-      mapCooldownNeedsRebuild.value = false;
-    } else {
-      buildCooldownRows({ rebuildAll: false, reason: 'enter-view' });
-    }
+    buildCooldownRows({ rebuildAll: mapCooldownNeedsRebuild.value, reason: 'enter-view' });
     resetMapCooldownScrollState();
     resetMapCooldownFeedState();
     startMapCooldownTimer();
@@ -1610,19 +1605,6 @@ const getMapIndexDisplayName = (mapName) => {
     return getMapTranslation(mapName);
 };
 
-const formatExgCompactTime = (datetimeString) => {
-  if (!datetimeString) return '';
-  const normalized = datetimeString.replace(' - ', ' ').trim();
-  const [datePart, timePart = ''] = normalized.split(' ');
-  const dateSegments = datePart.split('/');
-  if (dateSegments.length < 3) return datetimeString;
-  const month = dateSegments[1];
-  const day = dateSegments[2];
-  const time = timePart.slice(0, 5);
-  if (!month || !day || !time) return datetimeString;
-  return `${month}/${day} ${time}`;
-};
-
 // [NEW] Map Search & Utils
 const buildFallbackSearchEntry = (key) => ({ key, normalized: { key, aliases: [], mapCn: '', mapTw: '', achievement: '' } });
 
@@ -1774,7 +1756,7 @@ const mapcdQueryTrimmed = computed(() => mapCooldownQueryInput.value.trim());
 const mapCooldownSearchQueryTrimmed = computed(() => mapCooldownSearchQuery.value.trim());
 
 // [FIXED] Use normalizeSearchText instead of normalizeZh
-const mapCooldownSearchQueryNorm = computed(() => normalizeZh(mapCooldownSearchQuery.value));
+const mapCooldownSearchQueryNorm = computed(() => normalizeSearchText(mapCooldownSearchQuery.value));
 
 const mapCooldownBaseRows = computed(() => (coolingOnly.value ? mapCooldownRowsCooling.value : mapCooldownRowsAll.value));
 
@@ -1785,17 +1767,29 @@ const mapCooldownMatchesQuery = (row) => {
 };
 
 const mapCooldownFilteredRows = computed(() => {
-  const baseRows = mapCooldownBaseRows.value;
+  const baseRows = mapCooldownRowsAll.value;
+  if (!mapCooldownSearchQueryNorm.value) return baseRows;
+  return baseRows.filter((row) => mapCooldownMatchesQuery(row));
+});
+
+const mapcdAllMatches = computed(() => {
+  const baseRows = mapCooldownRowsAll.value;
   const queryNorm = mapCooldownSearchQueryNorm.value;
   if (!queryNorm) return baseRows;
   return baseRows.filter((row) => (row.searchTextNorm || '').includes(queryNorm));
 });
 
-const mapcdAllMatches = computed(() => mapCooldownRowsAll.value);
-const mapcdAutoShowAll = computed(() => false);
+const mapcdAutoShowAll = computed(() => 
+  coolingOnly.value && 
+  mapcdQueryTrimmed.value.length > 0 && 
+  mapCooldownFilteredRows.value.length === 0 && 
+  mapcdAllMatches.value.length > 0
+);
 
 const mapcdDisplayedRows = computed(() => {
-  const baseRows = mapCooldownFilteredRows.value;
+  // If auto-show all is active, we force using the filtered 'all' rows
+  // Otherwise we respect the current mode (cooling or all)
+  const baseRows = mapcdAutoShowAll.value ? mapcdAllMatches.value : mapCooldownFilteredRows.value;
 
   const nameValue = (row) => (row.mapLine1 || '').toLowerCase();
   const compareName = (a, b) => nameValue(a).localeCompare(nameValue(b));
@@ -1855,23 +1849,6 @@ watch(mapCooldownQueryInput, (val) => {
       mapCooldownLatestScrollTop = 0;
     }
   }, 250);
-});
-
-watch(mapCooldownSearchQueryTrimmed, (value) => {
-  if (!value) {
-    mapCooldownHighlightKey.value = '';
-  }
-});
-
-watch([mapIndex, curLang], () => {
-  mapCooldownNeedsRebuild.value = true;
-  if (curView.value === 'map_cooldown') {
-    mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
-    buildCooldownRows({ rebuildAll: true, reason: 'index-update' });
-    mapCooldownNeedsRebuild.value = false;
-    mapCooldownHeightByKey.clear();
-    scheduleMapCooldownPrefixRebuild();
-  }
 });
 
 const toggleMapCooldownMode = () => {
@@ -2384,13 +2361,9 @@ mapCooldownWorker.onmessage = (event) => {
          mapCooldownBuildProgress.value = progress;
       }
       
-      if (rowsAll && rowsCooling) {
-        console.log('[mapcd] BUILD_RESULT rows', { rowsAll: rowsAll.length, rowsCooling: rowsCooling.length });
-      }
       if (done) {
         mapCooldownIsBuilding.value = false;
         mapCooldownPendingModes.clear();
-        mapCooldownNeedsRebuild.value = false;
         rebuildMapCooldownPrefixSums();
         clampMapCooldownScrollTop({ force: true });
       } else {
@@ -2448,19 +2421,23 @@ const requestMapCooldownBuild = ({ reason = 'update' } = {}) => {
 };
 
 const buildCooldownRows = ({ rebuildAll = false, reason = 'update' } = {}) => {
-  if (!rebuildAll && mapCooldownNeedsRebuild.value) return;
+  const needsBuild = rebuildAll || mapCooldownNeedsRebuild.value || mapCooldownRowsAll.value.length === 0;
+  if (!needsBuild) return;
   requestMapCooldownBuild({ reason });
+  mapCooldownNeedsRebuild.value = false;
 };
 
 const startMapCooldownTimer = () => {
   if (mapCooldownTimer) return;
   mapCooldownTimer = setInterval(() => {
     mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
+    if (!mapCooldownNeedsRebuild.value) return;
+    
     if (mapCooldownIsFastScrolling.value) {
       mapCooldownPendingRebuild.value = true;
       return;
     }
-    buildCooldownRows({ rebuildAll: false, reason: 'timer' });
+    buildCooldownRows({ rebuildAll: true, reason: 'timer-needs-rebuild' });
   }, 5000);
 };
 
@@ -2610,40 +2587,70 @@ const buildSubscribedRows = () => {
 
 const buildFullMapRows = () => {
     const query = mapSubSearchQueryTrimmed.value;
-    if (!query) return [];
-
-    const matches = [];
+    const normalizedQuery = mapSubQueryNorm.value;
+    if (!normalizedQuery) return [];
+    
+    const broadPrefix = normalizedQuery.startsWith('ze_') && normalizedQuery.length < 4;
+    const allowFullSearch = normalizedQuery.length >= 3 && !broadPrefix;
+    const requireExact = normalizedQuery.length < 3;
+    
+    if (!allowFullSearch && !requireExact) return [];
+    
+    const maxScan = 10000;
+    const maxResults = 30;
+    const results = [];
+    let scanned = 0;
     mapSubSearchTruncated.value = false;
-
-    mapSearchIndex.value.forEach((entry) => {
+    
+    for (const entry of mapSearchIndex.value) {
+        if (scanned >= maxScan) break;
+        scanned += 1;
+        
         const mapKey = entry?.key;
-        if (!mapKey) return;
-        if (hiddenAfterUnsub.value.has(mapKey)) return;
-        const score = scoreSearchEntry(entry, query);
-        if (score <= 0) return;
-        matches.push({ key: mapKey, score });
-    });
-
-    matches.sort((a, b) => (b.score - a.score) || a.key.localeCompare(b.key));
-    const topMatches = matches.slice(0, 20);
-    mapSubSearchTruncated.value = matches.length > 20;
-
-    return topMatches.map((match) => {
-        const key = match.key;
-        const sub = subscriptions.value.find((s) => normalizeMapKey(s.map) === key);
-        const comms = sub?.comms || [];
-        const status = sub ? getExgStatus({ map: key, comms }) : null;
-        return {
-            key,
-            displayName: isChineseLang.value ? getMapIndexDisplayName(key) : '',
-            commsLabel: sub ? formatSubComms(comms) : '',
-            status,
-            isSubscribed: subscribedMapKeys.value.has(key),
-            rank: 0,
+        if (!mapKey || subscribedMapKeys.value.has(mapKey)) continue;
+        if (hiddenAfterUnsub.value.has(mapKey)) continue;
+        
+        const match = getSearchMatch(entry, query, { requireExact, allowSubstring: allowFullSearch, allowAlias: true, allowPinyin: allowFullSearch });
+        if (!match) continue;
+        
+        results.push({
+            key: mapKey,
+            displayName: isChineseLang.value ? getMapIndexDisplayName(mapKey) : '',
+            commsLabel: '',
+            status: null,
+            isSubscribed: subscribedMapKeys.value.has(mapKey),
+            rank: match.rank,
             score: match.score,
-            availabilityGroup: getMapSubAvailabilityGroup(status)
-        };
+            availabilityGroup: 'none'
+        });
+        
+        if (results.length >= maxResults) {
+            mapSubSearchTruncated.value = true;
+            break;
+        }
+    }
+    
+    // Add currently subscribed maps that also match
+    const subMatches = buildSubscribedRows().filter(row => {
+        // We need to check if they match current query
+        const entry = getMapIndexEntry(row.key);
+        const match = getSearchMatch(entry, query, { requireExact, allowSubstring: allowFullSearch, allowAlias: true, allowPinyin: allowFullSearch });
+        if (match) {
+            row.rank = match.rank;
+            row.score = match.score;
+            return true;
+        }
+        return false;
     });
+    
+    const merged = [...subMatches, ...results];
+    merged.sort((a, b) => {
+         if (a.rank !== b.rank) return a.rank - b.rank;
+         if (b.score !== a.score) return b.score - a.score;
+         return a.key.localeCompare(b.key);
+    });
+    
+    return merged;
 };
 
 const toggleMapSubMultiSelect = () => {
