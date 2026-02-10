@@ -665,7 +665,8 @@
 
 <script setup lang="ts">
 import { computed, isProxy, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, toRaw, watch } from 'vue';
-import { buildMapSearchIndex, createOpenCCConverter, formatExgDateTime, getExgStatusState, normalizeSearchText, scoreSearchEntry, stripBracketSegments, validateMapIndexEntry, shouldShowExgStatus } from './mapSearchUtils';
+import { buildMapSearchIndex, createOpenCCConverter, formatExgCompactTime, formatExgDateTime, getExgStatusState, normalizeSearchText, scoreSearchEntry, stripBracketSegments, validateMapIndexEntry, shouldShowExgStatus } from './mapSearchUtils';
+import { collectSortedMapMatches, normalizeMapSearchQuery } from './utils/map_search_core';
 
 // [ADDED] Mobile Profile Click Handler
 const handleMobileProfileClick = () => {
@@ -939,7 +940,12 @@ watch(curView, (nextView, prevView) => {
   }
   if (nextView === 'map_cooldown') {
     mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
-    buildCooldownRows({ rebuildAll: mapCooldownNeedsRebuild.value, reason: 'enter-view' });
+    if (mapCooldownNeedsRebuild.value) {
+      buildCooldownRows({ rebuildAll: true, reason: 'enter-view' });
+      mapCooldownNeedsRebuild.value = false;
+    } else {
+      buildCooldownRows({ rebuildAll: false, reason: 'enter-view' });
+    }
     resetMapCooldownScrollState();
     resetMapCooldownFeedState();
     startMapCooldownTimer();
@@ -1741,6 +1747,7 @@ let mapCooldownPendingModes = new Set();
 let mapCooldownSearchTimer = null;
 let mapCooldownHighlightTimer = null;
 let mapCooldownContainerResizeObserver = null;
+let mapBehaviorDebugLogged = false;
 
 const mapCooldownLocale = computed(() => curLang.value);
 const mapCooldownTimeZone = ref(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
@@ -1754,80 +1761,52 @@ const mapCooldownProgressText = computed(() => {
 
 const mapcdQueryTrimmed = computed(() => mapCooldownQueryInput.value.trim());
 const mapCooldownSearchQueryTrimmed = computed(() => mapCooldownSearchQuery.value.trim());
-
-// [FIXED] Use normalizeSearchText instead of normalizeZh
-const mapCooldownSearchQueryNorm = computed(() => normalizeSearchText(mapCooldownSearchQuery.value));
-
+const mapCooldownSearchQueryNorm = computed(() => normalizeMapSearchQuery(mapCooldownSearchQuery.value));
 const mapCooldownBaseRows = computed(() => (coolingOnly.value ? mapCooldownRowsCooling.value : mapCooldownRowsAll.value));
-
-const mapCooldownMatchesQuery = (row) => {
-    const queryNorm = mapCooldownSearchQueryNorm.value;
-    if (!queryNorm) return true;
-    return (row.searchTextNorm || '').includes(queryNorm);
-};
-
 const mapCooldownFilteredRows = computed(() => {
-  const baseRows = mapCooldownRowsAll.value;
-  if (!mapCooldownSearchQueryNorm.value) return baseRows;
-  return baseRows.filter((row) => mapCooldownMatchesQuery(row));
+  const baseRows = mapCooldownBaseRows.value;
+  const queryNorm = mapCooldownSearchQueryNorm.value;
+  if (!queryNorm) return baseRows;
+  return baseRows.filter((row) => (row.searchTextNorm || '').includes(queryNorm));
 });
-
 const mapcdAllMatches = computed(() => {
   const baseRows = mapCooldownRowsAll.value;
   const queryNorm = mapCooldownSearchQueryNorm.value;
   if (!queryNorm) return baseRows;
   return baseRows.filter((row) => (row.searchTextNorm || '').includes(queryNorm));
 });
-
-const mapcdAutoShowAll = computed(() => 
-  coolingOnly.value && 
-  mapcdQueryTrimmed.value.length > 0 && 
-  mapCooldownFilteredRows.value.length === 0 && 
+const mapcdAutoShowAll = computed(() =>
+  coolingOnly.value &&
+  mapcdQueryTrimmed.value.length > 0 &&
+  mapCooldownFilteredRows.value.length === 0 &&
   mapcdAllMatches.value.length > 0
 );
-
 const mapcdDisplayedRows = computed(() => {
-  // If auto-show all is active, we force using the filtered 'all' rows
-  // Otherwise we respect the current mode (cooling or all)
   const baseRows = mapcdAutoShowAll.value ? mapcdAllMatches.value : mapCooldownFilteredRows.value;
-
   const nameValue = (row) => (row.mapLine1 || '').toLowerCase();
   const compareName = (a, b) => nameValue(a).localeCompare(nameValue(b));
-
   if (mapcdSortMode.value === 'availability') {
     return baseRows.slice().sort((a, b) => {
       const aCooldownEpoch = a.deadlineEpochSec;
       const bCooldownEpoch = b.deadlineEpochSec;
-      
-      const aCooling = getMapCooldownAvailability(a) === 'cooling';
-      const bCooling = getMapCooldownAvailability(b) === 'cooling';
-      
+      const aCooling = a.availability === 'cooling' || (typeof aCooldownEpoch === 'number' && aCooldownEpoch > 0);
+      const bCooling = b.availability === 'cooling' || (typeof bCooldownEpoch === 'number' && bCooldownEpoch > 0);
       if (aCooling !== bCooling) return aCooling ? 1 : -1;
       if (!aCooling) return compareName(a, b);
-      
-      // Both cooling, sort by time remaining (descending? or ascending deadline?)
-      // Let's sort by earliest deadline first?
-      // Actually header says "Cooldown End", typically ascending (sooner first).
       if (aCooldownEpoch == null && bCooldownEpoch == null) return compareName(a, b);
       if (aCooldownEpoch == null) return 1;
       if (bCooldownEpoch == null) return -1;
-      
       const diff = aCooldownEpoch - bCooldownEpoch;
       if (diff !== 0) return diff;
-      
       return compareName(a, b);
     });
   }
-  
   return baseRows.slice().sort(compareName);
 });
-
 const onMapcdCooldownEndHeaderClick = () => {
   mapcdSortMode.value = mapcdSortMode.value === 'default' ? 'availability' : 'default';
 };
-
 const mapCooldownRows = computed(() => mapcdDisplayedRows.value);
-
 watch(mapcdDisplayedRows, (newRows) => {
   // When the visible set changes (e.g. search filter), reset window and rebuild prefix
   rebuildMapCooldownPrefixSums();
@@ -1838,31 +1817,27 @@ watch(mapcdDisplayedRows, (newRows) => {
   }
 });
 
-watch(mapCooldownQueryInput, (val) => {
-  if (mapCooldownSearchTimer) clearTimeout(mapCooldownSearchTimer);
+watch(mapCooldownQueryInput, (value) => {
+  if (mapCooldownSearchTimer) {
+    clearTimeout(mapCooldownSearchTimer);
+  }
   mapCooldownSearchTimer = setTimeout(() => {
-    mapCooldownSearchQuery.value = val;
-    // Scroll to top on search change
-    const scrollEl = mapCooldownScrollRef.value;
-    if (scrollEl) {
-      scrollEl.scrollTop = 0;
-      mapCooldownLatestScrollTop = 0;
-    }
-  }, 250);
+    mapCooldownSearchQuery.value = value;
+    nextTick(() => {
+      jumpToBestMapCooldownMatch();
+    });
+    mapCooldownSearchTimer = null;
+  }, 100);
+});
+
+watch(mapCooldownSearchQueryTrimmed, (value) => {
+  if (!value) {
+    mapCooldownHighlightKey.value = '';
+  }
 });
 
 const toggleMapCooldownMode = () => {
   coolingOnly.value = !coolingOnly.value;
-  const scrollEl = mapCooldownScrollRef.value;
-  if (scrollEl) {
-    scrollEl.scrollTop = 0;
-    mapCooldownLatestScrollTop = 0;
-  }
-  nextTick(() => {
-    if (!coolingOnly.value && mapCooldownSearchInputRef.value) {
-      mapCooldownSearchInputRef.value.focus();
-    }
-  });
 };
 
 const clearMapCooldownSearch = () => {
@@ -2344,33 +2319,43 @@ const ensureMapCooldownWorker = () => {
 mapCooldownWorker.onmessage = (event) => {
     console.log('[mapcd] worker message', event.data?.type);
     const { type, payload } = event.data || {};
-    
-    if (type === 'BUILD_RESULT') {
-      if (payload.buildId !== mapCooldownBuildId) return;
-      
-      const { rowsCooling, rowsAll, progress, done } = payload;
-      
-      if (rowsCooling) mapCooldownRowsCooling.value = rowsCooling;
-      if (rowsAll) {
-         mapCooldownRowsAll.value = rowsAll;
-         // Update keys for anchor logic
-         mapCooldownKeysAll.value = rowsAll.map(r => r.key);
+    if (type === 'PROGRESS') {
+      if (!payload || payload.buildId !== mapCooldownBuildId) return;
+      const done = Number(payload.done) || 0;
+      const total = Number(payload.total) || 0;
+      mapCooldownBuildProgress.value = { done, total };
+      return;
+    }
+    if (type === 'RESULT') {
+      if (!payload || payload.buildId !== mapCooldownBuildId) return;
+      const rows = Array.isArray(payload.rows) ? payload.rows : [];
+      const meta = payload.meta || {};
+      if (payload.mode === 'showAll') {
+        mapCooldownRowsAll.value = rows;
+      } else if (payload.mode === 'coolingOnly') {
+        mapCooldownRowsCooling.value = rows;
       }
-      
-      if (progress) {
-         mapCooldownBuildProgress.value = progress;
-      }
-      
-      if (done) {
+      mapCooldownPendingModes.delete(payload.mode);
+      mapCooldownBuildProgress.value = {
+        done: Number(meta.totalRows) || rows.length,
+        total: Number(meta.totalRows) || rows.length
+      };
+      if (mapCooldownPendingModes.size === 0) {
         mapCooldownIsBuilding.value = false;
-        mapCooldownPendingModes.clear();
-        rebuildMapCooldownPrefixSums();
-        clampMapCooldownScrollTop({ force: true });
-      } else {
-         rebuildMapCooldownPrefixSums();
+        mapCooldownNeedsRebuild.value = false;
+        mapCooldownKeysAll.value = mapCooldownRowsAll.value.map((row) => row.key);
+        const rowHeight = Number(meta.rowHeight) || mapCooldownEstimatedRowHeight;
+        mapCooldownLastNonZeroViewportHeight = rowHeight;
+        nextTick(() => {
+          scheduleMapCooldownPrefixRebuild();
+          updateMapCooldownWindow(mapCooldownLatestScrollTop, { force: true });
+          clampMapCooldownScrollTop({ force: true });
+        });
       }
-    } else if (type === 'ERROR') { // 【关键修复】这里原来写的是 data.type，这是错误的！
-      console.error('[mapcd worker]', payload.message, payload.stack);
+      return;
+    }
+    if (type === 'ERROR') {
+      console.error('[mapcd worker]', payload?.message, payload?.stack);
       mapCooldownIsBuilding.value = false;
       mapCooldownPendingModes.clear();
     }
@@ -2421,23 +2406,19 @@ const requestMapCooldownBuild = ({ reason = 'update' } = {}) => {
 };
 
 const buildCooldownRows = ({ rebuildAll = false, reason = 'update' } = {}) => {
-  const needsBuild = rebuildAll || mapCooldownNeedsRebuild.value || mapCooldownRowsAll.value.length === 0;
-  if (!needsBuild) return;
+  if (!rebuildAll && mapCooldownNeedsRebuild.value) return;
   requestMapCooldownBuild({ reason });
-  mapCooldownNeedsRebuild.value = false;
 };
 
 const startMapCooldownTimer = () => {
   if (mapCooldownTimer) return;
   mapCooldownTimer = setInterval(() => {
     mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
-    if (!mapCooldownNeedsRebuild.value) return;
-    
     if (mapCooldownIsFastScrolling.value) {
       mapCooldownPendingRebuild.value = true;
       return;
     }
-    buildCooldownRows({ rebuildAll: true, reason: 'timer-needs-rebuild' });
+    buildCooldownRows({ rebuildAll: false, reason: 'timer' });
   }, 5000);
 };
 
@@ -2448,6 +2429,42 @@ const stopMapCooldownTimer = () => {
   }
 };
 
+
+watch([mapIndex, curLang], () => {
+  mapCooldownNeedsRebuild.value = true;
+  if (curView.value === 'map_cooldown') {
+    mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
+    buildCooldownRows({ rebuildAll: true, reason: 'index-update' });
+    mapCooldownNeedsRebuild.value = false;
+    mapCooldownHeightByKey.clear();
+    scheduleMapCooldownPrefixRebuild();
+  }
+});
+
+watch(coolingOnly, () => {
+  resetMapCooldownScrollState();
+  resetMapCooldownFeedState();
+  mapCooldownHeightByKey.clear();
+  nextTick(() => {
+    setupMapCooldownResizeObserver();
+    setupMapCooldownContainerObserver();
+    scheduleMapCooldownPrefixRebuild();
+    clampMapCooldownScrollTop({ force: true });
+  });
+});
+
+watch(mapCooldownRows, () => {
+  scheduleMapCooldownPrefixRebuild();
+  nextTick(() => {
+    clampMapCooldownScrollTop({ force: true });
+  });
+  if (mapCooldownHighlightKey.value) {
+    const stillExists = mapCooldownRows.value.some((row) => row.key === mapCooldownHighlightKey.value);
+    if (!stillExists) {
+      mapCooldownHighlightKey.value = '';
+    }
+  }
+}, { immediate: true });
 
 // [Map Sub Helper]
 const hasMapIndexExgFields = (entry) => (
@@ -2481,9 +2498,11 @@ const getExgStatus = (sub) => {
     const entry = getMapIndexEntry(mapKey);
     if (!entry || !hasMapIndexExgFields(entry)) return null;
 
-    const deadline = typeof entry.cooldown_end_epoch === 'number' ? entry.cooldown_end_epoch : (typeof entry.deadline === 'number' ? entry.deadline : null);
-    const durationRaw = Object.prototype.hasOwnProperty.call(entry, 'durationRaw') ? entry.durationRaw ?? null : (Object.prototype.hasOwnProperty.call(entry, 'duration_raw') ? entry.duration_raw ?? null : null);
-    const durationSec = typeof entry.durationSec === 'number' ? entry.durationSec : (typeof entry.duration_sec === 'number' ? entry.duration_sec : null);
+    const deadline = typeof entry.cooldown_end_epoch === 'number'
+      ? entry.cooldown_end_epoch
+      : (typeof entry.deadline === 'number' ? entry.deadline : null);
+    const durationRaw = Object.prototype.hasOwnProperty.call(entry, 'duration_raw') ? entry.duration_raw ?? null : null;
+    const durationSec = typeof entry.duration_sec === 'number' ? entry.duration_sec : null;
 
     if (
         (deadline === null || deadline === undefined) &&
@@ -2504,7 +2523,6 @@ const getExgStatus = (sub) => {
 };
 
 const mapSubSearchQueryTrimmed = computed(() => subSearchQuery.value.trim());
-const mapSubQueryNorm = computed(() => normalizeSearchText(mapSubSearchQueryTrimmed.value));
 const mapSubSelectedCount = computed(() => mapSubSelectedKeys.value.size);
 const mapSubSubscribedRows = computed(() => mapSubResults.value.filter(row => subscribedMapKeys.value.has(row.key)));
 const mapSubUnsubscribedRows = computed(() => mapSubResults.value.filter(row => !subscribedMapKeys.value.has(row.key)));
@@ -2532,10 +2550,30 @@ const refreshMapSubResults = () => {
         mapSubSearchTruncated.value = false;
         return;
     }
-    
-    // Full search
+
     const results = buildFullMapRows();
     mapSubResults.value = results;
+
+    if (import.meta.env.DEV && !mapBehaviorDebugLogged) {
+      const totalMatches = collectSortedMapMatches(mapSearchIndex.value, query).length;
+      const visibleUnsubscribed = mapSubUnsubscribedRows.value.length;
+      console.log('[map-search-check]', {
+        mapSub: {
+          query,
+          totalMatches,
+          visibleUnsubscribed,
+          truncated: mapSubSearchTruncated.value
+        },
+        mapCd: {
+          buildResultRowsAll: mapCooldownRowsAll.value.length,
+          buildResultRowsCooling: mapCooldownRowsCooling.value.length,
+          coolingOnly: coolingOnly.value,
+          coolingVisible: mapCooldownRowsCooling.value.length,
+          allVisible: mapCooldownRowsAll.value.length
+        }
+      });
+      mapBehaviorDebugLogged = true;
+    }
 };
 
 const buildSubscribedRows = () => {
@@ -2587,70 +2625,44 @@ const buildSubscribedRows = () => {
 
 const buildFullMapRows = () => {
     const query = mapSubSearchQueryTrimmed.value;
-    const normalizedQuery = mapSubQueryNorm.value;
-    if (!normalizedQuery) return [];
-    
-    const broadPrefix = normalizedQuery.startsWith('ze_') && normalizedQuery.length < 4;
-    const allowFullSearch = normalizedQuery.length >= 3 && !broadPrefix;
-    const requireExact = normalizedQuery.length < 3;
-    
-    if (!allowFullSearch && !requireExact) return [];
-    
-    const maxScan = 10000;
-    const maxResults = 30;
-    const results = [];
-    let scanned = 0;
-    mapSubSearchTruncated.value = false;
-    
-    for (const entry of mapSearchIndex.value) {
-        if (scanned >= maxScan) break;
-        scanned += 1;
-        
-        const mapKey = entry?.key;
-        if (!mapKey || subscribedMapKeys.value.has(mapKey)) continue;
-        if (hiddenAfterUnsub.value.has(mapKey)) continue;
-        
-        const match = getSearchMatch(entry, query, { requireExact, allowSubstring: allowFullSearch, allowAlias: true, allowPinyin: allowFullSearch });
-        if (!match) continue;
-        
-        results.push({
-            key: mapKey,
-            displayName: isChineseLang.value ? getMapIndexDisplayName(mapKey) : '',
-            commsLabel: '',
-            status: null,
-            isSubscribed: subscribedMapKeys.value.has(mapKey),
-            rank: match.rank,
-            score: match.score,
-            availabilityGroup: 'none'
-        });
-        
-        if (results.length >= maxResults) {
-            mapSubSearchTruncated.value = true;
-            break;
-        }
-    }
-    
-    // Add currently subscribed maps that also match
-    const subMatches = buildSubscribedRows().filter(row => {
-        // We need to check if they match current query
-        const entry = getMapIndexEntry(row.key);
-        const match = getSearchMatch(entry, query, { requireExact, allowSubstring: allowFullSearch, allowAlias: true, allowPinyin: allowFullSearch });
-        if (match) {
-            row.rank = match.rank;
-            row.score = match.score;
-            return true;
-        }
-        return false;
+    if (!query) return [];
+
+    const sortedMatches = collectSortedMapMatches(mapSearchIndex.value, query);
+    const subByKey = new Map();
+    subscriptions.value.forEach((sub) => {
+      const key = normalizeMapKey(sub.map);
+      if (key) subByKey.set(key, sub);
     });
-    
-    const merged = [...subMatches, ...results];
-    merged.sort((a, b) => {
-         if (a.rank !== b.rank) return a.rank - b.rank;
-         if (b.score !== a.score) return b.score - a.score;
-         return a.key.localeCompare(b.key);
+
+    const subscribedRows = [];
+    const unsubscribedRowsAll = [];
+
+    sortedMatches.forEach((match) => {
+      const key = match.key;
+      if (!key) return;
+      const isSubscribed = subscribedMapKeys.value.has(key);
+      if (!isSubscribed && hiddenAfterUnsub.value.has(key)) return;
+
+      const sub = subByKey.get(key);
+      const comms = sub?.comms || [];
+      const row = {
+        key,
+        displayName: isChineseLang.value ? getMapIndexDisplayName(key) : '',
+        commsLabel: isSubscribed ? formatSubComms(comms) : '',
+        status: isSubscribed ? getExgStatus({ map: key, comms }) : null,
+        isSubscribed,
+        rank: 0,
+        score: match.score,
+        availabilityGroup: isSubscribed ? getMapSubAvailabilityGroup(getExgStatus({ map: key, comms })) : 'none'
+      };
+
+      if (isSubscribed) subscribedRows.push(row);
+      else unsubscribedRowsAll.push(row);
     });
-    
-    return merged;
+
+    mapSubSearchTruncated.value = unsubscribedRowsAll.length > 50;
+    const visibleUnsubscribedRows = unsubscribedRowsAll.slice(0, 50);
+    return [...subscribedRows, ...visibleUnsubscribedRows];
 };
 
 const toggleMapSubMultiSelect = () => {

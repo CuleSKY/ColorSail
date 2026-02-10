@@ -196,6 +196,19 @@ export const formatExgDateTime = (timestampSec) => {
   return `${year}/${month}/${day} - ${hours}:${minutes}:${seconds}`;
 };
 
+export const formatExgCompactTime = (datetimeString) => {
+  if (!datetimeString) return '';
+  const normalized = datetimeString.replace(' - ', ' ').trim();
+  const [datePart, timePart = ''] = normalized.split(' ');
+  const dateSegments = datePart.split('/');
+  if (dateSegments.length < 3) return datetimeString;
+  const month = dateSegments[1];
+  const day = dateSegments[2];
+  const time = timePart.slice(0, 5);
+  if (!month || !day || !time) return datetimeString;
+  return `${month}/${day} ${time}`;
+};
+
 export const formatLocalDateTime = (timestampSec) => {
   const date = new Date(timestampSec * 1000);
   const year = date.getFullYear();
