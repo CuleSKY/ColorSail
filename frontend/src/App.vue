@@ -502,8 +502,7 @@
                 </div>
               </div>
 
-              <div v-if="mapcdAutoShowAll" class="mapcd-hint">{{ t('mapcd_auto_all_hint') }}</div>
-              <div v-if="mapcdSortMode === 'availability'" class="mapcd-hint mapcd-sort-hint">{{ t('mapcd_sort_hint') }}</div>
+              <div v-if="mapcdAutoShowAll" class="mapcd-hint">{{ t('mapcd_hint_auto_all') }}</div>
 
               <div class="mapcd-container">
                 <div class="mapcd-table">
@@ -515,7 +514,7 @@
                       :class="{ active: mapcdSortMode === 'availability' }"
                       @click="onMapcdCooldownEndHeaderClick"
                     >
-                      <span class="sort-label">{{ t('mapcd_col_cooldown_end') }}</span>
+                      <span class="sort-label">{{ t('cooldown_deadline') }}</span>
                       <span class="sort-tri" aria-hidden="true">▲</span>
                     </div>
                     <div class="mapcd-cell mapcd-col-length">{{ t('cooldown_length') }}</div>
@@ -528,8 +527,7 @@
                       :class="{
                         'is-fast': mapCooldownIsFastScrolling,
                         'is-fresh': isMapCooldownRowFresh(row.key),
-                        'is-highlight': row.key === mapCooldownHighlightKey,
-                        'is-mobile-card': isMobile /* Hook for card layout */
+                        'is-highlight': row.key === mapCooldownHighlightKey
                       }"
                       v-for="row in mapCooldownVisibleRows"
                       :key="row.key"
@@ -548,16 +546,17 @@
                       <div class="mapcd-cell mapcd-col-availability">
                         <span
                           class="mapcd-availability"
-                          :class="getMapCooldownAvailability(row) === 'available' ? 'is-available' : 'is-cooldown'"
+                          :class="row.availability === 'available' ? 'is-available' : 'is-cooldown'"
+                          :title="mapCooldownIsFastScrolling ? '' : row.availabilityTitle"
                         >
-                          <span v-if="getMapCooldownAvailability(row) === 'available'" class="mapcd-availability-icon" v-html="icons.check"></span>
+                          <span v-if="row.availability === 'available'" class="mapcd-availability-icon" v-html="icons.check"></span>
                           <span v-else class="mapcd-availability-icon" v-html="icons.cross"></span>
                         </span>
                       </div>
                     </div>
                     <div class="mapcd-bottom-spacer" :style="{ height: `${mapCooldownBottomSpacerPx}px` }"></div>
-                    <div v-if="mapCooldownRows.length === 0 && !mapCooldownIsBuilding" class="mapcd-empty">
-                      {{ mapCooldownSearchQueryTrimmed ? t('mapcd_no_results') : t('no_data') }}
+                    <div v-if="mapCooldownRows.length === 0 && !mapCooldownIsBuilding && !mapCooldownSearchQueryTrimmed" class="mapcd-empty">
+                      {{ t('no_data') }}
                     </div>
                     <div class="mapcd-edge-fade mapcd-edge-fade--top"></div>
                     <div class="mapcd-edge-fade mapcd-edge-fade--bottom"></div>
@@ -665,7 +664,7 @@
 
 <script setup lang="ts">
 import { computed, isProxy, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, toRaw, watch } from 'vue';
-import { buildMapSearchIndex, createOpenCCConverter, formatExgCompactTime, formatExgDateTime, getExgStatusState, normalizeSearchText, scoreSearchEntry, stripBracketSegments, validateMapIndexEntry, shouldShowExgStatus } from './mapSearchUtils';
+import { buildMapSearchIndex, createOpenCCConverter, formatExgCompactTime, formatExgDateTime, getExgStatusState, normalizeSearchText, normalizeZh, scoreSearchEntry, stripBracketSegments, validateMapIndexEntry, shouldShowExgStatus } from './mapSearchUtils';
 import { collectSortedMapMatches, normalizeMapSearchQuery } from './utils/map_search_core';
 
 // [ADDED] Mobile Profile Click Handler
@@ -1684,15 +1683,8 @@ const getSearchMatch = (entry, query, { requireExact = false, allowSubstring = t
 const mapCooldownScrollRef = ref(null);
 const coolingOnly = ref(true);
 const isAllMapsMode = computed(() => !coolingOnly.value);
-
 const mapCooldownRowsCooling = ref([]);
 const mapCooldownRowsAll = ref([]);
-const mapCooldownKeysAll = ref([]); // Just keys for O(1) checks if needed, or ordered list
-const mapCooldownRowElByKey = new Map();
-const mapCooldownHeightByKey = new Map();
-let mapCooldownScrollInitDone = false;
-let mapCooldownLastNonZeroViewportHeight = 0;
-
 const mapCooldownQueryInput = ref('');
 const mapCooldownSearchInputRef = ref(null);
 const mapCooldownSearchQuery = ref('');
@@ -1701,19 +1693,15 @@ const mapCooldownNowEpoch = ref(Math.floor(Date.now() / 1000));
 const mapCooldownNeedsRebuild = ref(true);
 const mapCooldownIsFastScrolling = ref(false);
 const mapcdSortMode = ref<'default' | 'availability'>('default');
-
-// State for chunked building
 const mapCooldownPendingRebuild = ref(false);
 const mapCooldownIsBuilding = ref(false);
 const mapCooldownBuildProgress = ref({ done: 0, total: 0 });
-
 const mapCooldownEstimatedRowHeight = 68;
-const mapCooldownMaxRendered = 160; 
+const mapCooldownMaxRendered = 160;
 const mapCooldownFastSpeedThresholdHigh = 2.5;
 const mapCooldownFastSpeedThresholdLow = 1.2;
 const mapCooldownScrollIdleMs = 180;
 const mapCooldownDebug = false;
-
 const mapCooldownWinStart = ref(0);
 const mapCooldownWinEnd = ref(0);
 const mapCooldownTopSpacerPx = ref(0);
@@ -1721,7 +1709,6 @@ const mapCooldownBottomSpacerPx = ref(0);
 const mapCooldownVisibleRows = ref([]);
 const mapCooldownTotalHeight = ref(0);
 const mapCooldownFreshKeys = ref(new Set());
-
 let mapCooldownTimer = null;
 let mapCooldownScrollRafId = 0;
 let mapCooldownScrollPending = false;
@@ -1742,21 +1729,25 @@ let mapCooldownPendingModes = new Set();
 let mapCooldownSearchTimer = null;
 let mapCooldownHighlightTimer = null;
 let mapCooldownContainerResizeObserver = null;
-let mapBehaviorDebugLogged = false;
+let mapCooldownLastNonZeroViewportHeight = mapCooldownEstimatedRowHeight;
+const mapCooldownHeightByKey = new Map();
+const mapCooldownRowElByKey = new Map();
 
-const mapCooldownLocale = computed(() => curLang.value);
+const mapCooldownLocale = computed(() => {
+  const lang = curLang.value || 'en-US';
+  return lang === 'en' ? 'en-US' : lang;
+});
 const mapCooldownTimeZone = ref(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
-
 const mapCooldownProgressText = computed(() => {
-   const { done, total } = mapCooldownBuildProgress.value || {};
-   if (!total) return '';
-   const pct = Math.min(100, Math.round((done / total) * 100));
-   return ` ${pct}%`;
+  const { done, total } = mapCooldownBuildProgress.value || {};
+  if (!total) return '';
+  const pct = Math.min(100, Math.round((done / total) * 100));
+  return ` ${pct}%`;
 });
 
 const mapcdQueryTrimmed = computed(() => mapCooldownQueryInput.value.trim());
 const mapCooldownSearchQueryTrimmed = computed(() => mapCooldownSearchQuery.value.trim());
-const mapCooldownSearchQueryNorm = computed(() => normalizeMapSearchQuery(mapCooldownSearchQuery.value));
+const mapCooldownSearchQueryNorm = computed(() => normalizeZh(mapCooldownSearchQuery.value));
 const mapCooldownBaseRows = computed(() => (coolingOnly.value ? mapCooldownRowsCooling.value : mapCooldownRowsAll.value));
 const mapCooldownFilteredRows = computed(() => {
   const baseRows = mapCooldownBaseRows.value;
@@ -1802,43 +1793,35 @@ const onMapcdCooldownEndHeaderClick = () => {
   mapcdSortMode.value = mapcdSortMode.value === 'default' ? 'availability' : 'default';
 };
 const mapCooldownRows = computed(() => mapcdDisplayedRows.value);
-watch(mapcdDisplayedRows, (newRows) => {
-  // When the visible set changes (e.g. search filter), reset window and rebuild prefix
-  rebuildMapCooldownPrefixSums();
-  const scrollEl = mapCooldownScrollRef.value;
-  if (scrollEl) {
-     mapCooldownLatestScrollTop = scrollEl.scrollTop;
-     updateMapCooldownWindow(mapCooldownLatestScrollTop, { force: true });
+const mapCooldownKeysAll = computed(() => mapCooldownRows.value.map((row) => row.key));
+const updateMapCooldownVisibleRows = () => {
+  const total = mapCooldownRows.value.length;
+  const rowHeight = getMapCooldownRowHeight();
+  const totalHeight = total * rowHeight;
+  mapCooldownTotalHeight.value = totalHeight;
+  if (total === 0) {
+    mapCooldownWinStart.value = 0;
+    mapCooldownWinEnd.value = 0;
+    mapCooldownVisibleRows.value = [];
+    mapCooldownTopSpacerPx.value = 0;
+    mapCooldownBottomSpacerPx.value = 0;
+    return;
   }
-});
-
-watch(mapCooldownQueryInput, (value) => {
-  if (mapCooldownSearchTimer) {
-    clearTimeout(mapCooldownSearchTimer);
+  let start = Math.max(0, Math.min(mapCooldownWinStart.value, total - 1));
+  let end = Math.max(start + 1, Math.min(mapCooldownWinEnd.value, total));
+  if (end <= start) {
+    start = Math.min(Math.max(start, 0), total - 1);
+    end = Math.min(start + 1, total);
   }
-  mapCooldownSearchTimer = setTimeout(() => {
-    mapCooldownSearchQuery.value = value;
-    nextTick(() => {
-      jumpToBestMapCooldownMatch();
-    });
-    mapCooldownSearchTimer = null;
-  }, 100);
-});
-
-watch(mapCooldownSearchQueryTrimmed, (value) => {
-  if (!value) {
-    mapCooldownHighlightKey.value = '';
+  mapCooldownWinStart.value = start;
+  mapCooldownWinEnd.value = end;
+  const nextVisibleRows = mapCooldownRows.value.slice(start, end);
+  if (mapCooldownDebug && total > 0 && nextVisibleRows.length === 0) {
+    console.log('[mapcd] visible rows empty with non-zero total', { total, start, end });
   }
-});
-
-const toggleMapCooldownMode = () => {
-  coolingOnly.value = !coolingOnly.value;
-  nextTick(() => {
-    const currentScrollTop = mapCooldownScrollRef.value?.scrollTop || mapCooldownLatestScrollTop;
-    scheduleMapCooldownPrefixRebuild();
-    clampMapCooldownScrollTop({ force: true });
-    updateMapCooldownWindow(currentScrollTop, { force: true });
-  });
+  mapCooldownVisibleRows.value = nextVisibleRows;
+  mapCooldownTopSpacerPx.value = start * rowHeight;
+  mapCooldownBottomSpacerPx.value = Math.max(0, totalHeight - end * rowHeight);
 };
 
 const clearMapCooldownSearch = () => {
@@ -1875,7 +1858,6 @@ const jumpToMapCooldownRow = (row) => {
   if (!row) return;
   const idx = mapcdDisplayedRows.value.findIndex((item) => item.key === row.key);
   if (idx < 0) return;
-  
   const scrollEl = mapCooldownScrollRef.value;
   if (scrollEl) {
     const scrollTop = idx * mapCooldownEstimatedRowHeight;
@@ -1908,80 +1890,72 @@ const onMapCooldownSearchKeydown = (event) => {
 const getMapCooldownRowHeight = () => mapCooldownEstimatedRowHeight;
 
 const rebuildMapCooldownPrefixSums = () => {
-    const total = mapCooldownRows.value.length;
-    const rowHeight = getMapCooldownRowHeight();
-    const nextPrefix = new Array(total + 1);
-    nextPrefix[0] = 0;
-    for (let i = 0; i < total; i += 1) {
-        nextPrefix[i + 1] = nextPrefix[i] + rowHeight;
-    }
-    mapCooldownPrefixSums = nextPrefix;
-    mapCooldownTotalHeight.value = nextPrefix[total];
+  const total = mapCooldownRows.value.length;
+  const rowHeight = getMapCooldownRowHeight();
+  const nextPrefix = new Array(total + 1);
+  nextPrefix[0] = 0;
+  for (let i = 0; i < total; i += 1) {
+    nextPrefix[i + 1] = nextPrefix[i] + rowHeight;
+  }
+  mapCooldownPrefixSums = nextPrefix;
+  mapCooldownTotalHeight.value = total * rowHeight;
 };
 
 const captureMapCooldownAnchor = () => {
-    const scrollEl = mapCooldownScrollRef.value;
-    const scrollTop = scrollEl ? scrollEl.scrollTop : mapCooldownLatestScrollTop;
-    const rowHeight = getMapCooldownRowHeight();
-    const startIndex = Math.floor(scrollTop / rowHeight);
-    const offset = scrollTop - (startIndex * rowHeight);
-    const keys = mapCooldownKeysAll.value;
-    const key = keys[startIndex];
-    return { key, offset, startIndex };
+  const scrollEl = mapCooldownScrollRef.value;
+  if (!scrollEl) return null;
+  const keys = mapCooldownKeysAll.value;
+  if (!keys.length) return null;
+  const startIndex = Math.min(Math.max(0, mapCooldownWinStart.value), keys.length - 1);
+  const anchorKey = keys[startIndex];
+  if (!anchorKey) return null;
+  const anchorTop = startIndex * getMapCooldownRowHeight();
+  return {
+    key: anchorKey,
+    startIndex,
+    offset: scrollEl.scrollTop - anchorTop
+  };
 };
 
 const applyMapCooldownAnchor = (anchor) => {
-    if (!anchor || !anchor.key) return;
-    const scrollEl = mapCooldownScrollRef.value;
-    if (!scrollEl) return;
-    
-    // Find where the anchored key is now
-    const keys = mapCooldownKeysAll.value; // Wait, we should use displayed rows keys
-    // mapCooldownRows keys
-    let anchorIndex = anchor.startIndex;
-    
-    // Check if index still points to same key
-    if (mapCooldownRows.value[anchorIndex]?.key !== anchor.key) {
-        // Linear scan nearby? or findIndex
-        anchorIndex = mapCooldownRows.value.findIndex(r => r.key === anchor.key);
-    }
-    
-    if (anchorIndex < 0) return;
-    
-    const anchorTop = anchorIndex * getMapCooldownRowHeight();
-    const desired = anchorTop + anchor.offset;
-    const maxScrollTop = Math.max(0, mapCooldownTotalHeight.value - scrollEl.clientHeight);
-    
-    mapCooldownIsApplyingScrollAdjust = true;
-    scrollEl.scrollTop = Math.min(Math.max(0, desired), maxScrollTop);
-    mapCooldownLatestScrollTop = scrollEl.scrollTop;
-    mapCooldownIsApplyingScrollAdjust = false;
+  if (!anchor) return;
+  const scrollEl = mapCooldownScrollRef.value;
+  if (!scrollEl) return;
+  const keys = mapCooldownKeysAll.value;
+  let anchorIndex = anchor.startIndex;
+  if (keys[anchorIndex] !== anchor.key) {
+    anchorIndex = keys.indexOf(anchor.key);
+  }
+  if (anchorIndex < 0) return;
+  const anchorTop = anchorIndex * getMapCooldownRowHeight();
+  const desired = anchorTop + anchor.offset;
+  const maxScrollTop = Math.max(0, mapCooldownTotalHeight.value - scrollEl.clientHeight);
+  mapCooldownIsApplyingScrollAdjust = true;
+  scrollEl.scrollTop = Math.min(Math.max(0, desired), maxScrollTop);
+  mapCooldownLatestScrollTop = scrollEl.scrollTop;
+  mapCooldownIsApplyingScrollAdjust = false;
 };
 
 const scheduleMapCooldownPrefixRebuild = () => {
-    if (mapCooldownPrefixRafId) return;
-    const anchor = captureMapCooldownAnchor();
-    mapCooldownPrefixRafId = window.requestAnimationFrame(() => {
-        mapCooldownPrefixRafId = 0;
-        rebuildMapCooldownPrefixSums();
-        
-        // Adjust scroll position if needed (e.g. total height shrank)
-        const scrollEl = mapCooldownScrollRef.value;
-        if (scrollEl) {
-             const maxScrollTop = Math.max(0, mapCooldownTotalHeight.value - scrollEl.clientHeight);
-             if (scrollEl.scrollTop > maxScrollTop) {
-                 mapCooldownIsApplyingScrollAdjust = true;
-                 scrollEl.scrollTop = maxScrollTop;
-                 mapCooldownIsApplyingScrollAdjust = false;
-             }
-             mapCooldownLatestScrollTop = scrollEl.scrollTop;
-        }
-        
-        applyMapCooldownAnchor(anchor);
-        
-        const scrollTop = mapCooldownScrollRef.value?.scrollTop ?? mapCooldownLatestScrollTop;
-        updateMapCooldownWindow(scrollTop, { force: true });
-    });
+  if (mapCooldownPrefixRafId) return;
+  const anchor = captureMapCooldownAnchor();
+  mapCooldownPrefixRafId = window.requestAnimationFrame(() => {
+    mapCooldownPrefixRafId = 0;
+    rebuildMapCooldownPrefixSums();
+    const scrollEl = mapCooldownScrollRef.value;
+    if (scrollEl) {
+      const maxScrollTop = Math.max(0, mapCooldownTotalHeight.value - scrollEl.clientHeight);
+      if (scrollEl.scrollTop > maxScrollTop) {
+        mapCooldownIsApplyingScrollAdjust = true;
+        scrollEl.scrollTop = maxScrollTop;
+        mapCooldownIsApplyingScrollAdjust = false;
+      }
+      mapCooldownLatestScrollTop = scrollEl.scrollTop;
+    }
+    applyMapCooldownAnchor(anchor);
+    const scrollTop = mapCooldownScrollRef.value?.scrollTop ?? mapCooldownLatestScrollTop;
+    updateMapCooldownWindow(scrollTop, { force: true });
+  });
 };
 
 const getMapCooldownViewportHeight = (scrollEl) => {
@@ -2003,7 +1977,6 @@ const clampMapCooldownScrollTop = ({ force = false } = {}) => {
   const viewportHeight = getMapCooldownViewportHeight(scrollEl);
   const totalHeight = totalRows * rowHeight;
   const maxScrollTop = Math.max(0, totalHeight - viewportHeight);
-
   if (scrollEl && scrollEl.scrollTop > maxScrollTop) {
     if (mapCooldownDebug) {
       console.log('[mapcd] scrollTop clamped', { from: scrollEl.scrollTop, to: maxScrollTop });
@@ -2012,7 +1985,6 @@ const clampMapCooldownScrollTop = ({ force = false } = {}) => {
     scrollEl.scrollTop = maxScrollTop;
     mapCooldownIsApplyingScrollAdjust = false;
   }
-  
   const scrollTop = scrollEl ? scrollEl.scrollTop : mapCooldownLatestScrollTop;
   mapCooldownLatestScrollTop = scrollTop;
   updateMapCooldownWindow(scrollTop, { force });
@@ -2024,98 +1996,35 @@ const updateMapCooldownWindow = (scrollTop, { force = false } = {}) => {
   const scrollEl = mapCooldownScrollRef.value;
   const viewportHeight = getMapCooldownViewportHeight(scrollEl);
   const totalHeight = total * rowHeight;
-  
   mapCooldownTotalHeight.value = totalHeight;
-
-  // Render Window Calculation
-  // Overscan for smoother scrolling
-  const overscanRows = mapCooldownIsFastScrolling.value ? 20 : 6;
-  const scrollTopClamped = Math.max(0, Math.min(scrollTop, totalHeight - viewportHeight));
-  
-  // Calculate range
-  const startRowFloat = scrollTopClamped / rowHeight;
-  const baseStart = Math.floor(startRowFloat);
-  
-  // Visible count
-  const visibleCount = Math.ceil(viewportHeight / rowHeight);
-  
-  // Apply overscan
-  let start = Math.max(0, baseStart - overscanRows);
-  let end = Math.min(total, baseStart + visibleCount + overscanRows);
-  
-  // Force even window size for stability? No, dynamic is fine.
-  
-  // If fast scrolling, maybe just render less detail or placeholder? 
-  // We handle that in template with is-fast class.
-
-  // Limit max rendered nodes
-  const currentCount = end - start;
-  const baseRows = visibleCount + (overscanRows * 2); 
-  // If we try to render way too many, clamp it.
-  // But usually scrollTop logic keeps it sane. 
-  // However, if viewport is huge or rowHeight is small, we might have issues.
-  
-  // Dynamic overscan adjustment based on speed could be here.
-  // const expansion = Math.floor(Math.min(50, (mapCooldownLastSpeed * 1.2)));
+  const maxScrollTop = Math.max(0, totalHeight - viewportHeight);
+  const scrollTopClamped = Math.min(Math.max(scrollTop, 0), maxScrollTop);
+  if (mapCooldownDebug && scrollTop !== scrollTopClamped) {
+    console.log('[mapcd] scrollTop clamped in window', { from: scrollTop, to: scrollTopClamped });
+  }
+  if (total === 0) {
+    mapCooldownWinStart.value = 0;
+    mapCooldownWinEnd.value = 0;
+    updateMapCooldownVisibleRows();
+    return;
+  }
+  const baseRows = Math.max(1, Math.ceil(viewportHeight / rowHeight));
+  const overscanRows = Math.min(120, Math.max(30, Math.ceil(baseRows * 1.2)));
   const renderCount = Math.min(mapCooldownMaxRendered, Math.max(baseRows, baseRows + overscanRows * 2));
-  
-  // Re-center window around the viewport center to keep DOM balanced? 
-  // Or just typical start/end. Typical is fine.
-  
-  // Ensure we don't exceed boundaries
-  // Center window logic if we were clamping? 
-  // Simple clamping:
   const anchorIndex = Math.floor((scrollTopClamped + viewportHeight / 2) / rowHeight);
-  
   const maxStart = Math.max(0, total - renderCount);
   let startIndex = Math.min(Math.max(anchorIndex - Math.floor(renderCount / 2), 0), maxStart);
   let endIndex = Math.min(total, startIndex + renderCount);
-  
-  // Sanity check
   if (total > 0 && endIndex <= startIndex) {
-     startIndex = Math.min(Math.max(startIndex, 0), total - 1);
-     endIndex = Math.min(total, startIndex + renderCount);
+    startIndex = Math.min(Math.max(startIndex, 0), total - 1);
+    endIndex = Math.min(total, startIndex + renderCount);
   }
-
   if (!force && startIndex === mapCooldownWinStart.value && endIndex === mapCooldownWinEnd.value) {
     return;
   }
-  
   mapCooldownWinStart.value = startIndex;
   mapCooldownWinEnd.value = endIndex;
-  
   updateMapCooldownVisibleRows();
-};
-
-const updateMapCooldownVisibleRows = () => {
-    const total = mapCooldownRows.value.length;
-    const rowHeight = getMapCooldownRowHeight();
-    const totalHeight = mapCooldownTotalHeight.value;
-    
-    let start = mapCooldownWinStart.value;
-    let end = mapCooldownWinEnd.value;
-    
-    if (end <= start) {
-        start = Math.min(Math.max(start, 0), total - 1);
-        end = Math.min(start + 1, total);
-    }
-    
-    mapCooldownWinStart.value = start;
-    mapCooldownWinEnd.value = end;
-    
-    const nextVisibleRows = mapCooldownRows.value.slice(start, end);
-    if (mapCooldownDebug && total > 0 && nextVisibleRows.length === 0) {
-        console.log('[mapcd] visible rows empty with non-zero total', { total, start, end });
-    }
-    mapCooldownVisibleRows.value = nextVisibleRows;
-    
-    mapCooldownTopSpacerPx.value = start * rowHeight;
-    mapCooldownBottomSpacerPx.value = Math.max(0, totalHeight - end * rowHeight);
-};
-
-
-const onMapCooldownScroll = () => {
-  scheduleMapCooldownRaf();
 };
 
 const scheduleMapCooldownRaf = () => {
@@ -2125,51 +2034,43 @@ const scheduleMapCooldownRaf = () => {
     mapCooldownScrollRafId = 0;
     if (!mapCooldownScrollPending) return;
     mapCooldownScrollPending = false;
-    
     const now = timestamp || performance.now();
     const scrollEl = mapCooldownScrollRef.value;
     const scrollTop = scrollEl ? scrollEl.scrollTop : mapCooldownLatestScrollTop;
     mapCooldownLatestScrollTop = scrollTop;
-    
     if (!mapCooldownLastChangeTs) {
-        mapCooldownLastChangeTs = now;
+      mapCooldownLastChangeTs = now;
     }
-    
     const dtMs = Math.max(1, now - (mapCooldownLastTimestamp || now));
     const delta = Math.abs(scrollTop - mapCooldownLastScrollTop);
     const speed = delta / dtMs;
-    
     mapCooldownLastSpeed = speed;
-    
     if (delta > 0) {
-        mapCooldownLastChangeTs = now;
-        if (mapCooldownIdleTimer) {
-            clearTimeout(mapCooldownIdleTimer);
+      mapCooldownLastChangeTs = now;
+      if (mapCooldownIdleTimer) {
+        clearTimeout(mapCooldownIdleTimer);
+      }
+      mapCooldownIdleTimer = setTimeout(() => {
+        mapCooldownIdleTimer = null;
+        if (
+          mapCooldownIsFastScrolling.value &&
+          !mapCooldownScrollPending &&
+          mapCooldownLastSpeed < mapCooldownFastSpeedThresholdLow
+        ) {
+          mapCooldownIsFastScrolling.value = false;
+          if (mapCooldownPendingRebuild.value) {
+            buildCooldownRows({ rebuildAll: false, reason: 'scroll-idle' });
+            mapCooldownPendingRebuild.value = false;
+            scheduleMapCooldownPrefixRebuild();
+          }
         }
-        mapCooldownIdleTimer = setTimeout(() => {
-            mapCooldownIdleTimer = null;
-            if (
-                mapCooldownIsFastScrolling.value && 
-                !mapCooldownScrollPending && 
-                mapCooldownLastSpeed < mapCooldownFastSpeedThresholdLow
-            ) {
-                mapCooldownIsFastScrolling.value = false;
-                if (mapCooldownPendingRebuild.value) {
-                    buildCooldownRows({ rebuildAll: false, reason: 'scroll-idle' });
-                    mapCooldownPendingRebuild.value = false;
-                    scheduleMapCooldownPrefixRebuild();
-                }
-            }
-        }, mapCooldownScrollIdleMs);
+      }, mapCooldownScrollIdleMs);
     }
-    
     if (!mapCooldownIsFastScrolling.value && speed > mapCooldownFastSpeedThresholdHigh) {
-        mapCooldownIsFastScrolling.value = true;
+      mapCooldownIsFastScrolling.value = true;
     }
-    
     mapCooldownLastScrollTop = scrollTop;
     mapCooldownLastTimestamp = now;
-    
     updateMapCooldownWindow(scrollTop);
   });
 };
@@ -2193,42 +2094,44 @@ const resetMapCooldownScrollState = () => {
     clearTimeout(mapCooldownFreshTimer);
     mapCooldownFreshTimer = null;
   }
+  if (mapCooldownIdleTimer) {
+    clearTimeout(mapCooldownIdleTimer);
+    mapCooldownIdleTimer = null;
+  }
+  if (mapCooldownPrefixRafId) {
+    cancelAnimationFrame(mapCooldownPrefixRafId);
+    mapCooldownPrefixRafId = 0;
+  }
+};
+
+const onMapCooldownScroll = (event) => {
+  const target = event?.target;
+  mapCooldownLatestScrollTop = target?.scrollTop ?? mapCooldownScrollRef.value?.scrollTop ?? 0;
+  if (mapCooldownIsApplyingScrollAdjust) return;
+  scheduleMapCooldownRaf();
 };
 
 const resetMapCooldownFeedState = () => {
-    mapCooldownRowsCooling.value = [];
-    mapCooldownRowsAll.value = [];
-    mapCooldownKeysAll.value = [];
-    mapCooldownNeedsRebuild.value = true;
-    mapCooldownWinStart.value = 0;
-    mapCooldownWinEnd.value = 0;
-    mapCooldownTopSpacerPx.value = 0;
-    mapCooldownBottomSpacerPx.value = 0;
-    mapCooldownVisibleRows.value = [];
-    mapCooldownTotalHeight.value = 0;
+  mapCooldownWinStart.value = 0;
+  mapCooldownWinEnd.value = Math.min(mapCooldownMaxRendered, mapCooldownRows.value.length);
+  updateMapCooldownVisibleRows();
 };
 
-const getMapCooldownAvailability = (row) => {
-    return row.availability || 'unavailable';
-};
-
-const addMapCooldownFreshKeys = (keys) => {
-    if (!keys || keys.length === 0) return;
-    const nextKeys = new Set(mapCooldownFreshKeys.value);
-    keys.forEach((key) => nextKeys.add(key));
-    mapCooldownFreshKeys.value = nextKeys;
-    
-    if (mapCooldownFreshTimer) {
-        clearTimeout(mapCooldownFreshTimer);
-    }
-    
-    const freshUntilTs = performance.now() + 160; 
-    mapCooldownFreshTimer = setTimeout(() => {
-        const clearedKeys = new Set(mapCooldownFreshKeys.value);
-        keys.forEach((key) => clearedKeys.delete(key));
-        mapCooldownFreshKeys.value = clearedKeys;
-        mapCooldownFreshTimer = null;
-    }, Math.max(0, freshUntilTs - performance.now()));
+const markMapCooldownFreshRows = (keys) => {
+  if (!keys.length) return;
+  const nextKeys = new Set(mapCooldownFreshKeys.value);
+  keys.forEach((key) => nextKeys.add(key));
+  mapCooldownFreshKeys.value = nextKeys;
+  if (mapCooldownFreshTimer) {
+    clearTimeout(mapCooldownFreshTimer);
+  }
+  const freshUntilTs = performance.now() + 160;
+  mapCooldownFreshTimer = setTimeout(() => {
+    const clearedKeys = new Set(mapCooldownFreshKeys.value);
+    keys.forEach((key) => clearedKeys.delete(key));
+    mapCooldownFreshKeys.value = clearedKeys;
+    mapCooldownFreshTimer = null;
+  }, Math.max(0, freshUntilTs - performance.now()));
 };
 
 const isMapCooldownRowFresh = (key) => mapCooldownFreshKeys.value.has(key);
@@ -2256,21 +2159,17 @@ const setupMapCooldownResizeObserver = () => {
     entries.forEach((entry) => {
       const key = entry.target?.dataset?.key;
       if (!key) return;
-      
       const nextHeight = Math.ceil(entry.contentRect.height);
       const prevHeight = mapCooldownHeightByKey.get(key);
-      
       if (prevHeight !== nextHeight) {
         mapCooldownHeightByKey.set(key, nextHeight);
         changed = true;
       }
     });
-    
     if (changed) {
-       scheduleMapCooldownPrefixRebuild();
+      scheduleMapCooldownPrefixRebuild();
     }
   });
-  
   mapCooldownRowElByKey.forEach((el) => {
     mapCooldownResizeObserver.observe(el);
   });
@@ -2284,84 +2183,67 @@ const teardownMapCooldownResizeObserver = () => {
 };
 
 const setupMapCooldownContainerObserver = () => {
-    if (mapCooldownContainerResizeObserver) return;
-    const scrollEl = mapCooldownScrollRef.value;
-    if (!scrollEl) return;
-    mapCooldownContainerResizeObserver = new ResizeObserver(() => {
-        const viewportHeight = scrollEl.clientHeight || 0;
-        if (viewportHeight === 0 && mapCooldownDebug) {
-             console.log('[mapcd] container resize to 0 height');
-        }
-        clampMapCooldownScrollTop({ force: true });
-    });
-    mapCooldownContainerResizeObserver.observe(scrollEl);
+  if (mapCooldownContainerResizeObserver) return;
+  const scrollEl = mapCooldownScrollRef.value;
+  if (!scrollEl) return;
+  mapCooldownContainerResizeObserver = new ResizeObserver(() => {
+    const viewportHeight = scrollEl.clientHeight || 0;
+    if (viewportHeight === 0 && mapCooldownDebug) {
+      console.log('[mapcd] container resize to 0 height');
+    }
+    clampMapCooldownScrollTop({ force: true });
+  });
+  mapCooldownContainerResizeObserver.observe(scrollEl);
 };
 
 const teardownMapCooldownContainerObserver = () => {
-    if (!mapCooldownContainerResizeObserver) return;
-    mapCooldownContainerResizeObserver.disconnect();
-    mapCooldownContainerResizeObserver = null;
+  if (!mapCooldownContainerResizeObserver) return;
+  mapCooldownContainerResizeObserver.disconnect();
+  mapCooldownContainerResizeObserver = null;
 };
-
-watch(mapCooldownScrollRef, (scrollEl) => {
-    if (!scrollEl || mapCooldownScrollInitDone) return;
-    mapCooldownScrollInitDone = true;
-    setupMapCooldownResizeObserver();
-    setupMapCooldownContainerObserver();
-    clampMapCooldownScrollTop({ force: true });
-    updateMapCooldownWindow(scrollEl.scrollTop ?? 0, { force: true });
-});
 
 const ensureMapCooldownWorker = () => {
   if (mapCooldownWorker) return;
   mapCooldownWorker = new Worker(new URL('./workers/mapCooldown.worker.ts', import.meta.url), { type: 'module' });
   console.log('[mapcd] worker creating');
-  
-mapCooldownWorker.onmessage = (event) => {
-    console.log('[mapcd] worker message', event.data?.type);
-    const { type, payload } = event.data || {};
-    if (type === 'PROGRESS') {
-      if (!payload || payload.buildId !== mapCooldownBuildId) return;
-      const done = Number(payload.done) || 0;
-      const total = Number(payload.total) || 0;
-      mapCooldownBuildProgress.value = { done, total };
+  mapCooldownWorker.onmessage = (event) => {
+    console.log('[mapcd] worker message', event?.data?.type, event?.data);
+    const { data } = event || {};
+    if (!data) return;
+    const payload = data.payload || {};
+    if (payload.buildId !== undefined && payload.buildId !== mapCooldownBuildId) return;
+    if (data.type === 'PROGRESS') {
+      mapCooldownBuildProgress.value = {
+        done: payload.done || 0,
+        total: payload.total || 0
+      };
       return;
     }
-    if (type === 'RESULT') {
-      if (!payload || payload.buildId !== mapCooldownBuildId) return;
-      const rows = Array.isArray(payload.rows) ? payload.rows : [];
-      const meta = payload.meta || {};
+    if (data.type === 'RESULT') {
       if (payload.mode === 'showAll') {
-        mapCooldownRowsAll.value = rows;
+        mapCooldownRowsAll.value = payload.rows || [];
       } else if (payload.mode === 'coolingOnly') {
-        mapCooldownRowsCooling.value = rows;
+        mapCooldownRowsCooling.value = payload.rows || [];
       }
-      mapCooldownPendingModes.delete(payload.mode);
-      mapCooldownBuildProgress.value = {
-        done: Number(meta.totalRows) || rows.length,
-        total: Number(meta.totalRows) || rows.length
-      };
+      if (mapCooldownPendingModes.has(payload.mode)) {
+        mapCooldownPendingModes.delete(payload.mode);
+      }
       if (mapCooldownPendingModes.size === 0) {
         mapCooldownIsBuilding.value = false;
         mapCooldownNeedsRebuild.value = false;
-        mapCooldownKeysAll.value = mapCooldownRowsAll.value.map((row) => row.key);
-        const rowHeight = Number(meta.rowHeight) || mapCooldownEstimatedRowHeight;
-        mapCooldownLastNonZeroViewportHeight = rowHeight;
-        nextTick(() => {
-          scheduleMapCooldownPrefixRebuild();
-          updateMapCooldownWindow(mapCooldownLatestScrollTop, { force: true });
-          clampMapCooldownScrollTop({ force: true });
-        });
       }
+      scheduleMapCooldownPrefixRebuild();
+      nextTick(() => {
+        clampMapCooldownScrollTop({ force: true });
+      });
       return;
     }
-    if (type === 'ERROR') {
-      console.error('[mapcd worker]', payload?.message, payload?.stack);
+    if (data.type === 'ERROR') {
+      console.error('[mapcd worker]', payload.message, payload.stack);
       mapCooldownIsBuilding.value = false;
       mapCooldownPendingModes.clear();
     }
   };
-  
   mapCooldownWorker.onerror = (event) => console.error('[mapcd] worker error', event);
   mapCooldownWorker.onmessageerror = (event) => console.error('[mapcd] worker messageerror', event);
 };
@@ -2369,23 +2251,23 @@ mapCooldownWorker.onmessage = (event) => {
 const requestMapCooldownBuild = ({ reason = 'update' } = {}) => {
   ensureMapCooldownWorker();
   if (!mapCooldownWorker) return;
-  
   mapCooldownTimeZone.value = Intl.DateTimeFormat().resolvedOptions().timeZone || mapCooldownTimeZone.value;
-
   mapCooldownBuildId += 1;
   mapCooldownPendingModes = new Set(['showAll', 'coolingOnly']);
   mapCooldownIsBuilding.value = true;
   mapCooldownBuildProgress.value = { done: 0, total: 0 };
-  
   const mode = 'showAll';
   const mapIndexValue = mapIndex.value || {};
   const mapIndexIsProxy = isProxy(mapIndexValue);
-  
-  console.log('[mapcd] posting BUILD', { mode, locale: mapCooldownLocale.value, timeZone: mapCooldownTimeZone.value, nowEpochSec: mapCooldownNowEpoch.value, mapIndexKeys: Object.keys(mapIndexValue).length });
+  console.log('[mapcd] posting BUILD', {
+    mode,
+    locale: mapCooldownLocale.value,
+    timeZone: mapCooldownTimeZone.value,
+    nowEpochSec: mapCooldownNowEpoch.value,
+    mapIndexKeys: Object.keys(mapIndexValue).length
+  });
   console.log('[mapcd] mapIndex isProxy', mapIndexIsProxy);
-  
   const plainMapIndex = JSON.parse(JSON.stringify(mapIndexIsProxy ? toRaw(mapIndexValue) : mapIndexValue));
-  
   mapCooldownWorker.postMessage({
     type: 'BUILD',
     payload: {
@@ -2407,7 +2289,7 @@ const requestMapCooldownBuild = ({ reason = 'update' } = {}) => {
 };
 
 const buildCooldownRows = ({ rebuildAll = false, reason = 'update' } = {}) => {
-  if (!rebuildAll && !mapCooldownNeedsRebuild.value) return;
+  if (!rebuildAll && mapCooldownNeedsRebuild.value) return;
   requestMapCooldownBuild({ reason });
 };
 
@@ -2430,6 +2312,28 @@ const stopMapCooldownTimer = () => {
   }
 };
 
+const toggleMapCooldownMode = () => {
+  coolingOnly.value = !coolingOnly.value;
+};
+
+watch(mapCooldownQueryInput, (value) => {
+  if (mapCooldownSearchTimer) {
+    clearTimeout(mapCooldownSearchTimer);
+  }
+  mapCooldownSearchTimer = setTimeout(() => {
+    mapCooldownSearchQuery.value = value;
+    nextTick(() => {
+      jumpToBestMapCooldownMatch();
+    });
+    mapCooldownSearchTimer = null;
+  }, 100);
+});
+
+watch(mapCooldownSearchQueryTrimmed, (value) => {
+  if (!value) {
+    mapCooldownHighlightKey.value = '';
+  }
+});
 
 watch([mapIndex, curLang], () => {
   mapCooldownNeedsRebuild.value = true;
@@ -2467,7 +2371,6 @@ watch(mapCooldownRows, () => {
   }
 }, { immediate: true });
 
-// [Map Sub Helper]
 const hasMapIndexExgFields = (entry) => (
   entry && typeof entry === 'object' &&
   ['deadline', 'cooldown_end_epoch', 'duration_raw', 'duration_sec']
