@@ -940,14 +940,9 @@ watch(curView, (nextView, prevView) => {
   }
   if (nextView === 'map_cooldown') {
     mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
-    if (mapCooldownNeedsRebuild.value) {
-      buildCooldownRows({ rebuildAll: true, reason: 'enter-view' });
-      mapCooldownNeedsRebuild.value = false;
-    } else {
-      buildCooldownRows({ rebuildAll: false, reason: 'enter-view' });
-    }
     resetMapCooldownScrollState();
     resetMapCooldownFeedState();
+    buildCooldownRows({ rebuildAll: true, reason: 'enter-view' });
     startMapCooldownTimer();
     nextTick(() => {
       if (mapCooldownScrollRef.value) {
@@ -1838,6 +1833,12 @@ watch(mapCooldownSearchQueryTrimmed, (value) => {
 
 const toggleMapCooldownMode = () => {
   coolingOnly.value = !coolingOnly.value;
+  nextTick(() => {
+    const currentScrollTop = mapCooldownScrollRef.value?.scrollTop || mapCooldownLatestScrollTop;
+    scheduleMapCooldownPrefixRebuild();
+    clampMapCooldownScrollTop({ force: true });
+    updateMapCooldownWindow(currentScrollTop, { force: true });
+  });
 };
 
 const clearMapCooldownSearch = () => {
@@ -2406,7 +2407,7 @@ const requestMapCooldownBuild = ({ reason = 'update' } = {}) => {
 };
 
 const buildCooldownRows = ({ rebuildAll = false, reason = 'update' } = {}) => {
-  if (!rebuildAll && mapCooldownNeedsRebuild.value) return;
+  if (!rebuildAll && !mapCooldownNeedsRebuild.value) return;
   requestMapCooldownBuild({ reason });
 };
 
