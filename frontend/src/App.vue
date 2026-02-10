@@ -1,6 +1,6 @@
 <template>
   <div
-    :class="{ 'app-blurred': showLoginPrompt }"
+    :class="{ 'app-blurred': showLoginPrompt, 'is-mobile-layout': isMobile }"
     :style="isMobile ? {} : { display: 'flex', width: '100%', height: '100%' }"
     @click="closeDropdowns"
   >
@@ -18,7 +18,7 @@
       </div>
     </div>
 
-    <div id="sidebar" v-if="!embedMode" :class="{ collapsed: isCollapsed }" @click.stop>
+    <div id="sidebar" v-if="!embedMode && !isMobile" :class="{ collapsed: isCollapsed }" @click.stop>
       <button class="hamburger-btn" @click="toggleSidebar">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
@@ -89,6 +89,22 @@
       </div>
     </div>
 
+    <div 
+      class="mobile-bottom-nav" 
+      :class="{ 'nav-hidden': !isNavVisible }" 
+      v-if="isMobile && !embedMode"
+    >
+      <div class="mob-nav-item" :class="{active: curView === 'servers'}" @click="goToView('servers')">
+        <div class="mob-icon" v-html="icons.server"></div>
+        <span class="mob-label">{{ t('servers') }}</span>
+      </div>
+      
+      <div class="mob-nav-item" v-if="hasFeature('map_cd')" :class="{active: curView === 'map_cooldown'}" @click="goToView('map_cooldown')">
+        <div class="mob-icon" v-html="icons.map"></div>
+        <span class="mob-label">{{ t('mapcd') }}</span>
+      </div>
+    </div>
+
     <div class="content-wrapper">
       <div class="edit-banner" v-if="!embedMode && isEditMode"></div>
       <header v-if="!embedMode">
@@ -126,7 +142,8 @@
               </div>
             </div>
           </div>
-          <div class="header-toolbar" v-if="curView === 'servers'">
+          
+          <div class="header-toolbar" v-if="curView === 'servers' && !isMobile">
             <button class="toolbar-btn" @click.stop="toggleViewMode" :title="t('switch_view')">
               <div class="icon-svg" v-html="viewMode === 'grid' ? icons.list : icons.grid"></div>
               <span>{{ viewMode === 'grid' ? t('view_list') : t('view_grid') }}</span>
@@ -138,7 +155,11 @@
           </div>
 
           <div class="top-controls">
-            <div class="desktop-only-icon" v-if="isLoggedIn" style="position: relative;">
+            <button class="control-btn mobile-only" v-if="isMobile && isLoggedIn" @click.stop="toggleProfileMenu">
+               <div class="icon-svg" v-html="icons.bell"></div>
+            </button>
+
+            <div class="desktop-only-icon" v-if="isLoggedIn && !isMobile" style="position: relative;">
               <button class="control-btn" :class="{'menu-active': showSubPopover}" @click.stop="toggleSubPopover" :title="t('my_subs')">
                 <div class="icon-svg" v-html="icons.bell"></div>
               </button>
@@ -398,85 +419,7 @@
               </div>
             </div>
 
-            <div
-              v-if="mapSubMultiSelectMode && mapSubUnsubscribedRows.length > 0"
-              ref="bulkToolbarRef"
-              class="sub-bulk-toolbar"
-              :style="bulkToolbarStyle"
-            >
-              <div class="sub-bulk-toolbar-title">
-                {{ formatTemplate(t('map_sub_selected_count'), { count: mapSubSelectedCount }) }}
-              </div>
-              <button
-                class="sub-bulk-tool-btn sub-bulk-tool-btn--primary"
-                :disabled="mapSubSelectedCount === 0"
-                @click.stop="openBulkSubscribePopover($event)"
-              >
-                <span class="sub-bulk-tool-icon" v-html="icons.check"></span>
-                {{ t('map_sub_bulk_subscribe') }}
-              </button>
-              <button class="sub-bulk-tool-btn" @click="cancelMapSubMultiSelect">
-                <span class="sub-bulk-tool-icon" v-html="icons.cross"></span>
-                {{ t('map_sub_cancel') }}
-              </button>
-              <button class="sub-bulk-tool-btn" @click="selectAllMapSub">
-                <span class="sub-bulk-tool-icon" v-html="icons.list"></span>
-                {{ t('map_sub_select_all') }}
-              </button>
-              <button class="sub-bulk-tool-btn" @click="clearMapSubSelection">
-                <span class="sub-bulk-tool-icon" v-html="icons.trash"></span>
-                {{ t('map_sub_clear_all') }}
-              </button>
-            </div>
-
             <div class="sub-test-btn" @click="testNotification">{{ t('test_notify') }}</div>
-          </div>
-        </div>
-
-        <div v-if="mapSubPopoverOpen" class="sub-popover-backdrop" @click="closeMapSubPopover">
-          <div
-            class="sub-popover-panel"
-            @click.stop
-          >
-            <div class="sub-popover-header">
-              <div class="sub-popover-title">{{ mapSubPopoverTitle }}</div>
-              <div
-                class="sub-popover-hint"
-                :class="{ 'is-hidden': mapSubPopoverSelectedCount !== 0 }"
-              >
-                {{ t('map_sub_choose_communities_required_hint') }}
-              </div>
-            </div>
-            <div class="sub-popover-list">
-              <button
-                v-for="comm in mapSubPopoverCommunities"
-                :key="comm.id"
-                type="button"
-                class="sub-popover-chip"
-                :class="{ 'is-selected': mapSubPopoverSelected.has(comm.id) }"
-                @click="toggleMapSubPopoverCommunity(comm.id)"
-              >
-                <span class="sub-popover-chip-text">{{ comm.name }}</span>
-                <span v-if="mapSubPopoverSelected.has(comm.id)" class="sub-popover-chip-icon" v-html="icons.check"></span>
-              </button>
-            </div>
-            <div class="sub-popover-footer">
-              <span class="sub-popover-count">
-                {{ formatTemplate(t('map_sub_selected_count'), { count: mapSubPopoverSelectedCount }) }}
-              </span>
-            </div>
-            <div class="sub-popover-actions">
-              <button class="sub-popover-btn sub-popover-btn--cancel" @click="closeMapSubPopover">
-                {{ t('map_sub_cancel') }}
-              </button>
-              <button
-                class="sub-popover-btn sub-popover-btn--confirm"
-                :disabled="mapSubPopoverSelectedCount === 0"
-                @click="confirmMapSubPopover"
-              >
-                {{ t('map_sub_confirm') }}
-              </button>
-            </div>
           </div>
         </div>
 
@@ -585,7 +528,8 @@
                       :class="{
                         'is-fast': mapCooldownIsFastScrolling,
                         'is-fresh': isMapCooldownRowFresh(row.key),
-                        'is-highlight': row.key === mapCooldownHighlightKey
+                        'is-highlight': row.key === mapCooldownHighlightKey,
+                        'is-mobile-card': isMobile /* Hook for card layout */
                       }"
                       v-for="row in mapCooldownVisibleRows"
                       :key="row.key"
@@ -631,15 +575,106 @@
           </div>
         </div>
       </div>
-      <div class="fixed-logo"><img :src="currentLogoPath" alt="nerv_logo"></div>
+      <div class="fixed-logo" v-if="!isMobile"><img :src="currentLogoPath" alt="nerv_logo"></div>
     </div>
     <div class="toast" v-if="toastMsg" :class="{show: toastMsg}">{{ toastMsg }}</div>
+
+    <div
+      v-if="mapSubPopoverOpen"
+      class="sub-popover-backdrop"
+      @click="closeMapSubPopover"
+    >
+      <div
+        class="sub-popover-panel"
+        @click.stop
+      >
+        <div class="sub-popover-header">
+          <div class="sub-popover-title">{{ mapSubPopoverTitle }}</div>
+          <div
+            class="sub-popover-hint"
+            :class="{ 'is-hidden': mapSubPopoverSelectedCount !== 0 }"
+          >
+            {{ t('map_sub_choose_communities_required_hint') }}
+          </div>
+        </div>
+        <div class="sub-popover-list">
+          <button
+            v-for="comm in mapSubPopoverCommunities"
+            :key="comm.id"
+            type="button"
+            class="sub-popover-chip"
+            :class="{ 'is-selected': mapSubPopoverSelected.has(comm.id) }"
+            @click="toggleMapSubPopoverCommunity(comm.id)"
+          >
+            <span class="sub-popover-chip-text">{{ comm.name }}</span>
+            <span v-if="mapSubPopoverSelected.has(comm.id)" class="sub-popover-chip-icon" v-html="icons.check"></span>
+          </button>
+        </div>
+        <div class="sub-popover-footer">
+          <span class="sub-popover-count">
+            {{ formatTemplate(t('map_sub_selected_count'), { count: mapSubPopoverSelectedCount }) }}
+          </span>
+        </div>
+        <div class="sub-popover-actions">
+          <button class="sub-popover-btn sub-popover-btn--cancel" @click="closeMapSubPopover">
+            {{ t('map_sub_cancel') }}
+          </button>
+          <button
+            class="sub-popover-btn sub-popover-btn--confirm"
+            :disabled="mapSubPopoverSelectedCount === 0"
+            @click="confirmMapSubPopover"
+          >
+            {{ t('map_sub_confirm') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="mapSubMultiSelectMode && mapSubUnsubscribedRows.length > 0"
+      ref="bulkToolbarRef"
+      class="sub-bulk-toolbar"
+      :style="bulkToolbarStyle"
+    >
+      <div class="sub-bulk-toolbar-title">
+        {{ formatTemplate(t('map_sub_selected_count'), { count: mapSubSelectedCount }) }}
+      </div>
+      <button
+        class="sub-bulk-tool-btn sub-bulk-tool-btn--primary"
+        :disabled="mapSubSelectedCount === 0"
+        @click.stop="openBulkSubscribePopover($event)"
+      >
+        <span class="sub-bulk-tool-icon" v-html="icons.check"></span>
+        {{ t('map_sub_bulk_subscribe') }}
+      </button>
+      <button class="sub-bulk-tool-btn" @click="cancelMapSubMultiSelect">
+        <span class="sub-bulk-tool-icon" v-html="icons.cross"></span>
+        {{ t('map_sub_cancel') }}
+      </button>
+      <button class="sub-bulk-tool-btn" @click="selectAllMapSub">
+        <span class="sub-bulk-tool-icon" v-html="icons.list"></span>
+        {{ t('map_sub_select_all') }}
+      </button>
+      <button class="sub-bulk-tool-btn" @click="clearMapSubSelection">
+        <span class="sub-bulk-tool-icon" v-html="icons.trash"></span>
+        {{ t('map_sub_clear_all') }}
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, isProxy, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, toRaw, watch } from 'vue';
-import { buildMapSearchIndex, createOpenCCConverter, formatExgDateTime, getExgStatusState, normalizeSearchText, scoreSearchEntry, stripBracketSegments, validateMapIndexEntry } from './mapSearchUtils';
+import { buildMapSearchIndex, createOpenCCConverter, formatExgDateTime, getExgStatusState, normalizeSearchText, scoreSearchEntry, stripBracketSegments, validateMapIndexEntry, shouldShowExgStatus } from './mapSearchUtils';
+
+// [ADDED] Mobile Profile Click Handler
+const handleMobileProfileClick = () => {
+    if(!isLoggedIn.value) {
+        startSteamLogin();
+    } else {
+        goToView('map_sub');
+    }
+};
 
 const props = defineProps({
   initialConfig: {
@@ -659,7 +694,7 @@ const ICONS = {
   feedback: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4l3.2 3.2a.75.75 0 0 0 1.28-.53V17H19a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5Zm2.5 5.75a.75.75 0 0 1 .75-.75h7a.75.75 0 0 1 0 1.5h-7a.75.75 0 0 1-.75-.75Zm.75 3.25a.75.75 0 0 0 0 1.5H13a.75.75 0 0 0 0-1.5H8.25Z" fill="currentColor"/></svg>`,
   lang: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M18 2a1 1 0 1 0-2 0v1h-4a1 1 0 0 0-1 1v1.25a1 1 0 1 0 2 0V5h8v.25a1 1 0 1 0 2 0V4a1 1 0 0 0-1-1h-4V2ZM8.563 7.505l.056.117 5.307 13.005a1 1 0 0 1-1.801.86l-.05-.105L10.692 18H4.407l-1.49 3.407a1 1 0 0 1-1.208.555l-.11-.04a1 1 0 0 1-.555-1.208l.04-.11L6.777 7.6c.337-.77 1.395-.795 1.786-.094Zm-.902 3.062L5.282 16h4.595l-2.216-5.432ZM13.499 7a1 1 0 0 1 1-1h5a1 1 0 0 1 .708 1.707L18.414 9.5H22a1 1 0 1 1 0 2h-4v2.984a2.5 2.5 0 0 1-3.219 2.394l-.569-.17a1 1 0 1 1 .575-1.916l.569.17a.5.5 0 0 0 .643-.478V11.5H12a1 1 0 1 1 0-2h4a1 1 0 0 1 .292-.707L17.085 8H14.5a1 1 0 0 1-1-1Z" fill="currentColor"/></svg>`,
   theme: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Zm0-2V4a8 8 0 1 1 0 16Z" fill="currentColor"/></svg>`,
-  grid: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6Zm10-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V6ZM4 16a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4Zm10-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-4Z" fill="currentColor"/></svg>`,
+  grid: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6Zm10-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V6ZM4 16a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4Zm10-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-4Z" fill="currentColor"/></svg>`,
   list: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 6a1 1 0 0 1 1-1h16a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1zm0 6a1 1 0 0 1 1-1h16a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1zm1 5a1 1 0 1 0 0 2h16a1 1 0 1 0 0-2H4z" fill="currentColor"/></svg>`,
   edit: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/></svg>`,
   sort: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z" fill="currentColor"/></svg>`,
@@ -883,6 +918,11 @@ const restoreServersScroll = async () => {
     window.scrollTo(0, serversScrollTop.value);
   }
 };
+
+// [NEW] Mobile Nav Scroll Logic Vars
+const isNavVisible = ref(true);
+const lastScrollTop = ref(0);
+
 watch(curView, (nextView, prevView) => {
   if (prevView === 'servers' && nextView !== 'servers') {
     saveServersScroll();
@@ -894,6 +934,8 @@ watch(curView, (nextView, prevView) => {
     hiddenAfterUnsub.value = new Set();
     mapSubPopoverOpen.value = false;
     mapSubPopoverSelected.value = new Set();
+    // [修改点 2] 切换视图时取消批量选择模式
+    mapSubMultiSelectMode.value = false;
   }
   if (nextView === 'map_cooldown') {
     mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
@@ -918,6 +960,9 @@ watch(curView, (nextView, prevView) => {
     teardownMapCooldownResizeObserver();
     teardownMapCooldownContainerObserver();
   }
+  
+  // Reset Nav State
+  isNavVisible.value = true;
 });
 watch([isLoggedIn, curView], () => {
   scheduleServerRefresh();
@@ -931,9 +976,21 @@ const updateFavicon = () => {
 };
 
 watch(curLang, () => document.title = t('app_title'), { immediate: true });
+
+// [UPDATED] Responsive Resize Logic
 const handleResize = () => {
-  viewportWidth.value = window.innerWidth;
-  isMobile.value = window.innerWidth <= 768;
+  const width = window.innerWidth;
+  viewportWidth.value = width;
+  isMobile.value = width <= 768;
+  
+  // Auto collapse for small laptops
+  if (width > 768 && width <= 1366) {
+     if(!isCollapsed.value && !localStorage.getItem('sidebar_collapsed_manual')) {
+         isCollapsed.value = true;
+         document.documentElement.classList.add('sidebar-is-collapsed');
+     }
+  }
+
   updateBulkToolbarPosition();
   if (curView.value === 'map_cooldown') {
     mapCooldownLatestScrollTop = mapCooldownScrollRef.value?.scrollTop || mapCooldownLatestScrollTop;
@@ -944,41 +1001,87 @@ const handleResize = () => {
   }
 };
 
-const handleGlobalClick = (e) => {
-  const target = e.target;
-  const inLang = target.closest('.dropdown-menu') || target.closest('.control-btn') || target.closest('.profile-btn');
-  if (!inLang) {
-    showLangMenu.value = false;
-    showSubPopover.value = false;
-    showProfileMenu.value = false;
+// [修改] 滚动处理逻辑：回归元素滚动 (更稳定)
+const handleContentScroll = () => {
+  if (!isMobile.value) return;
+  
+  // 获取滚动容器
+  const scrollEl = mainContentRef.value;
+  if (!scrollEl) return;
+
+  // 直接读取容器的 scrollTop
+  const currentScroll = scrollEl.scrollTop;
+  
+  // 防止 iOS 橡皮筋效果产生负数干扰
+  if (currentScroll < 0) return;
+
+  const delta = currentScroll - lastScrollTop.value;
+  
+  // 防抖阈值
+  if (Math.abs(delta) < 10) return;
+
+  // 向下滚动隐藏，向上滚动显示
+  if (delta > 0 && currentScroll > 60) {
+    isNavVisible.value = false;
+  } else {
+    isNavVisible.value = true;
+  }
+  
+  lastScrollTop.value = currentScroll;
+};
+
+// [ADDED] Global Click Handler to close dropdowns
+const handleGlobalClick = () => {
+  closeDropdowns();
+};
+
+const handleGlobalKeydown = (e) => {
+  if (e.key === 'Escape') {
+    closeDropdowns();
   }
 };
-const handleGlobalKeydown = (event) => {
-  if (event.key === 'Escape' && mapSubPopoverOpen.value) {
-    closeMapSubPopover();
-  }
-};
+
 const handleVisibilityChange = () => {
-  scheduleServerRefresh();
-  scheduleStatsRefresh();
-};
-
-const clearToastTimer = () => {
-  if (toastTimer) {
-    clearTimeout(toastTimer);
-    toastTimer = null;
+  if (!document.hidden) {
+    refreshAllServers();
+    if (curView.value === 'map_cooldown') {
+      mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
+      buildCooldownRows({ rebuildAll: true, reason: 'visibility-visible' });
+    }
   }
 };
 
-const showToast = (message, duration = 3000) => {
-  toastMsg.value = message;
+let clearToastTimer = () => {
+  if (toastTimer) clearTimeout(toastTimer);
+};
+const showToast = (msg, duration = 3000) => {
+  toastMsg.value = msg;
   clearToastTimer();
-  if (message) {
-    toastTimer = setTimeout(() => {
-      toastMsg.value = '';
-      toastTimer = null;
-    }, duration);
-  }
+  toastTimer = setTimeout(() => {
+    toastMsg.value = '';
+  }, duration);
+};
+
+const startSteamLogin = () => {
+  if (steamAuthPending.value) return;
+  steamAuthPending.value = true;
+  const width = 800;
+  const height = 600;
+  const left = (window.screen.width - width) / 2;
+  const top = (window.screen.height - height) / 2;
+  steamLoginWindow = window.open(
+    '/api/steam/login',
+    'SteamLogin',
+    `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,resizable=yes`
+  );
+  if (steamLoginTimer) clearInterval(steamLoginTimer);
+  steamLoginTimer = setInterval(() => {
+    if (steamLoginWindow && steamLoginWindow.closed) {
+      stopSteamLoginWatcher();
+      steamAuthPending.value = false;
+      fetchSteamStatus(true);
+    }
+  }, 1000);
 };
 
 const stopSteamLoginWatcher = () => {
@@ -1000,7 +1103,6 @@ const fetchSteamStatus = async (silent = false) => {
       role: isLoggedInBool ? (data.role || 'member') : 'guest'
     };
     isPrime.value = Boolean(isLoggedInBool && data.prime);
-
     if (isLoggedInBool) {
       steamProfile.value = data.profile || { name: null, avatar: null };
       steamId.value = data.steam_id;
@@ -1009,7 +1111,6 @@ const fetchSteamStatus = async (silent = false) => {
       steamId.value = null;
       isPrime.value = false;
     }
-
     return data;
   } catch (e) {
     if (!silent) {
@@ -1046,54 +1147,92 @@ const handleSteamMessage = async (event) => {
   }
 };
 
-const BULK_TOOLBAR_GAP = 16;
-const BULK_TOOLBAR_TOP = 120;
 const updateBulkToolbarPosition = () => {
   if (!mapSubMultiSelectMode.value) return;
+  
   const shellEl = mapSubUnsubscribedRef.value;
   const toolbarEl = bulkToolbarRef.value;
+  
   if (!shellEl || !toolbarEl) return;
+  
   const shellRect = shellEl.getBoundingClientRect();
   const toolbarRect = toolbarEl.getBoundingClientRect();
-  const toolbarWidth = toolbarRect.width || toolbarEl.offsetWidth || 0;
   const viewportWidthValue = window.innerWidth;
-  let left = shellRect.right + BULK_TOOLBAR_GAP;
-  if (left + toolbarWidth > viewportWidthValue - BULK_TOOLBAR_GAP) {
-    left = Math.max(BULK_TOOLBAR_GAP, viewportWidthValue - toolbarWidth - BULK_TOOLBAR_GAP);
+  
+  const headerHeight = 85; // Height of the fixed header + buffer
+  
+  // 1. Vertical Positioning (Sticky behavior)
+  // Align with the top of the shell, but stick to header bottom
+  // However, since the toolbar is fixed, we just need to know if we should show it
+  // Actually, let's keep it fixed at the bottom for mobile, or float for desktop.
+  // Implementation: Fixed positioning relative to viewport is easiest.
+  // The CSS already handles the fixed position at bottom.
+  // We just need to adjust 'left' and 'width' to match the shell container on desktop.
+  
+  if (viewportWidthValue > 768) {
+    // Desktop: Align with the shell container
+    bulkToolbarStyle.value = {
+      left: `${shellRect.left}px`,
+      width: `${shellRect.width}px`,
+      bottom: '24px', // Float slightly above bottom
+      borderRadius: '16px'
+    };
+  } else {
+    // Mobile: Full width at bottom, above nav bar
+    bulkToolbarStyle.value = {
+      left: '0',
+      width: '100%',
+      bottom: isNavVisible.value ? '60px' : '0', // Adjust based on nav visibility
+      borderRadius: '0'
+    };
   }
-  bulkToolbarStyle.value = {
-    left: `${left}px`,
-    top: `${BULK_TOOLBAR_TOP}px`
-  };
 };
 
-let isBodyScrollLocked = false;
+// [Scroll Lock Helpers]
 let bodyOverflowSnapshot = '';
+let isBodyScrollLocked = false;
 const lockBodyScroll = () => {
   if (isBodyScrollLocked) return;
-  const bodyStyle = document.body.style;
-  bodyOverflowSnapshot = bodyStyle.overflow;
-  bodyStyle.overflow = 'hidden';
+  const scrollContainer = getMainScrollContainer();
+  if (scrollContainer) {
+    bodyOverflowSnapshot = scrollContainer.style.overflow;
+    scrollContainer.style.overflow = 'hidden';
+  } else {
+    bodyOverflowSnapshot = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+  }
   isBodyScrollLocked = true;
 };
 const unlockBodyScroll = () => {
   if (!isBodyScrollLocked) return;
-  const bodyStyle = document.body.style;
-  bodyStyle.overflow = bodyOverflowSnapshot;
+  const scrollContainer = getMainScrollContainer();
+  if (scrollContainer) {
+    scrollContainer.style.overflow = bodyOverflowSnapshot || '';
+  } else {
+    document.body.style.overflow = bodyOverflowSnapshot || '';
+  }
   isBodyScrollLocked = false;
 };
 
 onMounted(async () => {
   window.addEventListener('resize', handleResize);
-  window.addEventListener('scroll', updateBulkToolbarPosition, { passive: true });
+  
+  // [修改] 统一监听滚动容器 (桌面和移动端都使用同一个容器滚动)
+  // 注意：不要再监听 window.addEventListener('scroll', handleContentScroll) 了
+  const scroller = getMainScrollContainer();
+  if (scroller) {
+    // 桌面端工具栏定位
+    scroller.addEventListener('scroll', updateBulkToolbarPosition, { passive: true });
+    // 移动端导航栏显隐 (关键：监听 scroller)
+    scroller.addEventListener('scroll', handleContentScroll, { passive: true });
+  }
+
   window.addEventListener('click', handleGlobalClick);
   window.addEventListener('keydown', handleGlobalKeydown);
   window.addEventListener('message', handleSteamMessage);
   document.addEventListener('visibilitychange', handleVisibilityChange);
-
   document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light');
   updateFavicon();
-
   try {
     const savedCollapse = localStorage.getItem('sidebar_collapsed');
     if (savedCollapse !== null) isCollapsed.value = savedCollapse === 'true';
@@ -1101,17 +1240,14 @@ onMounted(async () => {
   } catch (e) {
     isCollapsed.value = false;
   }
-
   try {
     const savedView = localStorage.getItem('view_mode');
     if (savedView) viewMode.value = savedView;
   } catch (e) {}
-
   await fetchSteamStatus(true);
   if (communities.value.length) {
     applyCommunities(communities.value);
   }
-
   try {
     const subs = localStorage.getItem('map_subs');
     if (subs) subscriptions.value = JSON.parse(subs);
@@ -1121,46 +1257,40 @@ onMounted(async () => {
     subscriptions.value = [];
   }
   subscribedMapKeys.value = new Set(subscriptions.value.map((sub) => normalizeMapKey(sub.map)));
-
   if (hasNotification) {
     try {
       if (Notification.permission !== "granted") Notification.requestPermission();
     } catch (e) {}
   }
-
   await loadLanguage();
   await loadTranslations();
   await loadMapIndex();
-  refreshMapSubResults();
   await fetchConfig();
-  await nextTick();
-  updateBulkToolbarPosition();
-  if ((initialView === 'map_sub' || initialView === 'stats' || initialView === 'feedback') && !isLoggedIn.value) {
-    curView.value = 'servers';
-    showToast(t('login_required_title'));
-  }
-  if (!isMobile.value && !embedMode) {
+  startServerRefresh();
+  nextTick(() => {
+    handleResize();
     const dismissed = localStorage.getItem('steam_prompt_dismissed');
     if (!isLoggedIn.value && dismissed !== 'true') {
       showLoginPrompt.value = true;
     }
-  }
-  if (initialView === 'stats' && isLoggedIn.value) {
-    await loadStats();
-  }
-  if (embedMode) {
-    sendEmbedReady();
-  }
-});
+    if (initialView === 'stats' && isLoggedIn.value) {
+       loadStats(); // No await
+    }
+    if (embedMode) {
+      sendEmbedReady();
+    }
+  });
 
-onBeforeUnmount(() => {
-  window.removeEventListener('scroll', updateBulkToolbarPosition);
+  watch(curLang, () => {
+    if (subSearchQuery.value) {
+       refreshMapSubResults();
+    }
+  });
 });
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
   window.removeEventListener('click', handleGlobalClick);
-  window.removeEventListener('keydown', handleGlobalKeydown);
   window.removeEventListener('message', handleSteamMessage);
   document.removeEventListener('visibilitychange', handleVisibilityChange);
   stopSteamLoginWatcher();
@@ -1177,7 +1307,6 @@ onUnmounted(() => {
     clearTimeout(mapCooldownHighlightTimer);
     mapCooldownHighlightTimer = null;
   }
-  unlockBodyScroll();
 });
 
 const toggleLangMenu = () => {
@@ -1203,15 +1332,16 @@ const toggleSidebar = () => {
   }
   localStorage.setItem('sidebar_collapsed', isCollapsed.value);
 };
+
 const toggleTheme = () => {
   isDark.value = !isDark.value;
   document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light');
   updateFavicon();
 };
+
 const setLang = (l) => {
   curLang.value = l;
   showLangMenu.value = false;
-
   const url = new URL(window.location);
   if (l === 'zh-CN') {
     url.searchParams.delete('lang');
@@ -1232,6 +1362,7 @@ const toggleViewMode = () => {
   viewMode.value = viewMode.value === 'grid' ? 'list' : 'grid';
   localStorage.setItem('view_mode', viewMode.value);
 };
+
 const toggleEditMode = () => {
   const nextState = !isEditMode.value;
   if (nextState && isCollapsed.value) {
@@ -1245,43 +1376,20 @@ const toggleEditMode = () => {
       isCollapsed.value = true;
       document.documentElement.classList.add('sidebar-is-collapsed');
       localStorage.setItem('sidebar_collapsed', isCollapsed.value);
+      sidebarWasAutoExpandedForReorder.value = false;
     }
-    sidebarWasAutoExpandedForReorder.value = false;
   }
   isEditMode.value = nextState;
 };
-const toggleSortByPlayers = () => sortByPlayers.value = !sortByPlayers.value;
 
-const startSteamLogin = () => {
-  if (steamAuthPending.value) return;
-  steamAuthPending.value = true;
-  stopSteamLoginWatcher();
-  steamLoginWindow = window.open('/api/steam/login', 'steamAuth', 'width=920,height=720');
-  if (steamLoginWindow) {
-    steamLoginTimer = setInterval(async () => {
-      if (!steamLoginWindow || steamLoginWindow.closed) {
-        stopSteamLoginWatcher();
-        steamAuthPending.value = false;
-        const status = await fetchSteamStatus(true);
-        if (status && status.logged_in) {
-          showToast(t('login_as'));
-          showLoginPrompt.value = false;
-          localStorage.setItem('steam_prompt_dismissed', 'true');
-        } else {
-          showToast(t('steam_prompt_desc'));
-        }
-      }
-    }, 600);
-  } else {
-    steamAuthPending.value = false;
-    showToast(t('steam_prompt_desc'));
-  }
-  showLoginPrompt.value = false;
-  localStorage.setItem('steam_prompt_dismissed', 'true');
+const toggleSortByPlayers = () => {
+  sortByPlayers.value = !sortByPlayers.value;
 };
 
 const logout = async () => {
-  steamAuthPending.value = false;
+  authState.value = { loggedIn: false, role: 'guest' };
+  steamProfile.value = { name: null, avatar: null };
+  isPrime.value = false;
   showProfileMenu.value = false;
   try {
     await fetch('/api/steam/logout', { method: 'POST', credentials: 'same-origin' });
@@ -1289,13 +1397,13 @@ const logout = async () => {
   await fetchSteamStatus(true);
   showToast(t('guest_mode'));
 };
-
 const dismissLoginPrompt = () => {
   showLoginPrompt.value = false;
   localStorage.setItem('steam_prompt_dismissed', 'true');
 };
 
 const hasFeature = (feat) => communities.value.some(c => c.features.includes(feat));
+
 const goToView = (view) => {
   if ((view === 'map_sub' || view === 'stats' || view === 'feedback') && !isLoggedIn.value) {
     showToast(t('login_required_title'));
@@ -1308,6 +1416,20 @@ const goToView = (view) => {
     window.history.pushState({}, '', url);
   }
   curView.value = view;
+};
+
+const onMapSubSearchInput = () => {
+  refreshMapSubResults();
+};
+
+// Scroll to top of scroll container when changing tabs, IF it's not a back action
+// Actually Vue router handles scroll usually, but we use manual view state
+// We already have watch(curView) logic above.
+
+const scrollToTop = () => {
+  if (mainContentRef.value) {
+    mainContentRef.value.scrollTop = 0;
+  }
 };
 
 const goToSubPage = () => {
@@ -1330,6 +1452,7 @@ const saveCommunityOrder = () => {
   const ids = communities.value.map(c => c.id);
   localStorage.setItem('comm_order', JSON.stringify(ids));
 };
+
 const onDragStart = (e, index) => {
   draggedIndex.value = index;
   e.dataTransfer.effectAllowed = 'move';
@@ -1353,34 +1476,25 @@ const onDrop = (e, index) => {
 const loadLanguage = async (silent = false) => {
   try {
     const res = await fetch('/language.json');
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
     const data = await res.json();
-    if (data && typeof data === 'object') {
-      i18nData.value = data;
-      document.title = t('app_title');
-    }
+    i18nData.value = data;
   } catch (e) {
-    if (!silent) {
-      showToast(t('language_load_failed'));
-    }
+    if (!silent) console.error("Lang load failed", e);
   }
 };
 
 const loadTranslations = async () => {
   try {
     const res = await fetch('/map_translations.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     const normalized = {};
-    for (const [key, value] of Object.entries(data)) {
-      if (typeof value === 'string') {
-        normalized[key] = { zh_cn: value, zh_tw: value };
-      } else {
-        normalized[key] = {
-          zh_cn: (value && (value.zh_cn || value.cn)) || '',
-          zh_tw: (value && (value.zh_tw || value.tw)) || ''
-        };
+    if (data && typeof data === 'object') {
+      for (const [k, v] of Object.entries(data)) {
+        const cleaned = normalizeMapKey(k);
+        if (cleaned) {
+          normalized[cleaned] = { zh_cn: v.zh_cn || '', zh_tw: v.zh_tw || '' };
+        }
       }
     }
     mapTranslations.value = normalized;
@@ -1391,27 +1505,40 @@ const loadMapIndex = async () => {
   try {
     const res = await fetch('/map_index.json');
     if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
+       throw new Error(`HTTP ${res.status}`);
     }
     const data = await res.json();
     mapIndex.value = data && typeof data === 'object' ? data : {};
+
+    // Validate entries to ensure structure
     Object.entries(mapIndex.value).forEach(([key, entry]) => {
       validateMapIndexEntry(key, entry);
     });
+    
+    // Build search index
     mapSearchIndex.value = buildMapSearchIndex(mapIndex.value, mapIndexConverter);
+    
+    // Also build a quick lookup by key for exact matches
+    const nextMap = new Map();
+    mapSearchIndex.value.forEach((entry) => {
+      if (entry && entry.key) nextMap.set(entry.key, entry);
+    });
+    mapSearchIndexByKey.value = nextMap;
   } catch (e) {
     mapIndex.value = {};
     mapSearchIndex.value = [];
   }
 };
 
-watch(mapSearchIndex, (next) => {
-  const nextMap = new Map();
-  (next || []).forEach((entry) => {
-    if (entry && entry.key) nextMap.set(entry.key, entry);
-  });
-  mapSearchIndexByKey.value = nextMap;
+// [修改] 只保留 buildMapSearchIndexByKey 的副作用部分（如果需要），实际上上面已经合并了
+watch(mapSearchIndex, (newIndex) => {
+   const nextMap = new Map();
+   newIndex.forEach((entry) => {
+      if (entry && entry.key) nextMap.set(entry.key, entry);
+   });
+   mapSearchIndexByKey.value = nextMap;
 }, { immediate: true });
+
 
 const normalizeMapKey = (value) => {
   if (!value) return '';
@@ -1435,113 +1562,74 @@ const toTraditional = (value) => {
 };
 
 const buildMapTranslationEntry = (mapCn, mapTw) => {
-  return {
-    zh_cn: mapCn || '',
-    zh_tw: mapTw || (mapCn ? toTraditional(mapCn) : '')
-  };
+  return { zh_cn: mapCn || '', zh_tw: mapTw || (mapCn ? toTraditional(mapCn) : '') };
 };
 
 const getMapTranslationEntry = (mapName, serverEntry) => {
   if (!mapName) return buildMapTranslationEntry('', '');
+  
+  // 1. Check server-provided override
   if (serverEntry && (serverEntry.map_cn || serverEntry.map_tw)) {
-    return buildMapTranslationEntry(serverEntry.map_cn, serverEntry.map_tw);
+     return buildMapTranslationEntry(serverEntry.map_cn, serverEntry.map_tw);
   }
+  
+  // 2. Check loaded map_translations.json (legacy)
+  // const norm = normalizeMapKey(mapName);
+  // if (mapTranslations.value[norm]) {
+  //   return mapTranslations.value[norm];
+  // }
+  
+  // 3. Check map_index (new source of truth)
   const entry = getMapIndexEntry(mapName);
   if (entry && entry.map_cn) {
-    return buildMapTranslationEntry(entry.map_cn, '');
+     return buildMapTranslationEntry(entry.map_cn, '');
   }
+  
   return buildMapTranslationEntry('', '');
 };
 
 const getMapTranslation = (mapName) => {
   const entry = getMapTranslationEntry(mapName);
-  if (curLang.value === 'zh-TW') {
-    const translated = stripBracketSegments(entry.zh_tw || '');
-    return translated || mapNoTranslationText;
+  if (curLang.value === 'zh-TW' || curLang.value === 'zh-HK') {
+    return entry.zh_tw || entry.zh_cn || '';
   }
-  if (curLang.value === 'zh-CN') {
-    const translated = stripBracketSegments(entry.zh_cn || '');
-    return translated || mapNoTranslationText;
-  }
-  return '';
+  return entry.zh_cn || '';
 };
 
-const getServerMapTranslation = (serverEntry) => {
-  if (!serverEntry) return mapNoTranslationText;
-  const entry = getMapTranslationEntry(serverEntry.map, serverEntry);
-  if (curLang.value === 'zh-TW') {
-    const translated = stripBracketSegments(entry.zh_tw || '');
-    return translated || mapNoTranslationText;
-  }
-  if (curLang.value === 'zh-CN') {
-    const translated = stripBracketSegments(entry.zh_cn || '');
-    return translated || mapNoTranslationText;
-  }
-  return '';
-};
-
-const getMapIndexEntry = (mapName) => {
-  if (!mapName) return null;
-  if (mapIndex.value[mapName]) return mapIndex.value[mapName];
-  const normalizedKey = normalizeMapKey(mapName);
-  if (normalizedKey && mapIndex.value[normalizedKey]) return mapIndex.value[normalizedKey];
-  return null;
+const getServerMapTranslation = (srv) => {
+  if (!srv || !srv.map) return '';
+  return getMapTranslation(srv.map);
 };
 
 const getMapIndexDisplayName = (mapName) => {
-  const entry = getMapIndexEntry(mapName);
-  if (!entry || !entry.map_cn) return '';
-  const cleaned = stripBracketSegments(entry.map_cn);
-  if (curLang.value === 'zh-TW') {
-    return toTraditional(cleaned);
-  }
-  if (curLang.value === 'zh-CN') return cleaned;
-  return '';
+    return getMapTranslation(mapName);
 };
 
-const buildFallbackSearchEntry = (mapKey) => {
-  const normalizedKey = normalizeSearchText(mapKey);
-  return {
-    key: mapKey,
-    mapCn: '',
-    mapTw: '',
-    aliases: [],
-    achievement: '',
-    deadline: null,
-    durationRaw: null,
-    durationSec: null,
-    normalized: {
-      key: normalizedKey,
-      mapCn: '',
-      mapTw: '',
-      aliases: [],
-      achievement: ''
-    },
-    tokens: [],
-    pinyin: { full: '', initials: '' }
-  };
+// [NEW] Map Search & Utils
+const buildFallbackSearchEntry = (key) => ({ key, normalized: { key, aliases: [], mapCn: '', mapTw: '', achievement: '' } });
+
+const getMapIndexEntry = (mapKey) => {
+  const norm = normalizeMapKey(mapKey);
+  return mapIndex.value[norm] || null;
 };
 
 const getSearchEntryByKey = (mapKey) => {
-  if (!mapKey) return buildFallbackSearchEntry('');
-  return mapSearchIndexByKey.value.get(mapKey) || buildFallbackSearchEntry(mapKey);
+    if (!mapKey) return buildFallbackSearchEntry('');
+    return mapSearchIndexByKey.value.get(mapKey) || buildFallbackSearchEntry(mapKey);
 };
 
-const getSearchMatch = (entry, query, {
-  requireExact = false,
-  allowSubstring = true,
-  allowAlias = true,
-  allowPinyin = true
-} = {}) => {
+const getSearchMatch = (entry, query, { requireExact = false, allowSubstring = true, allowAlias = true, allowPinyin = true } = {}) => {
   if (!entry || !query) return null;
   const normalizedQuery = normalizeSearchText(query);
   if (!normalizedQuery) return null;
+
   const key = entry.normalized?.key || '';
   const aliases = entry.normalized?.aliases || [];
   const mapCn = entry.normalized?.mapCn || '';
   const mapTw = entry.normalized?.mapTw || '';
   const achievement = entry.normalized?.achievement || '';
 
+  // 1. Exact Key or Alias Match
   if (requireExact) {
     const keyExact = key === normalizedQuery;
     const aliasExact = aliases.includes(normalizedQuery);
@@ -1551,9 +1639,11 @@ const getSearchMatch = (entry, query, {
     return { rank, score: baseScore + normalizedQuery.length };
   }
 
+  // 2. Fuzzy / Substring
   let rank = null;
   let baseScore = 0;
 
+  // Key Prefix
   if (key.startsWith(normalizedQuery)) {
     rank = 0;
     baseScore = 1000;
@@ -1561,56 +1651,47 @@ const getSearchMatch = (entry, query, {
     rank = 1;
     baseScore = 900;
   }
-
+  
+  // CN/TW Name Substring
   const otherMatch = allowSubstring && (mapCn.includes(normalizedQuery) || mapTw.includes(normalizedQuery) || achievement.includes(normalizedQuery));
   if (rank === null && otherMatch) {
-    rank = 1;
-    baseScore = 860;
+      rank = 1;
+      baseScore = 860;
   }
-
+  
   if (rank === null && allowAlias) {
     const aliasMatch = aliases.some(alias => alias === normalizedQuery || (allowSubstring && alias.includes(normalizedQuery)));
     if (aliasMatch) {
-      rank = 2;
-      baseScore = 800;
-    }
-  }
-
-  if (rank === null && allowPinyin) {
-    const pinyinFull = entry.pinyin?.full || '';
-    const pinyinInitials = entry.pinyin?.initials || '';
-    const pinyinMatch = pinyinFull.startsWith(normalizedQuery)
-      || pinyinInitials.startsWith(normalizedQuery)
-      || (allowSubstring && (pinyinFull.includes(normalizedQuery) || pinyinInitials.includes(normalizedQuery)));
-    if (pinyinMatch) {
-      rank = 3;
-      baseScore = 720;
+       rank = 2;
+       baseScore = 850;
     }
   }
 
   if (rank === null) return null;
-  const detailScore = scoreSearchEntry(entry, query);
-  return { rank, score: baseScore + detailScore };
+
+  // Simple scoring
+  // Prefer shorter keys for same match type
+  const lengthPenalty = Math.min(100, key.length); 
+  
+  return { rank, score: baseScore - lengthPenalty };
 };
 
-const formatExgCompactTime = (datetimeString) => {
-  if (!datetimeString) return '';
-  const normalized = datetimeString.replace(' - ', ' ').trim();
-  const [datePart, timePart = ''] = normalized.split(' ');
-  const dateSegments = datePart.split('/');
-  if (dateSegments.length < 3) return datetimeString;
-  const month = dateSegments[1];
-  const day = dateSegments[2];
-  const time = timePart.slice(0, 5);
-  if (!month || !day || !time) return datetimeString;
-  return `${month}/${day} ${time}`;
-};
+// =========================================================================================
+// MAP COOLDOWN LOGIC (REFACTORED)
+// =========================================================================================
 
 const mapCooldownScrollRef = ref(null);
 const coolingOnly = ref(true);
 const isAllMapsMode = computed(() => !coolingOnly.value);
+
 const mapCooldownRowsCooling = ref([]);
 const mapCooldownRowsAll = ref([]);
+const mapCooldownKeysAll = ref([]); // Just keys for O(1) checks if needed, or ordered list
+const mapCooldownRowElByKey = new Map();
+const mapCooldownHeightByKey = new Map();
+let mapCooldownScrollInitDone = false;
+let mapCooldownLastNonZeroViewportHeight = 0;
+
 const mapCooldownQueryInput = ref('');
 const mapCooldownSearchInputRef = ref(null);
 const mapCooldownSearchQuery = ref('');
@@ -1619,15 +1700,19 @@ const mapCooldownNowEpoch = ref(Math.floor(Date.now() / 1000));
 const mapCooldownNeedsRebuild = ref(true);
 const mapCooldownIsFastScrolling = ref(false);
 const mapcdSortMode = ref<'default' | 'availability'>('default');
+
+// State for chunked building
 const mapCooldownPendingRebuild = ref(false);
 const mapCooldownIsBuilding = ref(false);
 const mapCooldownBuildProgress = ref({ done: 0, total: 0 });
+
 const mapCooldownEstimatedRowHeight = 68;
-const mapCooldownMaxRendered = 160;
+const mapCooldownMaxRendered = 160; 
 const mapCooldownFastSpeedThresholdHigh = 2.5;
 const mapCooldownFastSpeedThresholdLow = 1.2;
 const mapCooldownScrollIdleMs = 180;
 const mapCooldownDebug = false;
+
 const mapCooldownWinStart = ref(0);
 const mapCooldownWinEnd = ref(0);
 const mapCooldownTopSpacerPx = ref(0);
@@ -1635,6 +1720,7 @@ const mapCooldownBottomSpacerPx = ref(0);
 const mapCooldownVisibleRows = ref([]);
 const mapCooldownTotalHeight = ref(0);
 const mapCooldownFreshKeys = ref(new Set());
+
 let mapCooldownTimer = null;
 let mapCooldownScrollRafId = 0;
 let mapCooldownScrollPending = false;
@@ -1655,115 +1741,128 @@ let mapCooldownPendingModes = new Set();
 let mapCooldownSearchTimer = null;
 let mapCooldownHighlightTimer = null;
 let mapCooldownContainerResizeObserver = null;
-let mapCooldownLastNonZeroViewportHeight = mapCooldownEstimatedRowHeight;
-let mapCooldownScrollInitDone = false;
-const mapCooldownHeightByKey = new Map();
-const mapCooldownRowElByKey = new Map();
 
-const mapCooldownLocale = computed(() => {
-  const lang = curLang.value || 'en-US';
-  return lang === 'en' ? 'en-US' : lang;
-});
+const mapCooldownLocale = computed(() => curLang.value);
 const mapCooldownTimeZone = ref(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+
 const mapCooldownProgressText = computed(() => {
-  const { done, total } = mapCooldownBuildProgress.value || {};
-  if (!total) return '';
-  const pct = Math.min(100, Math.round((done / total) * 100));
-  return ` ${pct}%`;
+   const { done, total } = mapCooldownBuildProgress.value || {};
+   if (!total) return '';
+   const pct = Math.min(100, Math.round((done / total) * 100));
+   return ` ${pct}%`;
 });
 
 const mapcdQueryTrimmed = computed(() => mapCooldownQueryInput.value.trim());
 const mapCooldownSearchQueryTrimmed = computed(() => mapCooldownSearchQuery.value.trim());
+
+// [FIXED] Use normalizeSearchText instead of normalizeZh
 const mapCooldownSearchQueryNorm = computed(() => normalizeSearchText(mapCooldownSearchQuery.value));
+
 const mapCooldownBaseRows = computed(() => (coolingOnly.value ? mapCooldownRowsCooling.value : mapCooldownRowsAll.value));
-const getMapCooldownAvailability = (row) => {
-  const deadline = row?.deadlineEpochSec;
-  if (typeof deadline === 'number') {
-    return deadline > mapCooldownNowEpoch.value ? 'cooling' : 'available';
-  }
-  return row?.availability || 'unavailable';
-};
+
 const mapCooldownMatchesQuery = (row) => {
-  if (!mapCooldownSearchQueryNorm.value) return true;
-  const entry = getSearchEntryByKey(row?.key || '');
-  return Boolean(getSearchMatch(entry, mapCooldownSearchQuery.value));
+    const queryNorm = mapCooldownSearchQueryNorm.value;
+    if (!queryNorm) return true;
+    return (row.searchTextNorm || '').includes(queryNorm);
 };
+
 const mapCooldownFilteredRows = computed(() => {
-  const baseRows = mapCooldownBaseRows.value;
-  if (!mapCooldownSearchQueryNorm.value) return baseRows;
-  return baseRows.filter((row) => mapCooldownMatchesQuery(row));
-});
-const mapcdAllMatches = computed(() => {
   const baseRows = mapCooldownRowsAll.value;
   if (!mapCooldownSearchQueryNorm.value) return baseRows;
   return baseRows.filter((row) => mapCooldownMatchesQuery(row));
 });
-const mapcdAutoShowAll = computed(() =>
-  coolingOnly.value &&
-  mapcdQueryTrimmed.value.length > 0 &&
-  mapCooldownFilteredRows.value.length === 0 &&
+
+const mapcdAllMatches = computed(() => {
+  const baseRows = mapCooldownRowsAll.value;
+  const queryNorm = mapCooldownSearchQueryNorm.value;
+  if (!queryNorm) return baseRows;
+  return baseRows.filter((row) => (row.searchTextNorm || '').includes(queryNorm));
+});
+
+const mapcdAutoShowAll = computed(() => 
+  coolingOnly.value && 
+  mapcdQueryTrimmed.value.length > 0 && 
+  mapCooldownFilteredRows.value.length === 0 && 
   mapcdAllMatches.value.length > 0
 );
+
 const mapcdDisplayedRows = computed(() => {
+  // If auto-show all is active, we force using the filtered 'all' rows
+  // Otherwise we respect the current mode (cooling or all)
   const baseRows = mapcdAutoShowAll.value ? mapcdAllMatches.value : mapCooldownFilteredRows.value;
+
   const nameValue = (row) => (row.mapLine1 || '').toLowerCase();
   const compareName = (a, b) => nameValue(a).localeCompare(nameValue(b));
+
   if (mapcdSortMode.value === 'availability') {
     return baseRows.slice().sort((a, b) => {
       const aCooldownEpoch = a.deadlineEpochSec;
       const bCooldownEpoch = b.deadlineEpochSec;
+      
       const aCooling = getMapCooldownAvailability(a) === 'cooling';
       const bCooling = getMapCooldownAvailability(b) === 'cooling';
+      
       if (aCooling !== bCooling) return aCooling ? 1 : -1;
       if (!aCooling) return compareName(a, b);
+      
+      // Both cooling, sort by time remaining (descending? or ascending deadline?)
+      // Let's sort by earliest deadline first?
+      // Actually header says "Cooldown End", typically ascending (sooner first).
       if (aCooldownEpoch == null && bCooldownEpoch == null) return compareName(a, b);
       if (aCooldownEpoch == null) return 1;
       if (bCooldownEpoch == null) return -1;
+      
       const diff = aCooldownEpoch - bCooldownEpoch;
       if (diff !== 0) return diff;
+      
       return compareName(a, b);
     });
   }
+  
   return baseRows.slice().sort(compareName);
 });
+
 const onMapcdCooldownEndHeaderClick = () => {
   mapcdSortMode.value = mapcdSortMode.value === 'default' ? 'availability' : 'default';
 };
+
 const mapCooldownRows = computed(() => mapcdDisplayedRows.value);
-const mapCooldownKeysAll = computed(() => mapCooldownRows.value.map((row) => row.key));
-const updateMapCooldownVisibleRows = () => {
-  const total = mapCooldownRows.value.length;
-  const rowHeight = getMapCooldownRowHeight();
-  const totalHeight = total * rowHeight;
-  mapCooldownTotalHeight.value = totalHeight;
-  if (total === 0) {
-    mapCooldownWinStart.value = 0;
-    mapCooldownWinEnd.value = 0;
-    mapCooldownVisibleRows.value = [];
-    mapCooldownTopSpacerPx.value = 0;
-    mapCooldownBottomSpacerPx.value = 0;
-    return;
+
+watch(mapcdDisplayedRows, (newRows) => {
+  // When the visible set changes (e.g. search filter), reset window and rebuild prefix
+  rebuildMapCooldownPrefixSums();
+  const scrollEl = mapCooldownScrollRef.value;
+  if (scrollEl) {
+     mapCooldownLatestScrollTop = scrollEl.scrollTop;
+     updateMapCooldownWindow(mapCooldownLatestScrollTop, { force: true });
   }
-  let start = Math.max(0, Math.min(mapCooldownWinStart.value, total - 1));
-  let end = Math.max(start + 1, Math.min(mapCooldownWinEnd.value, total));
-  if (end <= start) {
-    start = Math.min(Math.max(start, 0), total - 1);
-    end = Math.min(start + 1, total);
+});
+
+watch(mapCooldownQueryInput, (val) => {
+  if (mapCooldownSearchTimer) clearTimeout(mapCooldownSearchTimer);
+  mapCooldownSearchTimer = setTimeout(() => {
+    mapCooldownSearchQuery.value = val;
+    // Scroll to top on search change
+    const scrollEl = mapCooldownScrollRef.value;
+    if (scrollEl) {
+      scrollEl.scrollTop = 0;
+      mapCooldownLatestScrollTop = 0;
+    }
+  }, 250);
+});
+
+const toggleMapCooldownMode = () => {
+  coolingOnly.value = !coolingOnly.value;
+  const scrollEl = mapCooldownScrollRef.value;
+  if (scrollEl) {
+    scrollEl.scrollTop = 0;
+    mapCooldownLatestScrollTop = 0;
   }
-  mapCooldownWinStart.value = start;
-  mapCooldownWinEnd.value = end;
-  const nextVisibleRows = mapCooldownRows.value.slice(start, end);
-  if (mapCooldownDebug && total > 0 && nextVisibleRows.length === 0) {
-    console.log('[mapcd] visible rows empty with non-zero total', { total, start, end });
-  }
-  mapCooldownVisibleRows.value = nextVisibleRows;
-  mapCooldownTopSpacerPx.value = start * rowHeight;
-  mapCooldownBottomSpacerPx.value = Math.max(0, totalHeight - end * rowHeight);
-  if (total > 0 && mapCooldownVisibleRows.value.length === 0) {
-    nextTick(() => {
-      updateMapCooldownWindow(mapCooldownLatestScrollTop, { force: true });
-    });
-  }
+  nextTick(() => {
+    if (!coolingOnly.value && mapCooldownSearchInputRef.value) {
+      mapCooldownSearchInputRef.value.focus();
+    }
+  });
 };
 
 const clearMapCooldownSearch = () => {
@@ -1800,6 +1899,7 @@ const jumpToMapCooldownRow = (row) => {
   if (!row) return;
   const idx = mapcdDisplayedRows.value.findIndex((item) => item.key === row.key);
   if (idx < 0) return;
+  
   const scrollEl = mapCooldownScrollRef.value;
   if (scrollEl) {
     const scrollTop = idx * mapCooldownEstimatedRowHeight;
@@ -1832,72 +1932,80 @@ const onMapCooldownSearchKeydown = (event) => {
 const getMapCooldownRowHeight = () => mapCooldownEstimatedRowHeight;
 
 const rebuildMapCooldownPrefixSums = () => {
-  const total = mapCooldownRows.value.length;
-  const rowHeight = getMapCooldownRowHeight();
-  const nextPrefix = new Array(total + 1);
-  nextPrefix[0] = 0;
-  for (let i = 0; i < total; i += 1) {
-    nextPrefix[i + 1] = nextPrefix[i] + rowHeight;
-  }
-  mapCooldownPrefixSums = nextPrefix;
-  mapCooldownTotalHeight.value = total * rowHeight;
+    const total = mapCooldownRows.value.length;
+    const rowHeight = getMapCooldownRowHeight();
+    const nextPrefix = new Array(total + 1);
+    nextPrefix[0] = 0;
+    for (let i = 0; i < total; i += 1) {
+        nextPrefix[i + 1] = nextPrefix[i] + rowHeight;
+    }
+    mapCooldownPrefixSums = nextPrefix;
+    mapCooldownTotalHeight.value = nextPrefix[total];
 };
 
 const captureMapCooldownAnchor = () => {
-  const scrollEl = mapCooldownScrollRef.value;
-  if (!scrollEl) return null;
-  const keys = mapCooldownKeysAll.value;
-  if (!keys.length) return null;
-  const startIndex = Math.min(Math.max(0, mapCooldownWinStart.value), keys.length - 1);
-  const anchorKey = keys[startIndex];
-  if (!anchorKey) return null;
-  const anchorTop = startIndex * getMapCooldownRowHeight();
-  return {
-    key: anchorKey,
-    startIndex,
-    offset: scrollEl.scrollTop - anchorTop
-  };
+    const scrollEl = mapCooldownScrollRef.value;
+    const scrollTop = scrollEl ? scrollEl.scrollTop : mapCooldownLatestScrollTop;
+    const rowHeight = getMapCooldownRowHeight();
+    const startIndex = Math.floor(scrollTop / rowHeight);
+    const offset = scrollTop - (startIndex * rowHeight);
+    const keys = mapCooldownKeysAll.value;
+    const key = keys[startIndex];
+    return { key, offset, startIndex };
 };
 
 const applyMapCooldownAnchor = (anchor) => {
-  if (!anchor) return;
-  const scrollEl = mapCooldownScrollRef.value;
-  if (!scrollEl) return;
-  const keys = mapCooldownKeysAll.value;
-  let anchorIndex = anchor.startIndex;
-  if (keys[anchorIndex] !== anchor.key) {
-    anchorIndex = keys.indexOf(anchor.key);
-  }
-  if (anchorIndex < 0) return;
-  const anchorTop = anchorIndex * getMapCooldownRowHeight();
-  const desired = anchorTop + anchor.offset;
-  const maxScrollTop = Math.max(0, mapCooldownTotalHeight.value - scrollEl.clientHeight);
-  mapCooldownIsApplyingScrollAdjust = true;
-  scrollEl.scrollTop = Math.min(Math.max(0, desired), maxScrollTop);
-  mapCooldownLatestScrollTop = scrollEl.scrollTop;
-  mapCooldownIsApplyingScrollAdjust = false;
+    if (!anchor || !anchor.key) return;
+    const scrollEl = mapCooldownScrollRef.value;
+    if (!scrollEl) return;
+    
+    // Find where the anchored key is now
+    const keys = mapCooldownKeysAll.value; // Wait, we should use displayed rows keys
+    // mapCooldownRows keys
+    let anchorIndex = anchor.startIndex;
+    
+    // Check if index still points to same key
+    if (mapCooldownRows.value[anchorIndex]?.key !== anchor.key) {
+        // Linear scan nearby? or findIndex
+        anchorIndex = mapCooldownRows.value.findIndex(r => r.key === anchor.key);
+    }
+    
+    if (anchorIndex < 0) return;
+    
+    const anchorTop = anchorIndex * getMapCooldownRowHeight();
+    const desired = anchorTop + anchor.offset;
+    const maxScrollTop = Math.max(0, mapCooldownTotalHeight.value - scrollEl.clientHeight);
+    
+    mapCooldownIsApplyingScrollAdjust = true;
+    scrollEl.scrollTop = Math.min(Math.max(0, desired), maxScrollTop);
+    mapCooldownLatestScrollTop = scrollEl.scrollTop;
+    mapCooldownIsApplyingScrollAdjust = false;
 };
 
 const scheduleMapCooldownPrefixRebuild = () => {
-  if (mapCooldownPrefixRafId) return;
-  const anchor = captureMapCooldownAnchor();
-  mapCooldownPrefixRafId = window.requestAnimationFrame(() => {
-    mapCooldownPrefixRafId = 0;
-    rebuildMapCooldownPrefixSums();
-    const scrollEl = mapCooldownScrollRef.value;
-    if (scrollEl) {
-      const maxScrollTop = Math.max(0, mapCooldownTotalHeight.value - scrollEl.clientHeight);
-      if (scrollEl.scrollTop > maxScrollTop) {
-        mapCooldownIsApplyingScrollAdjust = true;
-        scrollEl.scrollTop = maxScrollTop;
-        mapCooldownIsApplyingScrollAdjust = false;
-      }
-      mapCooldownLatestScrollTop = scrollEl.scrollTop;
-    }
-    applyMapCooldownAnchor(anchor);
-    const scrollTop = mapCooldownScrollRef.value?.scrollTop ?? mapCooldownLatestScrollTop;
-    updateMapCooldownWindow(scrollTop, { force: true });
-  });
+    if (mapCooldownPrefixRafId) return;
+    const anchor = captureMapCooldownAnchor();
+    mapCooldownPrefixRafId = window.requestAnimationFrame(() => {
+        mapCooldownPrefixRafId = 0;
+        rebuildMapCooldownPrefixSums();
+        
+        // Adjust scroll position if needed (e.g. total height shrank)
+        const scrollEl = mapCooldownScrollRef.value;
+        if (scrollEl) {
+             const maxScrollTop = Math.max(0, mapCooldownTotalHeight.value - scrollEl.clientHeight);
+             if (scrollEl.scrollTop > maxScrollTop) {
+                 mapCooldownIsApplyingScrollAdjust = true;
+                 scrollEl.scrollTop = maxScrollTop;
+                 mapCooldownIsApplyingScrollAdjust = false;
+             }
+             mapCooldownLatestScrollTop = scrollEl.scrollTop;
+        }
+        
+        applyMapCooldownAnchor(anchor);
+        
+        const scrollTop = mapCooldownScrollRef.value?.scrollTop ?? mapCooldownLatestScrollTop;
+        updateMapCooldownWindow(scrollTop, { force: true });
+    });
 };
 
 const getMapCooldownViewportHeight = (scrollEl) => {
@@ -1919,6 +2027,7 @@ const clampMapCooldownScrollTop = ({ force = false } = {}) => {
   const viewportHeight = getMapCooldownViewportHeight(scrollEl);
   const totalHeight = totalRows * rowHeight;
   const maxScrollTop = Math.max(0, totalHeight - viewportHeight);
+
   if (scrollEl && scrollEl.scrollTop > maxScrollTop) {
     if (mapCooldownDebug) {
       console.log('[mapcd] scrollTop clamped', { from: scrollEl.scrollTop, to: maxScrollTop });
@@ -1927,6 +2036,7 @@ const clampMapCooldownScrollTop = ({ force = false } = {}) => {
     scrollEl.scrollTop = maxScrollTop;
     mapCooldownIsApplyingScrollAdjust = false;
   }
+  
   const scrollTop = scrollEl ? scrollEl.scrollTop : mapCooldownLatestScrollTop;
   mapCooldownLatestScrollTop = scrollTop;
   updateMapCooldownWindow(scrollTop, { force });
@@ -1938,35 +2048,98 @@ const updateMapCooldownWindow = (scrollTop, { force = false } = {}) => {
   const scrollEl = mapCooldownScrollRef.value;
   const viewportHeight = getMapCooldownViewportHeight(scrollEl);
   const totalHeight = total * rowHeight;
+  
   mapCooldownTotalHeight.value = totalHeight;
-  const maxScrollTop = Math.max(0, totalHeight - viewportHeight);
-  const scrollTopClamped = Math.min(Math.max(scrollTop, 0), maxScrollTop);
-  if (mapCooldownDebug && scrollTop !== scrollTopClamped) {
-    console.log('[mapcd] scrollTop clamped in window', { from: scrollTop, to: scrollTopClamped });
-  }
-  if (total === 0) {
-    mapCooldownWinStart.value = 0;
-    mapCooldownWinEnd.value = 0;
-    updateMapCooldownVisibleRows();
-    return;
-  }
-  const baseRows = Math.max(1, Math.ceil(viewportHeight / rowHeight));
-  const overscanRows = Math.min(120, Math.max(30, Math.ceil(baseRows * 1.2)));
+
+  // Render Window Calculation
+  // Overscan for smoother scrolling
+  const overscanRows = mapCooldownIsFastScrolling.value ? 20 : 6;
+  const scrollTopClamped = Math.max(0, Math.min(scrollTop, totalHeight - viewportHeight));
+  
+  // Calculate range
+  const startRowFloat = scrollTopClamped / rowHeight;
+  const baseStart = Math.floor(startRowFloat);
+  
+  // Visible count
+  const visibleCount = Math.ceil(viewportHeight / rowHeight);
+  
+  // Apply overscan
+  let start = Math.max(0, baseStart - overscanRows);
+  let end = Math.min(total, baseStart + visibleCount + overscanRows);
+  
+  // Force even window size for stability? No, dynamic is fine.
+  
+  // If fast scrolling, maybe just render less detail or placeholder? 
+  // We handle that in template with is-fast class.
+
+  // Limit max rendered nodes
+  const currentCount = end - start;
+  const baseRows = visibleCount + (overscanRows * 2); 
+  // If we try to render way too many, clamp it.
+  // But usually scrollTop logic keeps it sane. 
+  // However, if viewport is huge or rowHeight is small, we might have issues.
+  
+  // Dynamic overscan adjustment based on speed could be here.
+  // const expansion = Math.floor(Math.min(50, (mapCooldownLastSpeed * 1.2)));
   const renderCount = Math.min(mapCooldownMaxRendered, Math.max(baseRows, baseRows + overscanRows * 2));
+  
+  // Re-center window around the viewport center to keep DOM balanced? 
+  // Or just typical start/end. Typical is fine.
+  
+  // Ensure we don't exceed boundaries
+  // Center window logic if we were clamping? 
+  // Simple clamping:
   const anchorIndex = Math.floor((scrollTopClamped + viewportHeight / 2) / rowHeight);
+  
   const maxStart = Math.max(0, total - renderCount);
   let startIndex = Math.min(Math.max(anchorIndex - Math.floor(renderCount / 2), 0), maxStart);
   let endIndex = Math.min(total, startIndex + renderCount);
+  
+  // Sanity check
   if (total > 0 && endIndex <= startIndex) {
-    startIndex = Math.min(Math.max(startIndex, 0), total - 1);
-    endIndex = Math.min(total, startIndex + renderCount);
+     startIndex = Math.min(Math.max(startIndex, 0), total - 1);
+     endIndex = Math.min(total, startIndex + renderCount);
   }
+
   if (!force && startIndex === mapCooldownWinStart.value && endIndex === mapCooldownWinEnd.value) {
     return;
   }
+  
   mapCooldownWinStart.value = startIndex;
   mapCooldownWinEnd.value = endIndex;
+  
   updateMapCooldownVisibleRows();
+};
+
+const updateMapCooldownVisibleRows = () => {
+    const total = mapCooldownRows.value.length;
+    const rowHeight = getMapCooldownRowHeight();
+    const totalHeight = mapCooldownTotalHeight.value;
+    
+    let start = mapCooldownWinStart.value;
+    let end = mapCooldownWinEnd.value;
+    
+    if (end <= start) {
+        start = Math.min(Math.max(start, 0), total - 1);
+        end = Math.min(start + 1, total);
+    }
+    
+    mapCooldownWinStart.value = start;
+    mapCooldownWinEnd.value = end;
+    
+    const nextVisibleRows = mapCooldownRows.value.slice(start, end);
+    if (mapCooldownDebug && total > 0 && nextVisibleRows.length === 0) {
+        console.log('[mapcd] visible rows empty with non-zero total', { total, start, end });
+    }
+    mapCooldownVisibleRows.value = nextVisibleRows;
+    
+    mapCooldownTopSpacerPx.value = start * rowHeight;
+    mapCooldownBottomSpacerPx.value = Math.max(0, totalHeight - end * rowHeight);
+};
+
+
+const onMapCooldownScroll = () => {
+  scheduleMapCooldownRaf();
 };
 
 const scheduleMapCooldownRaf = () => {
@@ -1976,43 +2149,51 @@ const scheduleMapCooldownRaf = () => {
     mapCooldownScrollRafId = 0;
     if (!mapCooldownScrollPending) return;
     mapCooldownScrollPending = false;
+    
     const now = timestamp || performance.now();
     const scrollEl = mapCooldownScrollRef.value;
     const scrollTop = scrollEl ? scrollEl.scrollTop : mapCooldownLatestScrollTop;
     mapCooldownLatestScrollTop = scrollTop;
+    
     if (!mapCooldownLastChangeTs) {
-      mapCooldownLastChangeTs = now;
+        mapCooldownLastChangeTs = now;
     }
+    
     const dtMs = Math.max(1, now - (mapCooldownLastTimestamp || now));
     const delta = Math.abs(scrollTop - mapCooldownLastScrollTop);
     const speed = delta / dtMs;
+    
     mapCooldownLastSpeed = speed;
+    
     if (delta > 0) {
-      mapCooldownLastChangeTs = now;
-      if (mapCooldownIdleTimer) {
-        clearTimeout(mapCooldownIdleTimer);
-      }
-      mapCooldownIdleTimer = setTimeout(() => {
-        mapCooldownIdleTimer = null;
-        if (
-          mapCooldownIsFastScrolling.value &&
-          !mapCooldownScrollPending &&
-          mapCooldownLastSpeed < mapCooldownFastSpeedThresholdLow
-        ) {
-          mapCooldownIsFastScrolling.value = false;
-          if (mapCooldownPendingRebuild.value) {
-            buildCooldownRows({ rebuildAll: false, reason: 'scroll-idle' });
-            mapCooldownPendingRebuild.value = false;
-            scheduleMapCooldownPrefixRebuild();
-          }
+        mapCooldownLastChangeTs = now;
+        if (mapCooldownIdleTimer) {
+            clearTimeout(mapCooldownIdleTimer);
         }
-      }, mapCooldownScrollIdleMs);
+        mapCooldownIdleTimer = setTimeout(() => {
+            mapCooldownIdleTimer = null;
+            if (
+                mapCooldownIsFastScrolling.value && 
+                !mapCooldownScrollPending && 
+                mapCooldownLastSpeed < mapCooldownFastSpeedThresholdLow
+            ) {
+                mapCooldownIsFastScrolling.value = false;
+                if (mapCooldownPendingRebuild.value) {
+                    buildCooldownRows({ rebuildAll: false, reason: 'scroll-idle' });
+                    mapCooldownPendingRebuild.value = false;
+                    scheduleMapCooldownPrefixRebuild();
+                }
+            }
+        }, mapCooldownScrollIdleMs);
     }
+    
     if (!mapCooldownIsFastScrolling.value && speed > mapCooldownFastSpeedThresholdHigh) {
-      mapCooldownIsFastScrolling.value = true;
+        mapCooldownIsFastScrolling.value = true;
     }
+    
     mapCooldownLastScrollTop = scrollTop;
     mapCooldownLastTimestamp = now;
+    
     updateMapCooldownWindow(scrollTop);
   });
 };
@@ -2036,44 +2217,42 @@ const resetMapCooldownScrollState = () => {
     clearTimeout(mapCooldownFreshTimer);
     mapCooldownFreshTimer = null;
   }
-  if (mapCooldownIdleTimer) {
-    clearTimeout(mapCooldownIdleTimer);
-    mapCooldownIdleTimer = null;
-  }
-  if (mapCooldownPrefixRafId) {
-    cancelAnimationFrame(mapCooldownPrefixRafId);
-    mapCooldownPrefixRafId = 0;
-  }
-};
-
-const onMapCooldownScroll = (event) => {
-  const target = event?.target;
-  mapCooldownLatestScrollTop = mapCooldownScrollRef.value?.scrollTop ?? target?.scrollTop ?? 0;
-  if (mapCooldownIsApplyingScrollAdjust) return;
-  scheduleMapCooldownRaf();
 };
 
 const resetMapCooldownFeedState = () => {
-  mapCooldownWinStart.value = 0;
-  mapCooldownWinEnd.value = Math.min(mapCooldownMaxRendered, mapCooldownRows.value.length);
-  updateMapCooldownVisibleRows();
+    mapCooldownRowsCooling.value = [];
+    mapCooldownRowsAll.value = [];
+    mapCooldownKeysAll.value = [];
+    mapCooldownNeedsRebuild.value = true;
+    mapCooldownWinStart.value = 0;
+    mapCooldownWinEnd.value = 0;
+    mapCooldownTopSpacerPx.value = 0;
+    mapCooldownBottomSpacerPx.value = 0;
+    mapCooldownVisibleRows.value = [];
+    mapCooldownTotalHeight.value = 0;
 };
 
-const markMapCooldownFreshRows = (keys) => {
-  if (!keys.length) return;
-  const nextKeys = new Set(mapCooldownFreshKeys.value);
-  keys.forEach((key) => nextKeys.add(key));
-  mapCooldownFreshKeys.value = nextKeys;
-  if (mapCooldownFreshTimer) {
-    clearTimeout(mapCooldownFreshTimer);
-  }
-  const freshUntilTs = performance.now() + 160;
-  mapCooldownFreshTimer = setTimeout(() => {
-    const clearedKeys = new Set(mapCooldownFreshKeys.value);
-    keys.forEach((key) => clearedKeys.delete(key));
-    mapCooldownFreshKeys.value = clearedKeys;
-    mapCooldownFreshTimer = null;
-  }, Math.max(0, freshUntilTs - performance.now()));
+const getMapCooldownAvailability = (row) => {
+    return row.availability || 'unavailable';
+};
+
+const addMapCooldownFreshKeys = (keys) => {
+    if (!keys || keys.length === 0) return;
+    const nextKeys = new Set(mapCooldownFreshKeys.value);
+    keys.forEach((key) => nextKeys.add(key));
+    mapCooldownFreshKeys.value = nextKeys;
+    
+    if (mapCooldownFreshTimer) {
+        clearTimeout(mapCooldownFreshTimer);
+    }
+    
+    const freshUntilTs = performance.now() + 160; 
+    mapCooldownFreshTimer = setTimeout(() => {
+        const clearedKeys = new Set(mapCooldownFreshKeys.value);
+        keys.forEach((key) => clearedKeys.delete(key));
+        mapCooldownFreshKeys.value = clearedKeys;
+        mapCooldownFreshTimer = null;
+    }, Math.max(0, freshUntilTs - performance.now()));
 };
 
 const isMapCooldownRowFresh = (key) => mapCooldownFreshKeys.value.has(key);
@@ -2101,17 +2280,21 @@ const setupMapCooldownResizeObserver = () => {
     entries.forEach((entry) => {
       const key = entry.target?.dataset?.key;
       if (!key) return;
+      
       const nextHeight = Math.ceil(entry.contentRect.height);
       const prevHeight = mapCooldownHeightByKey.get(key);
+      
       if (prevHeight !== nextHeight) {
         mapCooldownHeightByKey.set(key, nextHeight);
         changed = true;
       }
     });
+    
     if (changed) {
-      scheduleMapCooldownPrefixRebuild();
+       scheduleMapCooldownPrefixRebuild();
     }
   });
+  
   mapCooldownRowElByKey.forEach((el) => {
     mapCooldownResizeObserver.observe(el);
   });
@@ -2125,76 +2308,74 @@ const teardownMapCooldownResizeObserver = () => {
 };
 
 const setupMapCooldownContainerObserver = () => {
-  if (mapCooldownContainerResizeObserver) return;
-  const scrollEl = mapCooldownScrollRef.value;
-  if (!scrollEl) return;
-  mapCooldownContainerResizeObserver = new ResizeObserver(() => {
-    const viewportHeight = scrollEl.clientHeight || 0;
-    if (viewportHeight === 0 && mapCooldownDebug) {
-      console.log('[mapcd] container resize to 0 height');
-    }
-    clampMapCooldownScrollTop({ force: true });
-  });
-  mapCooldownContainerResizeObserver.observe(scrollEl);
+    if (mapCooldownContainerResizeObserver) return;
+    const scrollEl = mapCooldownScrollRef.value;
+    if (!scrollEl) return;
+    mapCooldownContainerResizeObserver = new ResizeObserver(() => {
+        const viewportHeight = scrollEl.clientHeight || 0;
+        if (viewportHeight === 0 && mapCooldownDebug) {
+             console.log('[mapcd] container resize to 0 height');
+        }
+        clampMapCooldownScrollTop({ force: true });
+    });
+    mapCooldownContainerResizeObserver.observe(scrollEl);
 };
 
 const teardownMapCooldownContainerObserver = () => {
-  if (!mapCooldownContainerResizeObserver) return;
-  mapCooldownContainerResizeObserver.disconnect();
-  mapCooldownContainerResizeObserver = null;
+    if (!mapCooldownContainerResizeObserver) return;
+    mapCooldownContainerResizeObserver.disconnect();
+    mapCooldownContainerResizeObserver = null;
 };
 
 watch(mapCooldownScrollRef, (scrollEl) => {
-  if (!scrollEl || mapCooldownScrollInitDone) return;
-  mapCooldownScrollInitDone = true;
-  setupMapCooldownResizeObserver();
-  setupMapCooldownContainerObserver();
-  clampMapCooldownScrollTop({ force: true });
-  updateMapCooldownWindow(scrollEl.scrollTop ?? 0, { force: true });
+    if (!scrollEl || mapCooldownScrollInitDone) return;
+    mapCooldownScrollInitDone = true;
+    setupMapCooldownResizeObserver();
+    setupMapCooldownContainerObserver();
+    clampMapCooldownScrollTop({ force: true });
+    updateMapCooldownWindow(scrollEl.scrollTop ?? 0, { force: true });
 });
 
 const ensureMapCooldownWorker = () => {
   if (mapCooldownWorker) return;
   mapCooldownWorker = new Worker(new URL('./workers/mapCooldown.worker.ts', import.meta.url), { type: 'module' });
   console.log('[mapcd] worker creating');
-  mapCooldownWorker.onmessage = (event) => {
-    console.log('[mapcd] worker message', event?.data?.type, event?.data);
-    const { data } = event || {};
-    if (!data) return;
-    const payload = data.payload || {};
-    if (payload.buildId !== undefined && payload.buildId !== mapCooldownBuildId) return;
-    if (data.type === 'PROGRESS') {
-      mapCooldownBuildProgress.value = {
-        done: payload.done || 0,
-        total: payload.total || 0
-      };
-      return;
-    }
-    if (data.type === 'RESULT') {
-      if (payload.mode === 'showAll') {
-        mapCooldownRowsAll.value = payload.rows || [];
-      } else if (payload.mode === 'coolingOnly') {
-        mapCooldownRowsCooling.value = payload.rows || [];
+  
+mapCooldownWorker.onmessage = (event) => {
+    console.log('[mapcd] worker message', event.data?.type);
+    const { type, payload } = event.data || {};
+    
+    if (type === 'BUILD_RESULT') {
+      if (payload.buildId !== mapCooldownBuildId) return;
+      
+      const { rowsCooling, rowsAll, progress, done } = payload;
+      
+      if (rowsCooling) mapCooldownRowsCooling.value = rowsCooling;
+      if (rowsAll) {
+         mapCooldownRowsAll.value = rowsAll;
+         // Update keys for anchor logic
+         mapCooldownKeysAll.value = rowsAll.map(r => r.key);
       }
-      if (mapCooldownPendingModes.has(payload.mode)) {
-        mapCooldownPendingModes.delete(payload.mode);
+      
+      if (progress) {
+         mapCooldownBuildProgress.value = progress;
       }
-      if (mapCooldownPendingModes.size === 0) {
+      
+      if (done) {
         mapCooldownIsBuilding.value = false;
-        mapCooldownNeedsRebuild.value = false;
-      }
-      scheduleMapCooldownPrefixRebuild();
-      nextTick(() => {
+        mapCooldownPendingModes.clear();
+        rebuildMapCooldownPrefixSums();
         clampMapCooldownScrollTop({ force: true });
-      });
-      return;
-    }
-    if (data.type === 'ERROR') {
+      } else {
+         rebuildMapCooldownPrefixSums();
+      }
+    } else if (type === 'ERROR') { // 【关键修复】这里原来写的是 data.type，这是错误的！
       console.error('[mapcd worker]', payload.message, payload.stack);
       mapCooldownIsBuilding.value = false;
       mapCooldownPendingModes.clear();
     }
   };
+  
   mapCooldownWorker.onerror = (event) => console.error('[mapcd] worker error', event);
   mapCooldownWorker.onmessageerror = (event) => console.error('[mapcd] worker messageerror', event);
 };
@@ -2202,23 +2383,23 @@ const ensureMapCooldownWorker = () => {
 const requestMapCooldownBuild = ({ reason = 'update' } = {}) => {
   ensureMapCooldownWorker();
   if (!mapCooldownWorker) return;
+  
   mapCooldownTimeZone.value = Intl.DateTimeFormat().resolvedOptions().timeZone || mapCooldownTimeZone.value;
+
   mapCooldownBuildId += 1;
   mapCooldownPendingModes = new Set(['showAll', 'coolingOnly']);
   mapCooldownIsBuilding.value = true;
   mapCooldownBuildProgress.value = { done: 0, total: 0 };
+  
   const mode = 'showAll';
   const mapIndexValue = mapIndex.value || {};
   const mapIndexIsProxy = isProxy(mapIndexValue);
-  console.log('[mapcd] posting BUILD', {
-    mode,
-    locale: mapCooldownLocale.value,
-    timeZone: mapCooldownTimeZone.value,
-    nowEpochSec: mapCooldownNowEpoch.value,
-    mapIndexKeys: Object.keys(mapIndexValue).length
-  });
+  
+  console.log('[mapcd] posting BUILD', { mode, locale: mapCooldownLocale.value, timeZone: mapCooldownTimeZone.value, nowEpochSec: mapCooldownNowEpoch.value, mapIndexKeys: Object.keys(mapIndexValue).length });
   console.log('[mapcd] mapIndex isProxy', mapIndexIsProxy);
+  
   const plainMapIndex = JSON.parse(JSON.stringify(mapIndexIsProxy ? toRaw(mapIndexValue) : mapIndexValue));
+  
   mapCooldownWorker.postMessage({
     type: 'BUILD',
     payload: {
@@ -2251,6 +2432,7 @@ const startMapCooldownTimer = () => {
   mapCooldownTimer = setInterval(() => {
     mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
     if (!mapCooldownNeedsRebuild.value) return;
+    
     if (mapCooldownIsFastScrolling.value) {
       mapCooldownPendingRebuild.value = true;
       return;
@@ -2266,105 +2448,59 @@ const stopMapCooldownTimer = () => {
   }
 };
 
-const toggleMapCooldownMode = () => {
-  coolingOnly.value = !coolingOnly.value;
-};
 
-watch(mapCooldownQueryInput, (value) => {
-  if (mapCooldownSearchTimer) {
-    clearTimeout(mapCooldownSearchTimer);
-  }
-  mapCooldownSearchTimer = setTimeout(() => {
-    mapCooldownSearchQuery.value = value;
-    nextTick(() => {
-      jumpToBestMapCooldownMatch();
-    });
-    mapCooldownSearchTimer = null;
-  }, 100);
-});
-
-watch(mapCooldownSearchQueryTrimmed, (value) => {
-  if (!value) {
-    mapCooldownHighlightKey.value = '';
-  }
-});
-
-watch([mapIndex, curLang], () => {
-  mapCooldownNeedsRebuild.value = true;
-  if (curView.value === 'map_cooldown') {
-    mapCooldownNowEpoch.value = Math.floor(Date.now() / 1000);
-    buildCooldownRows({ rebuildAll: true, reason: 'index-update' });
-    mapCooldownHeightByKey.clear();
-    scheduleMapCooldownPrefixRebuild();
-  }
-});
-
-watch(coolingOnly, () => {
-  resetMapCooldownScrollState();
-  resetMapCooldownFeedState();
-  mapCooldownHeightByKey.clear();
-  buildCooldownRows({ rebuildAll: true, reason: coolingOnly.value ? 'toggle-cooling' : 'toggle-all' });
-  nextTick(() => {
-    setupMapCooldownResizeObserver();
-    setupMapCooldownContainerObserver();
-    scheduleMapCooldownPrefixRebuild();
-    clampMapCooldownScrollTop({ force: true });
-  });
-});
-
-watch(mapCooldownRows, () => {
-  scheduleMapCooldownPrefixRebuild();
-  nextTick(() => {
-    clampMapCooldownScrollTop({ force: true });
-  });
-  if (mapCooldownHighlightKey.value) {
-    const stillExists = mapCooldownRows.value.some((row) => row.key === mapCooldownHighlightKey.value);
-    if (!stillExists) {
-      mapCooldownHighlightKey.value = '';
-    }
-  }
-}, { immediate: true });
-
+// [Map Sub Helper]
 const hasMapIndexExgFields = (entry) => (
-  entry
-  && typeof entry === 'object'
-  && ['deadline', 'cooldown_end_epoch', 'duration_raw', 'duration_sec']
+  entry && typeof entry === 'object' &&
+  ['deadline', 'cooldown_end_epoch', 'duration_raw', 'duration_sec']
     .some((field) => Object.prototype.hasOwnProperty.call(entry, field))
 );
 
-const getMapSubStatusFromEntry = (entry) => {
-  if (!entry || !hasMapIndexExgFields(entry)) return null;
-  const deadline = typeof entry.cooldown_end_epoch === 'number'
-    ? entry.cooldown_end_epoch
-    : (typeof entry.deadline === 'number' ? entry.deadline : null);
-  const durationRaw = Object.prototype.hasOwnProperty.call(entry, 'durationRaw')
-    ? entry.durationRaw ?? null
-    : (Object.prototype.hasOwnProperty.call(entry, 'duration_raw') ? entry.duration_raw ?? null : null);
-  const durationSec = typeof entry.durationSec === 'number'
-    ? entry.durationSec
-    : (typeof entry.duration_sec === 'number' ? entry.duration_sec : null);
-  if (
-    (deadline === null || deadline === undefined)
-    && (durationRaw === null || durationRaw === undefined)
-    && (durationSec === null || durationSec === undefined)
-  ) {
-    return null;
-  }
-  const state = getExgStatusState(deadline, durationSec, undefined, durationRaw);
-  if (state === 'hidden') return null;
-  const type = state === 'cooldown' ? 'cooldown' : (state === 'available' ? 'available' : 'unavailable');
-  const label = type === 'available'
-    ? t('map_sub_exg_available')
-    : (type === 'cooldown' ? t('map_sub_exg_cooldown') : t('unavailable'));
-  const time = type === 'cooldown' && deadline
-    ? formatExgCompactTime(formatExgDateTime(deadline))
-    : '';
-  return {
-    type,
-    label,
-    time,
-    className: `exg-inline-status--${type}`
-  };
+const getExgStatus = (sub) => {
+    if (!sub) return null;
+    const mapKey = normalizeMapKey(sub.map || '');
+    
+    // Convert sub.comms (could be string[], or mixed) to pure string[]
+    const comms = sub.comms || [];
+    const commsNorm = Array.isArray(comms)
+        ? comms
+            .map((value) => {
+                if (typeof value === 'string') return value;
+                // If it's an object from select/option
+                if (value && typeof value === 'object') {
+                    return value.id ?? value.community_id ?? value.value ?? value.name ?? null;
+                }
+                return value !== null && value !== undefined ? String(value) : null;
+            })
+            .filter(Boolean)
+        : [];
+        
+    const shouldShow = shouldShowExgStatus({ mapKey, comms: commsNorm, viewportWidth: viewportWidth.value });
+    if (!shouldShow) return null;
+    
+    const entry = getMapIndexEntry(mapKey);
+    if (!entry || !hasMapIndexExgFields(entry)) return null;
+
+    const deadline = typeof entry.cooldown_end_epoch === 'number' ? entry.cooldown_end_epoch : (typeof entry.deadline === 'number' ? entry.deadline : null);
+    const durationRaw = Object.prototype.hasOwnProperty.call(entry, 'durationRaw') ? entry.durationRaw ?? null : (Object.prototype.hasOwnProperty.call(entry, 'duration_raw') ? entry.duration_raw ?? null : null);
+    const durationSec = typeof entry.durationSec === 'number' ? entry.durationSec : (typeof entry.duration_sec === 'number' ? entry.duration_sec : null);
+
+    if (
+        (deadline === null || deadline === undefined) &&
+        (durationRaw === null || durationRaw === undefined) &&
+        (durationSec === null || durationSec === undefined)
+    ) {
+        return null;
+    }
+
+    const state = getExgStatusState(deadline, durationSec, undefined, durationRaw);
+    if (state === 'hidden') return null;
+
+    const type = state === 'cooldown' ? 'cooldown' : (state === 'available' ? 'available' : 'unavailable');
+    const label = type === 'available' ? t('map_sub_exg_available') : (type === 'cooldown' ? t('map_sub_exg_cooldown') : t('unavailable'));
+    const time = type === 'cooldown' && deadline ? formatExgCompactTime(formatExgDateTime(deadline)) : '';
+
+    return { type, label, time, className: `exg-inline-status--${type}` };
 };
 
 const mapSubSearchQueryTrimmed = computed(() => subSearchQuery.value.trim());
@@ -2373,299 +2509,304 @@ const mapSubSelectedCount = computed(() => mapSubSelectedKeys.value.size);
 const mapSubSubscribedRows = computed(() => mapSubResults.value.filter(row => subscribedMapKeys.value.has(row.key)));
 const mapSubUnsubscribedRows = computed(() => mapSubResults.value.filter(row => !subscribedMapKeys.value.has(row.key)));
 const mapSubPopoverSelectedCount = computed(() => mapSubPopoverSelected.value.size);
-const mapSubPopoverTitle = computed(() => (mapSubPopoverMode.value === 'bulk'
-  ? t('map_sub_choose_communities_bulk_title')
-  : t('map_sub_choose_communities_title')));
+const mapSubPopoverTitle = computed(() => (mapSubPopoverMode.value === 'single' && mapSubPopoverRow.value) 
+    ? mapSubPopoverRow.value.key 
+    : t('map_sub_bulk_subscribe_title'));
+
 const mapSubPopoverCommunities = computed(() => {
-  const base = communities.value || [];
-  if (base.some((comm) => comm.id === 'all')) return base;
-  return [{ id: 'all', name: t('all_comm') }, ...base];
+    const list = [{ id: 'all', name: t('all_comm'), short_name: t('all_comm') }];
+    return list.concat(communities.value);
 });
 
-const getMapSubAvailabilityGroup = (status) => (status && status.type === 'available' ? 'available' : 'cooldown');
-
-watch([mapSubUnsubscribedRows, mapSubMultiSelectMode, curView], () => {
-  nextTick(() => {
-    updateBulkToolbarPosition();
-  });
-});
-
-watch(mapSubMultiSelectMode, (isActive) => {
-  if (isActive) {
-    nextTick(() => updateBulkToolbarPosition());
-  } else {
-    bulkToolbarStyle.value = {};
-  }
-});
-
-watch(mapSubPopoverOpen, (isOpen) => {
-  if (isOpen) {
-    lockBodyScroll();
-  } else {
-    unlockBodyScroll();
-  }
-});
-
-const buildSubscribedMapRows = () => {
-  const query = mapSubSearchQueryTrimmed.value;
-  const hasQuery = Boolean(mapSubQueryNorm.value);
-  const rows = [];
-  subscriptions.value.forEach((sub) => {
-    const rawKey = normalizeMapKey(sub.map || '') || sub.map || '';
-    if (!rawKey) return;
-    if (hiddenAfterUnsub.value.has(rawKey)) return;
-    const entry = getSearchEntryByKey(rawKey);
-    const match = hasQuery ? getSearchMatch(entry, query) : { rank: 0, score: 0 };
-    if (hasQuery && !match) return;
-    const comms = Array.isArray(sub.comms) ? sub.comms : [];
-    const shouldShowStatus = comms.includes('all') || comms.includes('exg');
-    const status = shouldShowStatus ? getMapSubStatusFromEntry(entry) : null;
-    rows.push({
-      key: rawKey,
-      displayName: isChineseLang.value ? getMapIndexDisplayName(rawKey) : '',
-      commsLabel: formatSubComms(comms),
-      status,
-      isSubscribed: subscribedMapKeys.value.has(rawKey),
-      rank: match?.rank ?? 0,
-      score: match?.score ?? 0,
-      availabilityGroup: getMapSubAvailabilityGroup(status)
-    });
-  });
-  rows.sort((a, b) => {
-    if (a.availabilityGroup !== b.availabilityGroup) {
-      return a.availabilityGroup === 'available' ? -1 : 1;
-    }
-    if (a.rank !== b.rank) return a.rank - b.rank;
-    if (b.score !== a.score) return b.score - a.score;
-    return a.key.localeCompare(b.key);
-  });
-  return rows;
-};
-
-const buildFullMapRows = () => {
-  const query = mapSubSearchQueryTrimmed.value;
-  const normalizedQuery = mapSubQueryNorm.value;
-  if (!normalizedQuery) return [];
-
-  const broadPrefix = normalizedQuery.startsWith('ze_') && normalizedQuery.length < 4;
-  const allowFullSearch = normalizedQuery.length >= 3 && !broadPrefix;
-  const requireExact = normalizedQuery.length < 3;
-  if (!allowFullSearch && !requireExact) return [];
-
-  const maxScan = 10000;
-  const maxResults = 30;
-  const results = [];
-  let scanned = 0;
-  mapSubSearchTruncated.value = false;
-
-  for (const entry of mapSearchIndex.value) {
-    if (scanned >= maxScan) break;
-    scanned += 1;
-    const mapKey = entry?.key;
-    if (!mapKey || subscribedMapKeys.value.has(mapKey)) continue;
-    if (hiddenAfterUnsub.value.has(mapKey)) continue;
-
-    const match = getSearchMatch(entry, query, {
-      requireExact,
-      allowSubstring: allowFullSearch,
-      allowAlias: true,
-      allowPinyin: allowFullSearch
-    });
-    if (!match) continue;
-    results.push({
-      key: mapKey,
-      displayName: isChineseLang.value ? getMapIndexDisplayName(mapKey) : '',
-      commsLabel: '',
-      status: null,
-      isSubscribed: subscribedMapKeys.value.has(mapKey),
-      rank: match.rank,
-      score: match.score,
-      availabilityGroup: getMapSubAvailabilityGroup(null)
-    });
-  }
-
-  results.sort((a, b) => {
-    if (a.rank !== b.rank) return a.rank - b.rank;
-    if (b.score !== a.score) return b.score - a.score;
-    return a.key.localeCompare(b.key);
-  });
-
-  if (results.length > maxResults) {
-    mapSubSearchTruncated.value = true;
-  }
-  return results.slice(0, maxResults);
+const getMapSubAvailabilityGroup = (status) => {
+    if (!status) return 'none';
+    if (status.type === 'available') return 'available';
+    if (status.type === 'cooldown') return 'cooldown';
+    return 'unavailable';
 };
 
 const refreshMapSubResults = () => {
-  mapSubSearchTruncated.value = false;
-  const subscribedRows = buildSubscribedMapRows();
-  const fullRows = buildFullMapRows();
-  mapSubResults.value = [...subscribedRows, ...fullRows];
-};
-
-watch([mapSearchIndex, curLang], () => {
-  refreshMapSubResults();
-});
-
-const onMapSubSearchInput = () => {
-  refreshMapSubResults();
-};
-
-const persistSubscriptions = () => {
-  localStorage.setItem('map_subs', JSON.stringify(subscriptions.value));
-};
-
-const addSubscriptionByKey = (mapKey, { silent = false, comms = [] } = {}) => {
-  const normalizedKey = normalizeMapKey(mapKey) || mapKey;
-  if (!normalizedKey) return;
-  const finalComms = comms.length ? comms : ['all'];
-  if (!subscribedMapKeys.value.has(normalizedKey)) {
-    subscriptions.value.push({ map: normalizedKey, comms: finalComms });
-    const nextKeys = new Set(subscribedMapKeys.value);
-    nextKeys.add(normalizedKey);
-    subscribedMapKeys.value = nextKeys;
-    persistSubscriptions();
-  }
-  hiddenAfterUnsub.value.delete(normalizedKey);
-  refreshMapSubResults();
-  if (!silent) {
-    showToast(formatTemplate(t('map_sub_toast_subscribed'), { map: normalizedKey }), 2000);
-  }
-  if (embedMode) {
-    postEmbedMessage('CS2ZE_SUBSCRIBE_MAP', { map: normalizedKey });
-  }
-};
-
-const removeSubscriptionByKey = (mapKey) => {
-  const normalizedKey = normalizeMapKey(mapKey) || mapKey;
-  if (!normalizedKey) return;
-  hiddenAfterUnsub.value.add(normalizedKey);
-  if (subscribedMapKeys.value.has(normalizedKey)) {
-    subscriptions.value = subscriptions.value.filter(sub => normalizeMapKey(sub.map) !== normalizedKey);
-    const nextKeys = new Set(subscribedMapKeys.value);
-    nextKeys.delete(normalizedKey);
-    subscribedMapKeys.value = nextKeys;
-    persistSubscriptions();
-  }
-  refreshMapSubResults();
-  showToast(formatTemplate(t('map_sub_toast_unsubscribed'), { map: normalizedKey }), 2000);
-};
-
-const openMapSubPopover = ({ mode = 'single', row = null } = {}) => {
-  mapSubPopoverMode.value = mode;
-  mapSubPopoverRow.value = row;
-  mapSubPopoverSelected.value = new Set();
-  mapSubPopoverOpen.value = true;
-};
-
-const closeMapSubPopover = () => {
-  mapSubPopoverOpen.value = false;
-  mapSubPopoverSelected.value = new Set();
-  mapSubPopoverRow.value = null;
-};
-
-const toggleMapSubPopoverCommunity = (commId) => {
-  let next = new Set(mapSubPopoverSelected.value);
-  if (commId === 'all') {
-    if (next.has('all')) {
-      next.delete('all');
-    } else {
-      next = new Set(['all']);
+    const query = mapSubSearchQueryTrimmed.value;
+    if (!query) {
+        mapSubResults.value = buildSubscribedRows();
+        mapSubSearchTruncated.value = false;
+        return;
     }
-  } else {
-    if (next.has(commId)) next.delete(commId);
-    else next.add(commId);
-    next.delete('all');
-  }
-  mapSubPopoverSelected.value = next;
+    
+    // Full search
+    const results = buildFullMapRows();
+    mapSubResults.value = results;
 };
 
-const confirmMapSubPopover = () => {
-  const comms = Array.from(mapSubPopoverSelected.value);
-  if (!comms.length) return;
-  if (mapSubPopoverMode.value === 'bulk') {
-    const keys = Array.from(mapSubSelectedKeys.value);
-    if (!keys.length) {
-      closeMapSubPopover();
-      return;
-    }
-    keys.forEach((key) => addSubscriptionByKey(key, { silent: true, comms }));
-    mapSubSelectedKeys.value = new Set();
-    showToast(formatTemplate(t('map_sub_toast_bulk_subscribed'), { count: keys.length }), 2200);
-  } else if (mapSubPopoverRow.value) {
-    addSubscriptionByKey(mapSubPopoverRow.value.key, { comms });
-  }
-  closeMapSubPopover();
-};
-
-const handleMapSubSubscribe = (event, row) => {
-  if (import.meta.env.DEV) {
-    console.debug('[map-sub] subscribe click', {
-      mapKey: row?.map_key ?? row?.key,
-      mode: mapSubPopoverMode.value,
-      multiSelect: mapSubMultiSelectMode.value,
-      popoverOpen: mapSubPopoverOpen.value
+const buildSubscribedRows = () => {
+    const rows = [];
+    subscribedMapKeys.value.forEach((rawKey) => {
+        const entry = getMapIndexEntry(rawKey);
+        // Build minimal row
+        const key = entry?.key || rawKey;
+        // Re-find subscription data
+        const sub = subscriptions.value.find(s => normalizeMapKey(s.map) === key);
+        const comms = sub?.comms || [];
+        
+        // Match query (if any small filter applied? no, this fn is for empty query usually)
+        // But if we want to filter subscribed list by query (local filter), we can.
+        // Assuming this is "show all subscribed" when query is empty.
+        
+        const status = getExgStatus({ map: key, comms });
+        
+        // Score/Rank is irrelevant for default list, maybe sort by status?
+        // Sort: Available -> Cooldown -> Others
+        // Then by Name.
+        
+        // Mock match for sorting?
+        const match = null;
+        
+        rows.push({
+            key,
+            displayName: isChineseLang.value ? getMapIndexDisplayName(key) : '',
+            commsLabel: formatSubComms(comms),
+            status,
+            isSubscribed: subscribedMapKeys.value.has(rawKey),
+            rank: match?.rank ?? 0,
+            score: match?.score ?? 0,
+            availabilityGroup: getMapSubAvailabilityGroup(status)
+        });
     });
-  }
-  if (!row || subscribedMapKeys.value.has(row.key)) return;
-  openMapSubPopover({ mode: 'single', row });
+    
+    rows.sort((a, b) => {
+         if (a.availabilityGroup !== b.availabilityGroup) {
+             return a.availabilityGroup === 'available' ? -1 : 1;
+         }
+         if (a.rank !== b.rank) return a.rank - b.rank;
+         if (b.score !== a.score) return b.score - a.score;
+         return a.key.localeCompare(b.key);
+    });
+    
+    return rows;
 };
 
-const handleMapSubUnsubscribe = (row) => {
-  if (!row || !subscribedMapKeys.value.has(row.key)) return;
-  removeSubscriptionByKey(row.key);
+const buildFullMapRows = () => {
+    const query = mapSubSearchQueryTrimmed.value;
+    const normalizedQuery = mapSubQueryNorm.value;
+    if (!normalizedQuery) return [];
+    
+    const broadPrefix = normalizedQuery.startsWith('ze_') && normalizedQuery.length < 4;
+    const allowFullSearch = normalizedQuery.length >= 3 && !broadPrefix;
+    const requireExact = normalizedQuery.length < 3;
+    
+    if (!allowFullSearch && !requireExact) return [];
+    
+    const maxScan = 10000;
+    const maxResults = 30;
+    const results = [];
+    let scanned = 0;
+    mapSubSearchTruncated.value = false;
+    
+    for (const entry of mapSearchIndex.value) {
+        if (scanned >= maxScan) break;
+        scanned += 1;
+        
+        const mapKey = entry?.key;
+        if (!mapKey || subscribedMapKeys.value.has(mapKey)) continue;
+        if (hiddenAfterUnsub.value.has(mapKey)) continue;
+        
+        const match = getSearchMatch(entry, query, { requireExact, allowSubstring: allowFullSearch, allowAlias: true, allowPinyin: allowFullSearch });
+        if (!match) continue;
+        
+        results.push({
+            key: mapKey,
+            displayName: isChineseLang.value ? getMapIndexDisplayName(mapKey) : '',
+            commsLabel: '',
+            status: null,
+            isSubscribed: subscribedMapKeys.value.has(mapKey),
+            rank: match.rank,
+            score: match.score,
+            availabilityGroup: 'none'
+        });
+        
+        if (results.length >= maxResults) {
+            mapSubSearchTruncated.value = true;
+            break;
+        }
+    }
+    
+    // Add currently subscribed maps that also match
+    const subMatches = buildSubscribedRows().filter(row => {
+        // We need to check if they match current query
+        const entry = getMapIndexEntry(row.key);
+        const match = getSearchMatch(entry, query, { requireExact, allowSubstring: allowFullSearch, allowAlias: true, allowPinyin: allowFullSearch });
+        if (match) {
+            row.rank = match.rank;
+            row.score = match.score;
+            return true;
+        }
+        return false;
+    });
+    
+    const merged = [...subMatches, ...results];
+    merged.sort((a, b) => {
+         if (a.rank !== b.rank) return a.rank - b.rank;
+         if (b.score !== a.score) return b.score - a.score;
+         return a.key.localeCompare(b.key);
+    });
+    
+    return merged;
 };
 
 const toggleMapSubMultiSelect = () => {
-  mapSubMultiSelectMode.value = !mapSubMultiSelectMode.value;
-  if (!mapSubMultiSelectMode.value) {
+    mapSubMultiSelectMode.value = !mapSubMultiSelectMode.value;
     mapSubSelectedKeys.value = new Set();
-  }
-};
-
-const cancelMapSubMultiSelect = () => {
-  mapSubMultiSelectMode.value = false;
-  mapSubSelectedKeys.value = new Set();
-};
-
-const toggleMapSubSelection = (row) => {
-  if (!row || subscribedMapKeys.value.has(row.key)) return;
-  const next = new Set(mapSubSelectedKeys.value);
-  if (next.has(row.key)) next.delete(row.key);
-  else next.add(row.key);
-  mapSubSelectedKeys.value = next;
-};
-
-const isSelected = (mapKey) => mapSubSelectedKeys.value.has(mapKey);
-
-const toggleSelected = (mapKey) => {
-  const row = mapSubResults.value.find((item) => item.key === mapKey);
-  if (!row) return;
-  toggleMapSubSelection(row);
+    updateBulkToolbarPosition();
 };
 
 const onMapSubRowClick = (event, row) => {
-  if (!mapSubMultiSelectMode.value) return;
-  const target = event?.target;
-  if (target?.closest?.('button, a, input, label')) return;
-  toggleMapSubSelection(row);
+    if (!mapSubMultiSelectMode.value) return;
+    toggleSelected(row.key);
+};
+
+const isSelected = (key) => mapSubSelectedKeys.value.has(key);
+const toggleSelected = (key) => {
+    const next = new Set(mapSubSelectedKeys.value);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    mapSubSelectedKeys.value = next;
+    updateBulkToolbarPosition();
 };
 
 const selectAllMapSub = () => {
-  const next = new Set();
-  mapSubResults.value.forEach((row) => {
-    if (!subscribedMapKeys.value.has(row.key)) next.add(row.key);
-  });
-  mapSubSelectedKeys.value = next;
+    const next = new Set();
+    mapSubUnsubscribedRows.value.forEach(row => next.add(row.key));
+    mapSubSelectedKeys.value = next;
+    updateBulkToolbarPosition();
 };
 
 const clearMapSubSelection = () => {
-  mapSubSelectedKeys.value = new Set();
+    mapSubSelectedKeys.value = new Set();
+    updateBulkToolbarPosition();
+};
+
+const cancelMapSubMultiSelect = () => {
+    mapSubMultiSelectMode.value = false;
+    mapSubSelectedKeys.value = new Set();
+    updateBulkToolbarPosition();
+};
+
+const handleMapSubSubscribe = (event, row) => {
+    openMapSubPopover({ mode: 'single', row });
+};
+
+const handleMapSubUnsubscribe = (row) => {
+    if (!row || !row.key) return;
+    removeSubscriptionByKey(row.key);
+};
+
+const addSubscriptionByKey = (key, { silent = false, comms = ['all'] } = {}) => {
+    const normalizedKey = normalizeMapKey(key);
+    if (!normalizedKey) return;
+    
+    // Check duplication
+    const existing = subscriptions.value.find(s => normalizeMapKey(s.map) === normalizedKey);
+    if (existing) {
+        existing.comms = comms; // Update comms
+    } else {
+        subscriptions.value.push({ map: normalizedKey, comms });
+    }
+    persistSubscriptions();
+    
+    // Update local state
+    subscribedMapKeys.value.add(normalizedKey);
+    if (hiddenAfterUnsub.value.has(normalizedKey)) {
+        hiddenAfterUnsub.value.delete(normalizedKey);
+    }
+    
+    if (embedMode) {
+      postEmbedMessage('CS2ZE_SUBSCRIBE_MAP', { map: normalizedKey });
+    }
+    
+    if (!silent) {
+        showToast(formatTemplate(t('map_sub_toast_subscribed'), { map: normalizedKey }), 2000);
+        refreshMapSubResults();
+    }
+};
+
+const removeSubscriptionByKey = (key) => {
+    const normalizedKey = normalizeMapKey(key);
+    if (!normalizedKey) return;
+    
+    hiddenAfterUnsub.value.add(normalizedKey);
+    
+    if (subscribedMapKeys.value.has(normalizedKey)) {
+        subscriptions.value = subscriptions.value.filter(sub => normalizeMapKey(sub.map) !== normalizedKey);
+        const nextKeys = new Set(subscribedMapKeys.value);
+        nextKeys.delete(normalizedKey);
+        subscribedMapKeys.value = nextKeys;
+        persistSubscriptions();
+    }
+    
+    refreshMapSubResults();
+    showToast(formatTemplate(t('map_sub_toast_unsubscribed'), { map: normalizedKey }), 2000);
+};
+
+const openMapSubPopover = ({ mode = 'single', row = null } = {}) => {
+    mapSubPopoverMode.value = mode;
+    mapSubPopoverRow.value = row;
+    mapSubPopoverSelected.value = new Set();
+    mapSubPopoverOpen.value = true;
+};
+
+const closeMapSubPopover = () => {
+    mapSubPopoverOpen.value = false;
+    mapSubPopoverSelected.value = new Set();
+    mapSubPopoverRow.value = null;
+};
+
+const toggleMapSubPopoverCommunity = (commId) => {
+    let next = new Set(mapSubPopoverSelected.value);
+    if (commId === 'all') {
+        if (next.has('all')) {
+            next.delete('all');
+        } else {
+            next = new Set(['all']);
+        }
+    } else {
+        if (next.has(commId)) next.delete(commId);
+        else next.add(commId);
+        next.delete('all');
+    }
+    mapSubPopoverSelected.value = next;
+};
+
+const confirmMapSubPopover = () => {
+    const comms = Array.from(mapSubPopoverSelected.value);
+    if (!comms.length) return;
+    
+    if (mapSubPopoverMode.value === 'bulk') {
+        const keys = Array.from(mapSubSelectedKeys.value);
+        if (!keys.length) {
+            closeMapSubPopover();
+            return;
+        }
+        keys.forEach((key) => addSubscriptionByKey(key, { silent: true, comms }));
+        mapSubSelectedKeys.value = new Set();
+        mapSubMultiSelectMode.value = false;
+        refreshMapSubResults();
+        showToast(t('map_sub_toast_bulk_subscribed'), 2000);
+    } else {
+        // Single
+        if (mapSubPopoverRow.value) {
+            addSubscriptionByKey(mapSubPopoverRow.value.key, { comms });
+        }
+    }
+    closeMapSubPopover();
+};
+
+const persistSubscriptions = () => {
+    localStorage.setItem('map_subs', JSON.stringify(subscriptions.value));
 };
 
 const openBulkSubscribePopover = (event) => {
-  if (mapSubSelectedKeys.value.size === 0) return;
-  openMapSubPopover({ mode: 'bulk' });
+    if (mapSubSelectedKeys.value.size === 0) return;
+    openMapSubPopover({ mode: 'bulk' });
 };
 
 const removeSubscriptionByMap = (mapName) => {
@@ -2688,16 +2829,14 @@ const testNotification = () => {
   if (!hasNotification) return;
   if (Notification.permission === "granted") {
     const cName = communities.value.length > 0 ? communities.value[0].name : "Test Community";
-    new Notification(t('sub_notify'), {
-      body: `[${cName}] Changed map to: ze_test_map\nTest Server`,
-      icon: "/static/nerv_logo.png"
-    });
+    new Notification(t('sub_notify'), { body: `[${cName}] Changed map to: ze_test_map\nTest Server`, icon: "/static/nerv_logo.png" });
   } else {
     requestPerm();
   }
 };
 
 const getServerKey = (srv) => `${srv.ip}:${srv.port}`;
+
 function normalizeIpPort(ip, port) {
   const ipStr = String(ip ?? '').trim();
   const portStr = String(port ?? '').trim();
@@ -2706,19 +2845,29 @@ function normalizeIpPort(ip, port) {
 }
 
 const decorateServer = (srv, comm) => {
-  const base = { ...srv };
-  if (!base.server_key) base.server_key = getServerKey(base);
-  if (!base.community_name) base.community_name = comm ? (comm.name || '') : '';
-  if (!base.game) base.game = (comm && comm.game) ? comm.game : 'cs2';
-  base.normal_threshold = Number(base.normal_threshold || (comm && comm.normal_threshold) || 62);
+  const base = {
+    ...srv,
+    online: Boolean(srv.name), // if name exists, assume queried successfully
+    display_ip: srv.display_ip || (srv.ip + ':' + srv.port),
+    players: srv.players || 0,
+    max_players: srv.max_players || 64,
+    map: srv.map || '',
+    image_url: null
+  };
+  const mapKey = normalizeMapKey(base.map);
+  if (mapKey && mapIndex.value[mapKey] && mapIndex.value[mapKey].image) {
+    base.image_url = mapIndex.value[mapKey].image;
+  }
+  // Try fallback to workshop image if available (not implemented here, but structure allows)
   return base;
 };
 
 const checkSubscriptions = (srvData, commId) => {
-  if (!srvData.map || srvData.map === '-') return;
+  if (!srvData || !srvData.map || !subscriptions.value.length) return;
+  
   const fullId = `${commId}_${getServerKey(srvData)}`;
   const normalizedMap = normalizeMapKey(srvData.map);
-
+  
   const matchedSub = subscriptions.value.find(sub => {
     const mapMatch = normalizedMap && normalizedMap === normalizeMapKey(sub.map);
     const commMatch = sub.comms.includes('all') || sub.comms.includes(commId);
@@ -2732,13 +2881,10 @@ const checkSubscriptions = (srvData, commId) => {
     }
     if (lastNotifiedMaps.value[fullId] !== normalizedMap) {
       if (hasNotification && Notification.permission === "granted") {
-        const c = communities.value.find(x => x.id === commId);
-        const cName = c ? (c.short_name || c.name) : commId;
-        const n = new Notification(t('sub_notify'), {
-          body: `[${cName}] Changed map to: ${srvData.map}\n${srvData.name}`,
-          icon: '/static/nerv_logo.png'
-        });
-        n.onclick = () => { window.focus(); copyCmd(srvData); };
+         const c = communities.value.find(x => x.id === commId);
+         const cName = c ? (c.short_name || c.name) : commId;
+         const n = new Notification(t('sub_notify'), { body: `[${cName}] Changed map to: ${srvData.map}\n${srvData.name}`, icon: '/static/nerv_logo.png' });
+         n.onclick = () => { window.focus(); copyCmd(srvData); };
       }
       lastNotifiedMaps.value[fullId] = normalizedMap;
     }
@@ -2753,7 +2899,13 @@ const loggedInRefreshIntervalMs = 10000;
 const hiddenRefreshIntervalMs = 20000;
 const statsRefreshIntervalMs = 15000;
 const hiddenStatsRefreshIntervalMs = 30000;
-const languageRefreshIntervalMs = 15000;
+
+const languageLabels = {
+  'zh-CN': '简体中文',
+  'zh-TW': '繁體中文',
+  'en': 'English'
+};
+
 let serverRefreshTimer = null;
 let statsRefreshTimer = null;
 let serverRefreshEtag = null;
@@ -2765,10 +2917,10 @@ const parseConfigPayload = (payload) => {
     return { communities: payload, join: {} };
   }
   if (payload && typeof payload === 'object') {
-    return {
-      communities: Array.isArray(payload.communities) ? payload.communities : [],
-      join: payload.join && typeof payload.join === 'object' ? payload.join : {}
-    };
+     return {
+       communities: Array.isArray(payload.communities) ? payload.communities : [],
+       join: payload.join && typeof payload.join === 'object' ? payload.join : {}
+     };
   }
   return { communities: [], join: {} };
 };
@@ -2778,18 +2930,17 @@ const applyCommunities = (data) => {
   let needsServerRefresh = false;
   communities.value.forEach(c => {
     if (c.servers && c.servers.length > 0) {
-      servers.value[c.id] = c.servers.map(srv => decorateServer(srv, c));
+       servers.value[c.id] = c.servers.map(srv => decorateServer(srv, c));
     } else if (!servers.value[c.id]) {
-      servers.value[c.id] = [];
-      needsServerRefresh = true;
+       servers.value[c.id] = [];
+       needsServerRefresh = true;
     }
-
     if (!serverCache.value[c.id]) serverCache.value[c.id] = {};
-
     if (!c.servers || c.servers.length === 0) {
       needsServerRefresh = true;
     }
   });
+  
   if (needsServerRefresh) {
     refreshAllServers();
   }
@@ -2800,25 +2951,25 @@ const fetchConfig = async () => {
     const res = await fetch('/config.json');
     const data = await res.json();
     const parsed = parseConfigPayload(data);
+    
     const defaultStrategy = normalizeJoinStrategy(parsed.join?.default_strategy) || 'rungameid';
     joinConfig.value = { ...parsed.join, default_strategy: defaultStrategy };
 
     try {
-      const savedIds = JSON.parse(localStorage.getItem('comm_order') || '[]');
-      if (savedIds.length > 0) {
+      const savedIds = JSON.parse(localStorage.getItem('comm_order'));
+      if (Array.isArray(savedIds)) {
         parsed.communities.sort((a, b) => {
-          const idxA = savedIds.indexOf(a.id);
-          const idxB = savedIds.indexOf(b.id);
-          if (idxA === -1 && idxB === -1) return 0;
-          if (idxA === -1) return 1;
-          if (idxB === -1) return -1;
-          return idxA - idxB;
+           const idxA = savedIds.indexOf(a.id);
+           const idxB = savedIds.indexOf(b.id);
+           if (idxA === -1 && idxB === -1) return 0;
+           if (idxA === -1) return 1;
+           if (idxB === -1) return -1;
+           return idxA - idxB;
         });
       }
     } catch (e) {
       localStorage.removeItem('comm_order');
     }
-
     applyCommunities(parsed.communities);
   } catch (e) {
     console.error("Config fetch failed", e);
@@ -2842,9 +2993,14 @@ const refreshAllServers = async () => {
     }
     const etag = res.headers.get('ETag') || res.headers.get('etag');
     if (etag) serverRefreshEtag = etag;
+    
     let payload = await res.json();
     const now = Date.now();
+    
+    // Normalize payload: it could be { cid: [servers] } or [ {cid...} ] (less likely for servers.json but consistent with struct)
+    // Actually our servers.json usually returns { "comm_id": [ ... ] }
     if (Array.isArray(payload)) {
+      // If it returns list of objects with cid?
       payload = payload.reduce((acc, item) => {
         if (!item || !item.cid) return acc;
         if (!acc[item.cid]) acc[item.cid] = [];
@@ -2852,24 +3008,30 @@ const refreshAllServers = async () => {
         return acc;
       }, {});
     }
+
     communities.value.forEach(comm => {
       const cid = comm.id;
       const cache = serverCache.value[cid] || {};
       const data = Array.isArray(payload[cid]) ? payload[cid] : [];
+      
       data.forEach(s => {
         const decorated = decorateServer(s, comm);
         cache[getServerKey(decorated)] = { ...decorated, _lastSeen: now };
         checkSubscriptions(decorated, cid);
       });
+      
+      // Prune old
       Object.keys(cache).forEach((key) => {
         if (now - cache[key]._lastSeen > serverStaleMs) {
           delete cache[key];
         }
       });
+      
       serverCache.value[cid] = cache;
       servers.value[cid] = Object.values(cache);
     });
   } catch (e) {
+    // console.error(e);
   } finally {
     serverRefreshInFlight = false;
   }
@@ -2900,6 +3062,7 @@ const startServerRefresh = () => {
   if (serverRefreshInitialized) return;
   serverRefreshInitialized = true;
   scheduleServerRefresh(true);
+  
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       scheduleServerRefresh();
@@ -2922,29 +3085,27 @@ const scheduleStatsRefresh = () => {
   }, getStatsRefreshInterval());
 };
 
-startServerRefresh();
-scheduleStatsRefresh();
-setInterval(() => {
-  loadLanguage(true);
-}, languageRefreshIntervalMs);
-
 const getServers = (cid) => {
-  const comm = communities.value.find(c => c.id === cid);
-  let list = servers.value[cid] ? [...servers.value[cid]].map(s => decorateServer(s, comm)) : [];
+  let list = servers.value[cid] || [];
+  
+  // Client-side search filtering
   const query = normalizeSearchText(serverMapQuery.value);
   if (query) {
     list = list.filter((serverEntry) => {
       const mapName = serverEntry.map || '';
       const entry = getMapTranslationEntry(mapName, serverEntry);
+      
       const candidates = [
         mapName,
         normalizeMapKey(mapName),
         entry.zh_cn || '',
         entry.zh_tw || ''
       ];
+      
       return candidates.some((item) => normalizeSearchText(item).includes(query));
     });
   }
+  
   if (sortByPlayers.value) {
     list.sort((a, b) => {
       if (a.online && !b.online) return -1;
@@ -2952,13 +3113,16 @@ const getServers = (cid) => {
       return b.players - a.players;
     });
   }
+  
   return list;
 };
+
 const filteredCommunities = computed(() => {
   const query = normalizeSearchText(serverMapQuery.value);
   if (!query) return communities.value;
   return communities.value.filter((comm) => getServers(comm.id).length > 0);
 });
+
 const serverSearchNotice = computed(() => {
   const query = serverMapQuery.value.trim();
   if (!query) return '';
@@ -2979,6 +3143,7 @@ let chartLoader = null;
 const loadChartJs = () => {
   if (window.Chart) return Promise.resolve();
   if (chartLoader) return chartLoader;
+  
   chartLoader = new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
@@ -2992,9 +3157,12 @@ const loadChartJs = () => {
 
 const loadStats = async () => {
   if (!isLoggedIn.value) return;
-
-  try { await loadChartJs(); } catch (e) { return; }
-
+  try {
+     await loadChartJs();
+  } catch (e) {
+    return;
+  }
+  
   let data = null;
   try {
     const res = await fetch('/api/stats');
@@ -3003,19 +3171,21 @@ const loadStats = async () => {
   } catch (e) {
     return;
   }
-
+  
   currentStats.value = data.current_stats;
   totalPlayers.value = data.current_stats.reduce((acc, c) => acc + c.count, 0);
   totalPeak48h.value = data.total_peak_48h || 0;
-
+  
   let top = null;
   data.current_stats.forEach(c => {
     if (!top || c.count > top.count) top = c;
   });
   topCommunity.value = top;
-
+  
+  // Only auto switch if not already there? No, user action controls view.
+  // But we might want to update charts if view is stats.
   curView.value = 'stats';
-
+  
   if (data.line_chart && Array.isArray(data.line_chart.labels)) {
     data.line_chart.labels = data.line_chart.labels.map((ts) => {
       if (typeof ts !== 'number') return ts;
@@ -3027,36 +3197,37 @@ const loadStats = async () => {
   setTimeout(() => {
     const lineCtx = document.getElementById('statsLineChart');
     const pieCtx = document.getElementById('statsPieChart');
-
-    const textColor = isDark.value ? '#d0d0d0' : '#1b1b1b';
-    const gridColor = isDark.value ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-    Chart.defaults.color = textColor;
-    Chart.defaults.borderColor = gridColor;
+    const textColor = isDark.value ? '#e0e0e0' : '#333';
+    const gridColor = isDark.value ? '#444' : '#ddd';
 
     if (lineCtx) {
       if (lineChartInst) {
-        lineChartInst.data.labels = data.line_chart.labels;
-        lineChartInst.data.datasets = data.line_chart.datasets;
-        lineChartInst.options.scales.x.ticks = { color: textColor };
+        lineChartInst.data = data.line_chart;
+        lineChartInst.options.scales.x = { grid: { display: false } };
         lineChartInst.options.scales.y = { grid: { color: gridColor }, ticks: { color: textColor } };
         lineChartInst.update('none');
       } else {
         lineChartInst = new Chart(lineCtx, {
           type: 'line',
           data: data.line_chart,
-          options: { maintainAspectRatio: false, scales: { x: { grid: { display: false } } } }
+          options: {
+            maintainAspectRatio: false,
+            scales: {
+               x: { grid: { display: false } }
+            }
+          }
         });
       }
     }
-
+    
     if (pieCtx) {
       if (pieChartInst) {
         pieChartInst.data.labels = data.pie_chart.labels;
         if (pieChartInst.data.datasets.length > 0 && data.pie_chart.datasets.length > 0) {
-          pieChartInst.data.datasets[0].data = data.pie_chart.datasets[0].data;
-          pieChartInst.data.datasets[0].backgroundColor = data.pie_chart.datasets[0].backgroundColor;
+           pieChartInst.data.datasets[0].data = data.pie_chart.datasets[0].data;
+           pieChartInst.data.datasets[0].backgroundColor = data.pie_chart.datasets[0].backgroundColor;
         } else {
-          pieChartInst.data.datasets = data.pie_chart.datasets;
+           pieChartInst.data.datasets = data.pie_chart.datasets;
         }
         pieChartInst.update();
       } else {
@@ -3081,17 +3252,17 @@ const getConnectAddress = (srv) => {
   }
   return srv.display_ip || (srv.ip + ':' + srv.port);
 };
+
 const allowedJoinStrategies = new Set([
-  'rungameid',
-  'steam_connect',
-  'server_browser',
-  'clipboard_only'
+  'rungameid', 'steam_connect', 'server_browser', 'clipboard_only'
 ]);
+
 const normalizeJoinStrategy = (value) => {
   if (!value) return null;
   const normalized = String(value).trim().toLowerCase();
   return allowedJoinStrategies.has(normalized) ? normalized : null;
 };
+
 const getJoinPayload = (srv) => {
   const host = srv.connect_ip || srv.ip || '';
   return {
@@ -3100,11 +3271,13 @@ const getJoinPayload = (srv) => {
     name: srv.name || ''
   };
 };
+
 const getConnectUrl = (srv, game) => {
   const address = getConnectAddress(srv);
   const appid = String(game || 'cs2').toLowerCase() === 'css' ? 240 : 730;
   return `steam://rungameid/${appid}//+connect%20${address}`;
 };
+
 const getFastJoinUrl = (srv) => {
   const address = getConnectAddress(srv);
   const appid = String(srv.game || 'cs2').toLowerCase() === 'css' ? 240 : 730;
@@ -3124,8 +3297,7 @@ const bestEffortCopy = (text) => {
       textArea.select();
       try {
         document.execCommand('copy');
-      } catch (err) {
-      }
+      } catch (err) { }
       document.body.removeChild(textArea);
     });
   } else {
@@ -3139,48 +3311,68 @@ const bestEffortCopy = (text) => {
     textArea.select();
     try {
       document.execCommand('copy');
-    } catch (err) {
-    }
+    } catch (err) { }
     document.body.removeChild(textArea);
   }
 };
 
-const joinServer = (srv, comm) => {
-  const target = decorateServer(srv, comm);
-  const address = getConnectAddress(target);
-  const strategy = normalizeJoinStrategy(target.join_strategy)
-    || normalizeJoinStrategy(comm && comm.join_strategy)
-    || normalizeJoinStrategy(joinConfig.value.default_strategy)
-    || 'rungameid';
-  if (strategy === 'steam_connect') {
-    const connectUrl = `steam://connect/${address}`;
-    bestEffortCopy(address);
-    try {
-      window.location.href = connectUrl;
-    } catch (err) {
-      showToast(`Server address copied: ${address}`);
-    }
-    return;
+const joinServer = (target, comm) => {
+  // Strategy Resolution
+  // 1. Community specific override?
+  // 2. Global config
+  // 3. Default fallback
+  
+  let strategy = joinConfig.value.default_strategy;
+  
+  // Check comm override if exists (assuming structure supports it, e.g. join_strategy)
+  if (comm && comm.join_strategy) {
+     const commStrat = normalizeJoinStrategy(comm.join_strategy);
+     if (commStrat) strategy = commStrat;
   }
+  
+  // Check target server game override (CSS vs CS2)
+  // Logic: if game is CSS, maybe strategy changes? 
+  // For now assume rungameid works for both if appid is correct.
+  
+  const address = getConnectAddress(target);
+  
+  if (strategy === 'steam_connect') {
+     const connectUrl = `steam://connect/${address}`;
+     bestEffortCopy(address);
+     try {
+       window.location.href = connectUrl;
+     } catch (err) {
+       showToast(`Server address copied: ${address}`);
+     }
+     return;
+  }
+  
   if (strategy === 'clipboard_only') {
     copyText(address, `Server address copied: ${address}`);
     return;
   }
+  
   if (strategy === 'server_browser') {
-    bestEffortCopy(address);
-    try {
-      window.location.href = 'steam://open/servers';
-    } catch (err) {
-      showToast(`Server address copied: ${address}`);
-    }
-    return;
+     bestEffortCopy(address);
+     try {
+       window.location.href = 'steam://open/servers';
+     } catch (err) {
+       showToast(`Server address copied: ${address}`);
+     }
+     return;
   }
+  
+  // Default: rungameid
   if (embedMode) {
     const sent = postEmbedMessage('CS2ZE_JOIN', getJoinPayload(target));
-    if (sent) return;
+    if (sent) return; // handled by parent
+    
+    // If not handled (e.g. iframe no parent support), fallback to copy
     copyText(`connect ${address}`, t('copy_console_done'));
     return;
   }
+  
+  // Standard web behavior
   window.location.href = getFastJoinUrl(target);
 };
 
@@ -3219,10 +3411,7 @@ const copyText = (text, toastMessage) => {
 const copyCmd = async (srv) => {
   const address = getConnectAddress(srv);
   if (embedMode) {
-    const sent = postEmbedMessage('CS2ZE_COPY', {
-      text: `connect ${address}`,
-      kind: 'connect'
-    });
+    const sent = postEmbedMessage('CS2ZE_COPY', { text: `connect ${address}`, kind: 'connect' });
     if (sent) return;
     copyText(`connect ${address}`, t('copy_console_done'));
     return;
@@ -3239,6 +3428,7 @@ const submitFeedback = () => {
     showToast(t('feedback_required'));
     return;
   }
+  // Mock send
   feedbackSubject.value = '';
   feedbackMessage.value = '';
   showToast(t('feedback_sent'));
@@ -3246,8 +3436,12 @@ const submitFeedback = () => {
 </script>
 
 <style scoped>
+/* ---------------------------------- Core Layout & Mobile Basics ---------------------------------- */
 .content-wrapper {
   --page-center-max: 1100px;
+  /* Safe area for notch/pill */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 .map-sub-view {
@@ -3257,24 +3451,336 @@ const submitFeedback = () => {
   position: relative;
 }
 
-:global(:root) {
-  --fd-accent: var(--accent, #0a84ff);
-  --checkbox-border: rgba(0, 0, 0, 0.38);
-  --checkbox-border-hover: rgba(0, 0, 0, 0.62);
-  --checkbox-bg-checked: var(--fd-accent);
-  --checkbox-shadow-focus: rgba(10, 132, 255, 0.35);
-  --checkbox-shadow-hover: rgba(0, 0, 0, 0.08);
+/* Mobile Layout Override */
+.is-mobile-layout {
+  display: flex !important;
+  flex-direction: column;
+  height: 100vh !important;
+  height: 100dvh !important; /* 适配移动端动态高度 */
+  overflow: hidden !important;
+  padding-bottom: 0 !important;
+}
+
+/* ADDED: Mobile Bottom Nav */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--card-border);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 999;
+  padding-bottom: env(safe-area-inset-bottom);
+  transition: transform 0.3s ease;
+}
+
+.mobile-bottom-nav.nav-hidden {
+  transform: translateY(100%);
+}
+
+.mob-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.mob-nav-item.active {
+  color: var(--accent);
+}
+
+.mob-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.mob-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+.mob-label {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* ---------------------------------- Small Laptop / Tablet Adapter ---------------------------------- */
+@media screen and (min-width: 769px) and (max-width: 1366px) {
+  /* Tighter Grid for Servers */
+  .grid-container {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 10px;
+  }
+  
+  /* Sidebar is controlled by logic, but we can tighten nav items */
+  .nav-item {
+    padding: 0 10px;
+  }
+}
+
+/* ---------------------------------- [修改点 3] MapCD 移动端样式重写 ---------------------------------- */
+@media (max-width: 768px) {
+  /* Hide Desktop Table Header */
+  .mapcd-header {
+    display: none !important;
+  }
+
+  /* Transform Row into a pseudo-row (stack) 移除了卡片背景，使其融入表格流 */
+  .mapcd-row {
+    display: grid !important;
+    /* Grid Template: 
+       [ Icon ] [ Map Name + Time ] [ Status ]
+    */
+    grid-template-columns: 1fr auto !important;
+    grid-template-rows: auto auto;
+    grid-template-areas: 
+      "mapinfo status"
+      "details status";
+    gap: 4px 12px;
+    
+    height: auto !important; /* Allow dynamic height */
+    min-height: 60px;
+    padding: 12px 16px;
+    margin: 0; /* 去除卡片样式，紧凑排列 */
+    border-bottom: 1px solid var(--card-border);
+    background: transparent !important; /* Ensure no card bg */
+    align-items: center;
+  }
+
+  /* Map Name Area */
+  .mapcd-cell.mapcd-col-map {
+    grid-area: mapinfo;
+    align-items: flex-start !important;
+    justify-content: center;
+    width: 100%;
+    padding: 0;
+  }
+  
+  .mapcd-map-key {
+    font-size: 15px;
+    font-weight: 600;
+  }
+  
+  .mapcd-map-cn {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-top: 2px;
+  }
+
+  /* Details Row (Achievement + Length + Deadline) - Combine them via flex or something */
+  /* Actually, let's just hide Achievement on mobile or put it small */
+  .mapcd-cell.mapcd-col-ach {
+    display: none !important; 
+  }
+
+  .mapcd-cell.mapcd-col-deadline,
+  .mapcd-cell.mapcd-col-length {
+    /* Combine these into the 'details' area if needed, or hide */
+    /* Let's show Deadline in details area */
+    grid-area: details;
+    font-size: 12px;
+    opacity: 0.6;
+    align-items: flex-start !important;
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 0;
+  }
+  
+  /* Combine logic: We iterate cells. We can use CSS to show only one or merge visually? 
+     Actually, the DOM structure is fixed. 
+     We can make them display:inline-block within the grid area? No.
+     
+     Hack: Make col-length hidden, show col-deadline.
+  */
+  .mapcd-cell.mapcd-col-length {
+    display: none !important;
+  }
+
+  /* Status Icon Area */
+  .mapcd-cell.mapcd-col-availability {
+    grid-area: status;
+    width: auto;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .mapcd-availability {
+    width: 32px;
+    height: 32px;
+  }
+
+  /* Search Bar Adjustment */
+  .mapcd-search-area {
+    margin-top: 10px !important;
+    margin-bottom: 10px !important;
+    padding: 0 16px;
+  }
+  
+  .sub-search-box {
+    height: 40px;
+    font-size: 14px;
+  }
+
+  /* Header Slot (Title + Toggle) */
+  .mapcd-header-slot {
+    padding: 0 16px;
+    margin: 10px 0;
+  }
+  
+  .mapcd-title {
+    font-size: 18px;
+  }
+  
+  .mapcd-toggle-btn {
+    height: 30px;
+    font-size: 12px;
+    padding: 0 10px;
+  }
+
+  /* Container Reset */
+  .mapcd-container {
+    border-radius: 0;
+    border: none;
+    border-top: 1px solid var(--card-border);
+    box-shadow: none;
+    background: transparent;
+  }
+  
+  /* Remove Spacers logic interference? No, spacers are divs inside body. */
+}
+
+/* ---------------------------------- [新增] 批量操作工具栏样式 ---------------------------------- */
+.sub-bulk-toolbar {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--popover-solid-bg, #ffffff);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+  z-index: 2000;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  
+  /* Safe area bottom handling */
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
+
+.sub-bulk-toolbar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-right: auto;
+}
+
+.sub-bulk-tool-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.sub-bulk-tool-btn:hover {
+  background: rgba(128,128,128,0.1);
+  color: var(--text-primary);
+}
+
+.sub-bulk-tool-btn--primary {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.sub-bulk-tool-btn--primary:hover {
+  background: rgba(var(--accent-rgb), 0.2);
+}
+
+.sub-bulk-tool-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.sub-bulk-tool-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Checkbox Style for Desktop/Mobile */
+.fd-check {
+  position: relative;
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+}
+
+.fd-check__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.fd-check__box {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 2px solid var(--text-secondary); /* Unchecked border */
+  border-radius: 6px;
+  background: transparent;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Checked State */
+.fd-check__input:checked + .fd-check__box {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Hover effect for unchecked */
+.sub-row.is-selectable:hover .fd-check__box {
+  border-color: var(--text-primary);
+}
+
+/* ---------------------------------- End New Styles ---------------------------------- */
+
+/* Dark Mode Variables Adjustment if needed */
+:root {
   --popover-solid-bg: #ffffff;
 }
 
-:global(body.dark),
-:global([data-theme="dark"]) {
-  --checkbox-border: rgba(255, 255, 255, 0.42);
-  --checkbox-border-hover: rgba(255, 255, 255, 0.72);
-  --checkbox-bg-checked: var(--fd-accent);
-  --checkbox-shadow-focus: rgba(10, 132, 255, 0.42);
+[data-theme="dark"] {
+  --checkbox-shadow: rgba(0, 0, 0, 0.3);
   --checkbox-shadow-hover: rgba(0, 0, 0, 0.25);
   --popover-solid-bg: #2b2b2b;
+}
+
+/* Ensure dark mode vars are correct for mobile nav */
+:global([data-theme="dark"]) .mobile-bottom-nav {
+  background: rgba(30, 30, 30, 0.85);
 }
 
 .sub-search-box {
@@ -3322,111 +3828,18 @@ const submitFeedback = () => {
 
 .map-sub-view .sub-map-key-row {
   display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.map-sub-view .sub-row.is-selectable {
-  cursor: pointer;
-}
-
-.map-sub-view .fd-check {
-  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  user-select: none;
-}
-
-.map-sub-view .fd-check__input {
-  position: absolute;
-  opacity: 0;
-  width: 1px;
-  height: 1px;
-  pointer-events: none;
-}
-
-.map-sub-view .fd-check__box {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  border: 2px solid var(--checkbox-border);
-  background: transparent;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  transition: background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease;
-}
-
-.map-sub-view .fd-check__icon {
-  width: 16px;
-  height: 16px;
-  display: block;
-}
-
-.map-sub-view .fd-check:hover .fd-check__box {
-  border-color: var(--checkbox-border-hover);
-  box-shadow: 0 1px 10px var(--checkbox-shadow-hover);
-}
-
-.map-sub-view .fd-check__input:focus-visible + .fd-check__box {
-  box-shadow: 0 0 0 3px var(--checkbox-shadow-focus);
-}
-
-.map-sub-view .fd-check__input:checked + .fd-check__box {
-  background: var(--checkbox-bg-checked);
-  border-color: var(--checkbox-bg-checked);
-}
-
-.map-sub-view .fd-check__input:disabled + .fd-check__box {
-  opacity: 0.55;
-}
-
-.map-sub-view .fd-check__input:disabled ~ .fd-check__box,
-.map-sub-view .fd-check__input:disabled ~ .fd-check__box * {
-  cursor: not-allowed;
-}
-
-.map-sub-view .sub-action-btn {
-  height: 34px;
-  padding: 0 16px;
-  min-width: 96px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  border: 1px solid transparent;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-
-.map-sub-view .sub-action-btn--subscribe {
-  background: color-mix(in srgb, var(--accent) 85%, transparent);
-  color: white;
-  border-color: color-mix(in srgb, var(--accent) 85%, transparent);
-}
-
-.map-sub-view .sub-action-btn--subscribe:hover {
-  background: color-mix(in srgb, var(--accent) 92%, transparent);
-}
-
-.map-sub-view .sub-action-btn--unsubscribe {
-  background: transparent;
-  color: var(--status-offline);
-  border-color: color-mix(in srgb, var(--status-offline) 85%, transparent);
-}
-
-.map-sub-view .sub-action-btn--unsubscribe:hover {
-  background: color-mix(in srgb, var(--status-offline) 15%, transparent);
+  gap: 8px;
 }
 
 .sub-popover-backdrop {
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.3);
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -3443,10 +3856,10 @@ const submitFeedback = () => {
   gap: 12px;
   padding: 18px;
   border-radius: 18px;
-  background: var(--popover-solid-bg);
+  background: var(--popover-solid-bg, #ffffff);
   opacity: 1;
   border: 1px solid var(--card-border);
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   z-index: 10000;
 }
 
@@ -3483,82 +3896,84 @@ const submitFeedback = () => {
 }
 
 .sub-popover-chip {
-  border-radius: 999px;
+  border-radius: 9px;
   border: 1px solid var(--card-border);
-  background: rgba(128, 128, 128, 0.08);
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 600;
+  background: var(--card-bg);
   padding: 6px 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  font-size: 13px;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.sub-popover-chip:hover {
+  background: rgba(128, 128, 128, 0.08);
 }
 
 .sub-popover-chip.is-selected {
-  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-}
-
-.sub-popover-chip-text {
-  font-size: 12px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 .sub-popover-chip-icon {
-  display: inline-flex;
   width: 14px;
   height: 14px;
+  display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.sub-popover-chip-icon svg {
-  width: 14px;
-  height: 14px;
-}
-
 .sub-popover-footer {
+  margin-top: 4px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
 }
 
 .sub-popover-count {
   font-size: 12px;
   color: var(--text-secondary);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .sub-popover-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  margin-top: 8px;
 }
 
 .sub-popover-btn {
-  height: 34px;
+  height: 36px;
   padding: 0 16px;
-  border-radius: 8px;
-  font-size: 12px;
+  border-radius: 10px;
+  font-size: 13px;
   font-weight: 600;
-  border: 1px solid var(--card-border);
-  background: rgba(128, 128, 128, 0.08);
-  color: var(--text-primary);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  border: none;
+  transition: transform 0.1s;
 }
 
-.sub-popover-btn:hover {
-  background: rgba(128, 128, 128, 0.16);
+.sub-popover-btn:active {
+  transform: scale(0.97);
+}
+
+.sub-popover-btn--cancel {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.sub-popover-btn--cancel:hover {
+  background: rgba(128, 128, 128, 0.1);
+  color: var(--text-primary);
 }
 
 .sub-popover-btn--confirm {
-  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
-  color: var(--text-primary);
+  background: var(--accent);
+  color: #fff;
 }
 
 .sub-popover-btn--confirm:disabled {
@@ -3566,33 +3981,19 @@ const submitFeedback = () => {
   cursor: not-allowed;
 }
 
-.sub-popover-btn--cancel {
-  border-color: var(--card-border);
-}
-
+/* Status Colors */
 .map-sub-view .exg-inline-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  line-height: 28px;
-  font-weight: 600;
-  padding: 0;
-  background: none;
-  border: none;
-  cursor: default;
-  pointer-events: none;
-  color: var(--text-secondary);
-}
-
-.map-sub-view .exg-inline-time {
-  opacity: 0.9;
-  font-weight: 600;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
 }
 
 .map-sub-view .exg-icon {
-  width: 16px;
-  height: 16px;
   flex: 0 0 auto;
 }
 
@@ -3624,6 +4025,7 @@ const submitFeedback = () => {
   color: var(--status-offline, #0078d4);
 }
 
+
 .map-sub-view .sub-unsubscribed-shell {
   margin: 28px auto 0;
   width: 100%;
@@ -3644,123 +4046,47 @@ const submitFeedback = () => {
 }
 
 .map-sub-view .sub-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  opacity: 0.85;
   margin: 0;
-  opacity: 0.8;
 }
 
 .map-sub-view .sub-bulk-entry {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 16px;
-  min-height: 38px;
-  border-radius: 12px;
+  gap: 6px;
+  background: transparent;
   border: 1px solid var(--card-border);
-  background: var(--card-bg);
   color: var(--text-primary);
   font-size: 12px;
   font-weight: 600;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+  transition: all 0.15s ease;
+}
+
+.map-sub-view .sub-bulk-entry:hover {
+  background: rgba(128,128,128,0.05);
 }
 
 .map-sub-view .sub-bulk-entry-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 16px;
   height: 16px;
 }
 
 .map-sub-view .sub-bulk-entry-icon svg {
-  width: 16px;
-  height: 16px;
-  display: block;
+  width: 100%;
+  height: 100%;
 }
 
-.map-sub-view .sub-bulk-entry:hover {
-  background: rgba(128, 128, 128, 0.12);
-}
 
-.map-sub-view .sub-bulk-entry:active {
-  transform: translateY(1px);
-}
-
-.map-sub-view .sub-bulk-toolbar {
-  position: fixed;
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  min-width: 140px;
-  border-radius: 16px;
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
-}
-
-.map-sub-view .sub-bulk-toolbar-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--card-border);
-}
-
-.map-sub-view .sub-bulk-tool-btn {
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid var(--card-border);
-  background: rgba(128, 128, 128, 0.08);
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
-}
-
-.map-sub-view .sub-bulk-tool-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  opacity: 0.8;
-}
-
-.map-sub-view .sub-bulk-tool-icon svg {
-  width: 14px;
-  height: 14px;
-  display: block;
-}
-
-.map-sub-view .sub-bulk-tool-btn:hover {
-  background: rgba(128, 128, 128, 0.16);
-}
-
-.map-sub-view .sub-bulk-tool-btn:active {
-  transform: translateY(1px);
-}
-
-.map-sub-view .sub-bulk-tool-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.map-sub-view .sub-bulk-tool-btn--primary {
-  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-}
-
-@media (max-width: 980px) {
-  .map-sub-view .sub-unsubscribed-shell {
+/* Re-use existing server-search-bar styles or card styles for consistency? */
+@media (max-width: 768px) {
+  .sub-container {
+    padding: 0 16px;
     max-width: 100%;
   }
 }
@@ -3784,6 +4110,7 @@ const submitFeedback = () => {
   --mapcd-surface-border: var(--card-border);
   --mapcd-surface-radius: 14px;
   --mapcd-card-max: var(--page-center-max);
+  
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -3838,6 +4165,9 @@ const submitFeedback = () => {
   font-size: 18px;
   font-weight: 700;
   opacity: 0.9;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .mapcd-search-row {
@@ -3857,83 +4187,29 @@ const submitFeedback = () => {
   padding: 0 12px;
   border-radius: 12px;
   background: color-mix(in srgb, var(--mapcd-surface-bg) 86%, #ffffff 14%);
-  border: 1px solid color-mix(in srgb, var(--mapcd-surface-border) 65%, transparent 35%);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  border: 1px solid color-mix(in srgb, var(--mapcd-surface-border) 60%, transparent 40%);
+  transition: all 0.2s ease;
 }
 
 .mapcd-search:focus-within {
-  border-color: color-mix(in srgb, var(--mapcd-surface-border) 30%, rgba(96, 165, 250, 0.5));
-  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.25), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
-  background: color-mix(in srgb, var(--mapcd-surface-bg) 82%, #ffffff 18%);
+  background: var(--mapcd-surface-bg);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.2);
 }
 
-.mapcd-searchIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  color: var(--text-secondary);
-  opacity: 0.7;
-  pointer-events: none;
-}
-
-.mapcd-searchIcon svg {
-  width: 16px;
-  height: 16px;
-  display: block;
-}
-
-.mapcd-searchInput {
+.mapcd-search-input {
   flex: 1;
-  height: 100%;
-  border: 0;
-  outline: 0;
   background: transparent;
-  color: var(--text-primary);
+  border: none;
   font-size: 14px;
-}
-
-.mapcd-searchInput::placeholder {
-  color: var(--text-secondary);
-  opacity: 0.8;
-}
-
-.mapcd-clearBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  border: 0;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.mapcd-clearBtn:hover {
-  background: rgba(255, 255, 255, 0.06);
   color: var(--text-primary);
+  outline: none;
+  height: 100%;
 }
 
-.mapcd-clearBtn:active {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.mapcd-clearBtn svg {
-  display: block;
-}
-
-.mapcd-search-empty {
-  font-size: 12px;
-  color: var(--text-secondary);
-  padding-left: 4px;
-}
-
-.mapcd-search-wrap {
+.mapcd-container-wrapper {
+  flex: 1;
+  min-height: 0;
   width: 100%;
   max-width: var(--mapcd-card-max);
   display: flex;
@@ -3996,118 +4272,43 @@ const submitFeedback = () => {
 }
 
 .mapcd-preparing {
-  display: inline-block;
-  margin-left: 12px;
   font-size: 12px;
-  color: var(--text-secondary);
-  opacity: 0.8;
+  font-weight: 400;
+  opacity: 0.6;
 }
 
 .mapcd-table {
-  margin: 0;
-  border-radius: 0 0 calc(var(--mapcd-surface-radius) - 2px) calc(var(--mapcd-surface-radius) - 2px);
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   height: 100%;
 }
 
-.mapcd-body {
-  position: relative;
-  height: auto;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-  contain: layout paint;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.mapcd-body::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
-
-@supports not (scrollbar-gutter: stable) {
-  .mapcd-body {
-    overflow-y: scroll;
-  }
-}
-
-.mapcd-edge-fade {
-  position: sticky;
-  left: 0;
-  right: 0;
-  height: 16px;
-  pointer-events: none;
-  z-index: 3;
-}
-
-.mapcd-edge-fade--top {
-  top: 0;
-  background: linear-gradient(to bottom, var(--mapcd-surface-bg), rgba(0, 0, 0, 0));
-}
-
-.mapcd-edge-fade--bottom {
-  bottom: 0;
-  background: linear-gradient(to top, var(--mapcd-surface-bg), rgba(0, 0, 0, 0));
-}
-
-.mapcd-top-spacer {
-  width: 100%;
-}
-
-.mapcd-bottom-spacer {
-  width: 100%;
-}
-
-.mapcd-header,
-.mapcd-row {
-  display: grid;
-  grid-template-columns: 1.6fr 1.2fr 1.2fr 0.9fr 0.5fr;
-  gap: 12px;
-  align-items: center;
-  padding: 12px 16px;
-}
-
 .mapcd-header {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: color-mix(in srgb, var(--mapcd-surface-bg) 96%, #ffffff 4%);
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1.2fr 1.2fr 80px;
+  padding: 0 16px;
+  background: color-mix(in srgb, var(--mapcd-surface-bg) 96%, #000 4%);
   border-bottom: 1px solid color-mix(in srgb, var(--mapcd-surface-border) 50%, transparent 50%);
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
-}
-
-.mapcd-header .sortable {
-  cursor: pointer;
+  height: 40px;
+  align-items: center;
   user-select: none;
 }
 
-.mapcd-header .sortable:hover {
-  opacity: 0.85;
-}
-
-.mapcd-view .sort-tri {
-  margin-left: 6px;
-  font-size: 11px;
-  opacity: 0.35;
-}
-
-.mapcd-view .mapcd-header .sortable.active,
-.mapcd-view .mapcd-header .sortable.active .sort-tri {
-  opacity: 1;
-  color: var(--accent);
+.mapcd-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  /* Custom scrollbar matching app theme if desired, else native */
 }
 
 .mapcd-row {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1.2fr 1.2fr 80px;
+  padding: 0 16px;
   border-bottom: 1px solid color-mix(in srgb, var(--mapcd-surface-border) 35%, transparent 65%);
   font-size: 13px;
   color: var(--text-primary);
@@ -4122,11 +4323,10 @@ const submitFeedback = () => {
 }
 
 .mapcd-row.is-highlight {
-  background: rgba(120, 160, 255, 0.18);
-  box-shadow: inset 0 0 0 1px rgba(120, 160, 255, 0.32);
+  background: rgba(var(--accent-rgb), 0.12);
 }
 
-.mapcd-row:last-of-type {
+.mapcd-row:last-child {
   border-bottom: none;
 }
 
@@ -4140,59 +4340,21 @@ const submitFeedback = () => {
   min-width: 0;
 }
 
-.mapcd-col-map,
-.mapcd-col-ach {
+.mapcd-col-map, .mapcd-col-ach {
   align-items: flex-start;
   justify-content: center;
 }
 
-.mapcd-col-ach,
-.mapcd-col-length {
+.mapcd-col-ach, .mapcd-col-length {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.mapcd-row .mapcd-col-deadline,
+.mapcd-row .mapcd-col-deadline, 
 .mapcd-row .mapcd-col-length,
-.mapcd-row .mapcd-col-availability {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-}
-
-.mapcd-header .mapcd-col-deadline,
-.mapcd-row .mapcd-col-deadline {
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  text-align: left;
-}
-
-.mapcd-row .mapcd-col-deadline {
-  justify-content: flex-start;
-}
-
-.mapcd-header .mapcd-col-length,
-.mapcd-header .mapcd-col-availability,
-.mapcd-row .mapcd-col-length,
-.mapcd-row .mapcd-col-availability {
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-
-.mapcd-col-availability {
-  align-items: center;
-}
-
-.mapcd-map-key {
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.mapcd-row .mapcd-col-ach {
+  opacity: 0.9;
 }
 
 .mapcd-map-key-row {
@@ -4238,44 +4400,78 @@ const submitFeedback = () => {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: rgba(128, 128, 128, 0.08);
-  line-height: 0;
-}
-
-.mapcd-availability-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-}
-
-.mapcd-availability-icon svg {
-  display: block;
-  margin: auto;
-  width: 14px;
-  height: 14px;
+  background: rgba(128, 128, 128, 0.1);
 }
 
 .mapcd-availability.is-available {
+  background: rgba(var(--status-online-rgb, 16, 124, 16), 0.15);
   color: var(--status-online);
-  background: rgba(32, 201, 151, 0.16);
 }
 
 .mapcd-availability.is-cooldown {
+  background: rgba(var(--status-offline-rgb, 200, 0, 0), 0.1);
   color: var(--status-offline);
-  background: rgba(255, 92, 92, 0.16);
+}
+
+.mapcd-availability-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
 .mapcd-empty {
-  padding: 24px;
+  padding: 40px;
   text-align: center;
   color: var(--text-secondary);
+  font-size: 14px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .mapcd-row {
-    transition: none;
-  }
+/* Edge Fades */
+.mapcd-edge-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 24px;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.mapcd-edge-fade--top {
+  top: 0;
+  background: linear-gradient(to bottom, var(--mapcd-surface-bg), transparent);
+}
+
+.mapcd-edge-fade--bottom {
+  bottom: 0;
+  background: linear-gradient(to top, var(--mapcd-surface-bg), transparent);
+}
+
+.mapcd-view .mapcd-header .sortable {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.mapcd-view .mapcd-header .sortable:hover {
+  color: var(--text-primary);
+}
+
+.mapcd-view .mapcd-header .sort-tri {
+  display: inline-block;
+  font-size: 8px;
+  margin-left: 4px;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.mapcd-view .mapcd-header .sortable.active,
+.mapcd-view .mapcd-header .sortable.active .sort-tri {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.mapcd-hint.mapcd-sort-hint {
+  font-size: 12px; 
+  color: var(--accent);
 }
 </style>

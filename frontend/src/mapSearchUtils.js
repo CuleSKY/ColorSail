@@ -1,10 +1,16 @@
+// mapSearchUtils.js
 import * as OpenCC from 'opencc-js';
 import { pinyin } from 'pinyin-pro';
 
+// 安全地创建 OpenCC 转换器
 export const createOpenCCConverter = () => {
   try {
-    return OpenCC.Converter({ from: 'cn', to: 'tw' });
+    // 兼容不同的打包格式 (ESM default export vs named export)
+    const Converter = OpenCC.Converter || (OpenCC.default && OpenCC.default.Converter);
+    if (!Converter) return null;
+    return Converter({ from: 'cn', to: 'tw' });
   } catch (e) {
+    console.warn('[MapUtils] OpenCC creation failed, falling back to simplified.', e);
     return null;
   }
 };
@@ -13,37 +19,11 @@ export const stripBracketSegments = (value) => (value || '').toString().replace(
 export const normalizeSearchText = (value) => (value || '').toString().toLowerCase().replace(/\s+/g, '');
 
 const ZH_VARIANT_PAIRS = [
-  ['图', '圖'],
-  ['显', '顯'],
-  ['却', '卻'],
-  ['乐', '樂'],
-  ['发', '發'],
-  ['无', '無'],
-  ['龙', '龍'],
-  ['圣', '聖'],
-  ['战', '戰'],
-  ['终', '終'],
-  ['爱', '愛'],
-  ['梦', '夢'],
-  ['炉', '爐'],
-  ['魔', '魔'],
-  ['光', '光'],
-  ['败', '敗'],
-  ['风', '風'],
-  ['云', '雲'],
-  ['书', '書'],
-  ['车', '車'],
-  ['门', '門'],
-  ['国', '國'],
-  ['岛', '島'],
-  ['剑', '劍'],
-  ['进', '進'],
-  ['觉', '覺'],
-  ['体', '體'],
-  ['击', '擊'],
-  ['队', '隊'],
-  ['续', '續'],
-  ['绝', '絕']
+  ['图', '圖'], ['显', '顯'], ['却', '卻'], ['乐', '樂'], ['发', '發'], ['无', '無'],
+  ['龙', '龍'], ['圣', '聖'], ['战', '戰'], ['终', '終'], ['爱', '愛'], ['梦', '夢'],
+  ['炉', '爐'], ['魔', '魔'], ['光', '光'], ['败', '敗'], ['风', '風'], ['云', '雲'],
+  ['书', '書'], ['车', '車'], ['门', '門'], ['国', '國'], ['岛', '島'], ['剑', '劍'],
+  ['进', '進'], ['觉', '覺'], ['体', '體'], ['击', '擊'], ['队', '隊'], ['续', '續'], ['绝', '絕']
 ];
 
 const ZH_VARIANT_MAP = ZH_VARIANT_PAIRS.reduce((acc, [simp, trad]) => {
@@ -89,6 +69,7 @@ const countNgramMatches = (query, target) => {
   return grams.reduce((acc, gram) => acc + (target.includes(gram) ? 1 : 0), 0);
 };
 
+// [重要] 这个函数在主线程执行，用于建立深度搜索索引，所以可以使用 pinyin 库
 export const buildMapSearchIndex = (mapIndex, converter) => {
   const entries = [];
   if (!mapIndex || typeof mapIndex !== 'object') return entries;
@@ -233,25 +214,6 @@ export const validateMapIndexEntry = (mapKey, entry, warn = console.warn) => {
   }
   if (typeof entry.map_cn !== 'string') {
     warn?.(`[map_index] missing map_cn for ${mapKey}`);
-  }
-  if (entry.aliases !== undefined && !Array.isArray(entry.aliases)) {
-    warn?.(`[map_index] aliases should be array for ${mapKey}`);
-  }
-  if (entry.deadline !== undefined && entry.deadline !== null && typeof entry.deadline !== 'number') {
-    warn?.(`[map_index] deadline should be number|null for ${mapKey}`);
-  }
-  if (
-    entry.cooldown_end_epoch !== undefined
-    && entry.cooldown_end_epoch !== null
-    && typeof entry.cooldown_end_epoch !== 'number'
-  ) {
-    warn?.(`[map_index] cooldown_end_epoch should be number|null for ${mapKey}`);
-  }
-  if (entry.duration_raw !== undefined && entry.duration_raw !== null && typeof entry.duration_raw !== 'string') {
-    warn?.(`[map_index] duration_raw should be string|null for ${mapKey}`);
-  }
-  if (entry.duration_sec !== undefined && entry.duration_sec !== null && typeof entry.duration_sec !== 'number') {
-    warn?.(`[map_index] duration_sec should be number|null for ${mapKey}`);
   }
 };
 
