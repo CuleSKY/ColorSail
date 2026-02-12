@@ -115,7 +115,7 @@
                 <div class="dropdown-menu profile-menu" :class="{show: showProfileMenu}" @click.stop>
                   <div class="dropdown-item">
                     <a v-if="steamId" :href="'https://example.com/profiles/' + steamId" target="_blank" class="profile-link">
-                      {{ steamProfileName }} <span style="font-size:10px; opacity:0.5">鈫?/span>
+                      {{ steamProfileName }} <span style="font-size:10px; opacity:0.5">&nearr;</span>
                     </a>
                     <span v-else class="profile-name">{{ steamProfileName }}</span>
                   </div>
@@ -162,7 +162,7 @@
                 <div class="icon-svg" v-html="icons.lang"></div>
               </button>
               <div class="dropdown-menu" :class="{show: showLangMenu}" @click.stop>
-                <div class="dropdown-item" :class="{active: curLang.startsWith('zh')}" @click="setLang(defaultChineseLang)">涓枃</div>
+                <div class="dropdown-item" :class="{active: curLang.startsWith('zh')}" @click="setLang(defaultChineseLang)">Chinese</div>
                 <div class="dropdown-item" :class="{active: curLang==='en'}" @click="setLang('en')">English</div>
               </div>
             </div>

@@ -1,4 +1,4 @@
-# Map Sidecar
+﻿# Map Sidecar
 
 This sidecar owns **all write paths** for map metadata, exports, and workshop images. The Flask main server stays read-only and continues to serve `/servers.json` even if the sidecar is offline.
 
@@ -130,7 +130,7 @@ Ingest endpoint (correct token -> 200):
 curl -i -X POST https://example.com/sidecar/exg/ingest \
   -H 'Authorization: Bearer REPLACE_ME' \
   -H 'Content-Type: application/json' \
-  -d '{"source":"exg_maplist","fetched_at_epoch":1710000000,"records":[{"map":"de_dust2","name_zh":"娌欐紶2","difficulty":"鏈爣娉?,"tags":[],"cooldown":{"duration_raw":"60","deadline":"2024/03/10 12:00"},"achievement":"Win 10 rounds","workshop":{"id":"123456789","url":"https://example.com/sharedfiles/filedetails/?id=123456789"}}]}'
+  -d '{"source":"exg_maplist","fetched_at_epoch":1710000000,"records":[{"map":"de_dust2","name_zh":"Dust 2","difficulty":"Unrated","tags":[],"cooldown":{"duration_raw":"60","deadline":"2024/03/10 12:00"},"achievement":"Win 10 rounds","workshop":{"id":"123456789","url":"https://example.com/sharedfiles/filedetails/?id=123456789"}}]}'
 ```
 
 CN dry-run preview:
@@ -178,6 +178,7 @@ sudo systemctl enable --now exg-fetcher-cn.timer
 - EXG HTML is retained under `tools/map_sidecar/debug/exg_html/` on the **CN fetcher** when `DEBUG=true` or parsing fails; files older than `RETENTION_HOURS` are deleted automatically.
 - Workshop images are saved as lowercase `<map_key>.jpg` under `<PROJECT_ROOT>/<STATIC_DIR_NAME>/maps/`.
 - Overseas hosts do **not** fetch the EXG HTML directly; ingestion happens via the HTTP sidecar endpoint.
+
 
 
 

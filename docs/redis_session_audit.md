@@ -1,4 +1,4 @@
-# Redis Session Audit & Deployment Guide (CS2ZE)
+﻿# Redis Session Audit & Deployment Guide (CS2ZE)
 
 ## Scope
 This audit focuses on **post-login session stability and security** when using Redis-backed server-side sessions in a Cloudflare + domestic CDN multi-layer deployment. It does **not** discuss first-time login success rate or architectural changes.
@@ -45,7 +45,7 @@ If Redis restarts without persistence, all sessions are lost.
 **Status: Enforced.**  
 Cookies are **HttpOnly**, **Secure**, **SameSite=Lax**, **Path=/**, and have **Max-Age** aligned with session lifetime.  
 **Domain:** Host-only by default under canonical `example.com`; **no cookie Domain** unless explicitly set.  
-**Note:** Lax is required for Steam OpenID鈥檚 top-level redirects to preserve cookies (Strict can cause session loss).
+**Note:** Lax is required for Steam OpenID's top-level redirects to preserve cookies (Strict can cause session loss).
 
 ### 7) CDN/cache behavior and Set-Cookie retention
 **Status: Enforced in source; CDN must honor.**  
@@ -156,11 +156,12 @@ WantedBy=multi-user.target
 
 ## Minimal Acceptance Checklist (copy/paste)
 
-1) Login successful 鈫?**refresh page** 鈫?still logged in.  
-2) Close browser 鈫?reopen 鈫?still logged in.  
-3) Wait overnight (or simulate by extending session) 鈫?still logged in.  
+1) Login successful -> **refresh page** -> still logged in.  
+2) Close browser -> reopen -> still logged in.  
+3) Wait overnight (or simulate by extending session) -> still logged in.  
 4) `/auth/me` response includes `Cache-Control: no-store`.  
-5) Steam domain unreachable 鈫?existing session **still valid** (no forced logout).  
+5) Steam domain unreachable -> existing session **still valid** (no forced logout).  
 6) CDN edge inspection confirms `Set-Cookie` preserved on login/callback responses.
+
 
 

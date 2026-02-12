@@ -164,7 +164,7 @@
                 <div class="icon-svg" v-html="icons.lang"></div>
               </button>
               <div class="dropdown-menu" :class="{show: showLangMenu}" @click.stop>
-                <div class="dropdown-item" :class="{active: curLang.startsWith('zh')}" @click="setLang(defaultChineseLang)">中文</div>
+                <div class="dropdown-item" :class="{active: curLang.startsWith('zh')}" @click="setLang(defaultChineseLang)">Chinese</div>
                 <div class="dropdown-item" :class="{active: curLang==='en'}" @click="setLang('en')">English</div>
               </div>
             </div>
@@ -420,7 +420,7 @@
                   Daily metrics (by community): PCU = daily peak CCU (max); ACU = daily average CCU (arithmetic mean of 10-minute samples). "Samples" is used to detect missing samples and resulting data distortion. WoW stands for "week-over-week"
                 </div>
                 <div class="stats-advanced-note">
-                  For the full data table, please contact (English/中文): <a href="mailto:liwenyu2004@outlook.com">liwenyu2004@outlook.com</a>
+                  For the full data table, please contact: <a href="mailto:liwenyu2004@outlook.com">liwenyu2004@outlook.com</a>
                 </div>
 
                 <div class="stats-advanced-table-wrap">
@@ -495,20 +495,20 @@
                       {{ mapcdAutoShowAll ? t('mapcd_title_fallback_all') : (isAllMapsMode ? t('mapcd_title_all') : t('mapcd_title_cooldown')) }}
                     </h3>
                     <span v-if="mapCooldownIsBuilding" class="mapcd-preparing">
-                      {{ isChineseLang ? '准备中...' : 'Preparing...' }}{{ mapCooldownProgressText }}
+                      Preparing...{{ mapCooldownProgressText }}
                     </span>
                   </div>
                   <div class="mapcd-controls">
                      <button class="mapcd-toggle-btn" type="button" @click="toggleMapCooldownMode">
                       <span class="mapcd-toggle-icon" aria-hidden="true">
-                        <!-- 褰撳墠鏄€滄樉绀哄叏閮ㄢ€濊鍥撅細鎸夐挳鏄剧ず鈥滀粎鍐峰嵈鈥?+ 闂归挓 icon -->
+                        <!-- In "show all" mode, show the cooldown-only toggle icon. -->
                       <svg v-if="isAllMapsMode" width="20" height="20" viewBox="0 0 24 24" fill="none"
                           xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Zm0 3a.75.75 0 0 0-.743.648l-.007.102v4.5l.007.102a.75.75 0 0 0 1.486 0l.007-.102v-4.5l-.007-.102A.75.75 0 0 0 12 8Zm7.17-2.877.082.061 1.149 1a.75.75 0 0 1-.904 1.193l-.081-.061-1.149-1a.75.75 0 0 1 .903-1.193ZM14.25 2.5a.75.75 0 0 1 .102 1.493L14.25 4h-4.5a.75.75 0 0 1-.102-1.493L9.75 2.5h4.5Z"
                             fill="currentColor"/>
                       </svg>
 
-                    <!-- 褰撳墠鏄€滀粎鍐峰嵈鈥濊鍥撅細鎸夐挳鏄剧ず鈥滄樉绀哄叏閮ㄢ€?+ 鍒楄〃 icon -->
+                    <!-- In cooldown-only mode, show the "show all" list icon. -->
                       <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none"
                         xmlns="http://www.w3.org/2000/svg">
                         <path d="M3 17h12a1 1 0 0 1 .117 1.993L15 19H3a1 1 0 0 1-.117-1.993L3 17h12H3Zm0-6h18a1 1 0 0 1 .117 1.993L21 13H3a1 1 0 0 1-.117-1.993L3 11h18H3Zm0-6h15a1 1 0 0 1 .117 1.993L18 7H3a1 1 0 0 1-.117-1.993L3 5h15H3Z"
@@ -575,14 +575,14 @@
                       <div class="mapcd-cell mapcd-col-map">
                         <div class="mapcd-map-key-row">
                           <div class="mapcd-map-key">{{ row.mapLine1 }}</div>
-                          <!-- 蹇粴鏃朵笉娓叉煋绗簩琛岋紙浣犲凡鏈?mapCooldownIsFastScrolling 杩欎釜鐘舵€侊級 -->
+                          <!-- Skip second-line translation while fast-scrolling. -->
                           <div v-if="isChineseLang && row.mapLine2 && !mapCooldownIsFastScrolling" class="mapcd-map-cn">
                             {{ row.mapLine2 }}
                           </div>
                         </div>
                       </div>
 
-                      <!-- 蹇粴鏃朵笉濉?achievement锛堥伩鍏嶅ぇ閲忔枃鏈妭鐐硅繘鍑猴級 -->
+                      <!-- Skip achievement text while fast-scrolling to reduce DOM updates. -->
                       <div class="mapcd-cell mapcd-col-ach" :title="mapCooldownIsFastScrolling ? '' : row.achievement">
                         {{ mapCooldownIsFastScrolling ? '' : (row.achievement || '-') }}
                       </div>
@@ -590,7 +590,7 @@
                       <div class="mapcd-cell mapcd-col-deadline">{{ row.deadlineText }}</div>
                       <div class="mapcd-cell mapcd-col-length">{{ row.durationText }}</div>
 
-                      <!-- 涓嶇敤 v-html锛氭敼鎴愬唴鑱?svg锛堣妭鐐规洿鍙帶锛?-->
+                      <!-- Use inline SVG instead of v-html for better control and safety. -->
                       <div class="mapcd-cell mapcd-col-availability">
                         <span class="mapcd-availability" :class="row.availability === 'available' ? 'is-available' : 'is-cooldown'">
                           <span class="mapcd-availability-icon" aria-hidden="true">
@@ -897,7 +897,7 @@ const t = (key, fallback = '') => {
 const isLoggedIn = computed(() => authState.value.loggedIn);
 const authRoleLabel = computed(() => ROLE_LABELS[authState.value.role]?.label || ROLE_LABELS.guest.label);
 const authRoleClass = computed(() => authState.value.role);
-const langLabel = computed(() => (curLang.value || '').startsWith('zh') ? '中文' : 'English');
+const langLabel = computed(() => (curLang.value || '').startsWith('zh') ? 'Chinese' : 'English');
 const isChineseLang = computed(() => curLang.value.includes('zh'));
 const currentLogoPath = computed(() => isDark.value ? LOGO_PATHS.W : LOGO_PATHS.B);
 const steamLogoPath = computed(() => STEAM_LOGO_PATH);
@@ -1550,7 +1550,7 @@ const normalizeMapKey = (value) => {
   return mapKey;
 };
 
-const mapNoTranslationText = '暂无';
+const mapNoTranslationText = 'N/A';
 
 const buildMapTranslationEntry = (mapCn, mapTw) => {
   return {
@@ -1972,26 +1972,26 @@ const updateMapCooldownWindow = (scrollTop, { force = false } = {}) => {
     updateMapCooldownVisibleRows();
     return;
   }
-  // 璁＄畻鍩烘湰琛屾暟
+  // Compute baseline visible rows.
   const baseRows = Math.max(1, Math.ceil(viewportHeight / rowHeight))
 
-  // 鏄惁澶勪簬蹇€熸粴鍔ㄧ姸鎬?
+  // Detect fast scrolling mode.
   const isFast = mapCooldownIsFastScrolling.value
 
-  // 涓嶅悓婊氬姩鐘舵€佷笅鐨?overscan 鍜屾渶澶ф覆鏌撴暟閲?
+  // Use different overscan and max render counts per scroll mode.
   const overscanRows = isFast
     ? Math.min(24, Math.max(8, Math.ceil(baseRows * 0.5)))
     : Math.min(120, Math.max(10, Math.ceil(baseRows * 1.2)))
 
   const maxRendered = isFast ? 80 : mapCooldownMaxRendered
 
-  // 鏈€缁堟覆鏌撶殑琛屾暟
+  // Final row render count.
   const renderCount = Math.min(
     maxRendered,
     Math.max(baseRows, baseRows + overscanRows * 2)
   )
 
-  // 浠ヨ鍙ｄ腑鐐逛负閿氱偣璁＄畻 start/end
+  // Use viewport center as the anchor to compute start/end.
   const anchorIndex = Math.floor((scrollTopClamped + viewportHeight / 2) / rowHeight)
   const maxStart = Math.max(0, total - renderCount)
 
@@ -2151,7 +2151,7 @@ const pushMapIndexToWorker = () => {
   const mapIndexIsProxy = isProxy(mapIndexValue)
   const raw = mapIndexIsProxy ? toRaw(mapIndexValue) : mapIndexValue
 
-  // 鏂板锛氬悓涓€涓璞″紩鐢ㄥ氨涓嶉噸澶?stringify + SETINDEX
+  // Avoid redundant stringify + SETINDEX when the same object reference is reused.
   if (mapCooldownWorkerHasIndex && raw === mapCooldownLastSentIndexRef) return
 
   mapCooldownPlainIndexCache = JSON.parse(JSON.stringify(raw))
@@ -2218,7 +2218,7 @@ const requestMapCooldownBuild = ({ reason = 'update' } = {}) => {
   mapCooldownTimeZone.value =
     Intl.DateTimeFormat().resolvedOptions().timeZone || mapCooldownTimeZone.value
 
-  // 鏂板锛氬鏋?worker 杩樻病鎷垮埌 index锛屽氨鍏堝彂涓€娆?SETINDEX
+  // If worker has not received index yet, send SETINDEX first.
   if (!mapCooldownWorkerHasIndex) {
     pushMapIndexToWorker()
   }
@@ -2230,7 +2230,7 @@ const requestMapCooldownBuild = ({ reason = 'update' } = {}) => {
 
   const mode = 'showAll'
 
-  // 浣犵殑 debug log 鍙互淇濈暀锛堜絾娉ㄦ剰鍒啀 Object.keys(null)锛?
+  // Keep debug logs if needed, but avoid Object.keys(null).
   const mapIndexValue = mapIndex.value || {}
   console.log('[mapcd] posting BUILD', {
     mode,
@@ -2240,7 +2240,7 @@ const requestMapCooldownBuild = ({ reason = 'update' } = {}) => {
     mapIndexKeys: Object.keys(mapIndexValue).length
   })
 
-  // 鍒犻櫎锛歮apIndexIsProxy / plainMapIndex stringify
+  // Removed: mapIndexIsProxy / plainMapIndex stringify.
   // const mapIndexIsProxy = isProxy(mapIndexValue)
   // const plainMapIndex = JSON.parse(JSON.stringify(mapIndexIsProxy ? toRaw(mapIndexValue) : mapIndexValue))
 
@@ -3204,7 +3204,7 @@ const submitFeedback = () => {
 </script>
 
 <style scoped>
-/* 1. 鍏ㄥ眬甯冨眬閿佸畾 - 闃叉鍙屾粴鍔ㄦ潯 */
+/* 1. Global layout lock to prevent dual scrollbars. */
 :global(html), :global(body) {
   height: 100%;
   margin: 0;
@@ -3224,7 +3224,7 @@ const submitFeedback = () => {
   overflow: hidden;
 }
 
-/* 涓诲唴瀹瑰尯涓嶈嚜宸辨粴鍔紝鑰屾槸浣滀负涓€涓?Flex 瀹瑰櫒锛岃瀛愯鍥捐嚜宸卞喅瀹氬浣曟粴鍔?*/
+/* Main content is a flex container; child views control their own scroll behavior. */
 #main-content {
   flex: 1;
   display: flex;
@@ -3234,7 +3234,7 @@ const submitFeedback = () => {
   position: relative;
 }
 
-/* 鎵€鏈夎鍥惧寘瑁瑰眰涔熷繀椤讳紶閫掗珮搴?*/
+/* Propagate height to all view wrapper layers. */
 #main-content > .animate-enter {
   flex: 0 0 auto;
   display: flex;
@@ -3369,7 +3369,7 @@ const submitFeedback = () => {
   overflow: hidden;
 }
 
-/* 1. 榛樿瀹氫箟涓?鏆楄壊妯″紡 (Dark Mode Base) */
+/* 1. Dark mode base variables. */
 .mapcd-view {
   --w11-bg: rgba(32, 32, 32, 0.75);
   --w11-border: rgba(255, 255, 255, 0.08);
@@ -3389,10 +3389,10 @@ const submitFeedback = () => {
   overflow: hidden;
 }
 
-/* 2. 浜壊妯″紡瑕嗗啓 (Light Mode Overrides) */
-/* 鍖呭惈涓ょ鎯呭喌锛欻TML鏍囩涓婃湁 data-theme="light" 鎴栬€?绯荤粺鍋忓ソ鏄?light 涓旀病鏈夋墜鍔ㄦ寚瀹?dark */
+/* 2. Light mode overrides. */
+/* Covers data-theme=light (and system-light when no manual dark override exists). */
 :global(html[data-theme="light"]) .mapcd-container,
-/* 浜壊涓婚瑕嗗啓锛氳窡闅?data-theme */
+/* Light theme override driven by data-theme. */
 [data-theme="light"] .mapcd-view {
   --w11-bg: #ffffff;
   --w11-border: #e5e5e5;
@@ -3404,7 +3404,7 @@ const submitFeedback = () => {
   --w11-accent: var(--accent, #005a9e);
 }
 
-/* 宸ュ叿鏍忓尯鍩?(Fixed Header) */
+/* Toolbar region (fixed header section). */
 .mapcd-toolbar {
   flex-shrink: 0;
   padding: 20px 16px 12px 16px;
@@ -3431,7 +3431,7 @@ const submitFeedback = () => {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary); /* 浣跨敤鍏ㄥ眬瀛椾綋鑹蹭互閫傚簲澶栭儴涓婚 */
+  color: var(--text-primary); /* Use global text color to follow app theme. */
 }
 
 .mapcd-preparing {
@@ -3446,7 +3446,7 @@ const submitFeedback = () => {
   gap: 12px;
 }
 
-/* Win11 椋庢牸鎸夐挳 */
+/* Win11-style button. */
 .mapcd-toggle-btn {
   height: 36px;
   padding: 0 16px;
@@ -3461,8 +3461,8 @@ const submitFeedback = () => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  flex: 0 0 auto;      /* 涓嶅厑璁歌鎸ゅ帇鍙樼獎 */
-  white-space: nowrap; /* 绂佹涓枃閫愬瓧鎹㈣ */
+  flex: 0 0 auto;      /* Prevent shrinking in tight layouts. */
+  white-space: nowrap; /* Keep label on a single line. */
   min-width: fit-content;
 }
 
@@ -3478,7 +3478,7 @@ const submitFeedback = () => {
   display: block;
 }
 
-/* 鍏抽敭锛氬浘鏍囬鑹茶窡闅忔寜閽枃瀛楅鑹诧紝娣辨祬鑹查兘鑷姩閫傞厤 */
+/* Important: icon color follows button text color in both themes. */
 .mapcd-toggle-btn {
   color: var(--w11-text);
 }
@@ -3487,7 +3487,7 @@ const submitFeedback = () => {
   background: var(--w11-hover);
 }
 
-/* Win11 椋庢牸鎼滅储妗?*/
+/* Win11-style search box. */
 .mapcd-search {
   display: flex;
   align-items: center;
@@ -3495,7 +3495,7 @@ const submitFeedback = () => {
   width: 240px;
   background: var(--w11-hover);
   border: 1px solid var(--w11-border);
-  border-radius: 6px; /* 灏忓渾瑙?*/
+  border-radius: 6px; /* Small corner radius. */
   padding: 0 8px;
   transition: all 0.2s ease;
 }
@@ -3507,8 +3507,8 @@ const submitFeedback = () => {
 .mapcd-searchIcon {
   width: 16px; height: 16px;
   color: var(--text-secondary);
-  align-items: center;     /* 鍏抽敭 */
-  justify-content: center; /* 鍏抽敭 */
+  align-items: center;     /* Keep icon vertically centered. */
+  justify-content: center; /* Keep icon horizontally centered. */
   margin-right: 8px;
   display: flex;
 }
@@ -3539,22 +3539,22 @@ const submitFeedback = () => {
   border-radius: 4px;
 }
 
-/* 涓诲鍣細鍗曠嫭鐨勫ぇ鍦嗚鍗＄墖 */
+/* Main card container. */
 .mapcd-container {
-  flex: 1; /* 鍗犳嵁鍓╀綑楂樺害 */
+  flex: 1; /* Fill available height. */
   display: flex;
   flex-direction: column;
-  min-height: 0; /* 蹇呴』璁剧疆浠ュ厑璁?flex 瀛愰」婊氬姩 */
+  min-height: 0; /* Required for flex children to scroll correctly. */
   
   background: var(--w11-bg);
   border: 1px solid var(--w11-border);
-  border-radius: 8px; /* Win11 鍗＄墖鍦嗚 */
+  border-radius: 8px; /* Win11 card corner radius. */
   box-shadow: var(--w11-shadow);
   
-  margin: 0 16px 20px 16px; /* 娴姩杈硅窛 */
+  margin: 0 16px 20px 16px; /* Floating outer spacing. */
   overflow: hidden;
   
-  /* 鏆楄壊妯″紡寮€鍚ā绯?*/
+  /* Enable blur in dark mode. */
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
@@ -3565,8 +3565,8 @@ const submitFeedback = () => {
 }
 
 
-/* 浜壊妯″紡寮哄埗鍏抽棴妯＄硦锛岀‘淇濈函鍑€ */
-/* 浜壊涓婚寮哄埗鍏抽棴妯＄硦锛岀‘淇濈函鍑€ */
+/* Disable blur in light mode for cleaner surfaces. */
+/* Light theme explicitly disables blur. */
 [data-theme="light"] .mapcd-container {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -3579,7 +3579,7 @@ const submitFeedback = () => {
   height: 100%;
 }
 
-/* 琛ㄥご锛氬浐瀹氬湪瀹瑰櫒椤堕儴 */
+/* Table header: fixed at top of container. */
 .mapcd-header {
   display: grid;
   grid-template-columns: minmax(200px, 2fr) 1fr 1.3fr minmax(110px, 0.7fr) minmax(150px, 0.9fr);
@@ -3602,10 +3602,10 @@ const submitFeedback = () => {
 .mapcd-header .sortable:hover { color: var(--w11-text); }
 .sort-tri { margin-left: 4px; font-size: 10px; opacity: 0.5; }
 
-/* 鍒楄〃涓讳綋锛氬敮涓€鍙粴鍔ㄧ殑鍖哄煙 */
+/* Table body: the only vertically scrollable area. */
 .mapcd-body {
   flex: 1;
-  overflow-y: auto !important; /* 寮哄埗寮€鍚瀭鐩存粴鍔?*/
+  overflow-y: auto !important; /* Force vertical scrolling. */
   padding-bottom: 20px;
   scrollbar-width: none;      /* Firefox */
   -ms-overflow-style: none;   /* legacy Edge */
@@ -3617,14 +3617,14 @@ const submitFeedback = () => {
 }
 
 
-/* 琛屾牱寮?*/
+/* Table row style. */
 .mapcd-row {
   display: grid;
   grid-template-columns: minmax(200px, 2fr) 1fr 1.3fr minmax(110px, 0.7fr) minmax(150px, 0.9fr);
   align-items: center;
-  height: 48px; /* 楂樺瘑搴?*/
+  height: 48px; /* Dense row height. */
   padding: 0 16px;
-  border-bottom: 1px solid rgba(128,128,128, 0.08); /* 鏋佺粏鍒嗗壊绾?*/
+  border-bottom: 1px solid rgba(128,128,128, 0.08); /* Subtle divider. */
   color: var(--w11-text);
   font-size: 13px;
   transition: background 0.1s ease;
@@ -3643,7 +3643,7 @@ const submitFeedback = () => {
   background: var(--w11-hover);
 }
 
-/* 鍒楀榻?*/
+/* Cell alignment and truncation. */
 .mapcd-cell {
   overflow: hidden;
   white-space: nowrap;
@@ -3658,14 +3658,14 @@ const submitFeedback = () => {
 .mapcd-map-key { font-weight: 600; }
 .mapcd-map-cn { font-size: 11px; color: var(--w11-text-sub); line-height: 1.2; margin-top: 2px; }
 
-/* 鐘舵€佸浘鏍囷細鍦嗚姝ｆ柟褰?(Win11 椋庢牸) */
+/* Availability icon block (Win11 style). */
 .mapcd-availability {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 4px; /* 灏忓渾瑙?*/
+  border-radius: 4px; /* Small corner radius. */
   line-height: 0;
 }
 
@@ -3699,14 +3699,14 @@ const submitFeedback = () => {
   color: var(--w11-text-sub);
 }
 
-/* 绉诲姩绔€傞厤 */
+/* Mobile adaptation. */
 @media (max-width: 768px) {
   .mapcd-view { padding: 0; max-width: 100%; height: 100vh; }
   .mapcd-container { margin: 0; border-radius: 0; border: none; }
   .mapcd-toolbar { padding: 10px; }
   .mapcd-header, .mapcd-row {
     padding: 0 10px;
-    grid-template-columns: 1fr 0.5fr 72px; /* 绠€鍖栧垪 */
+    grid-template-columns: 1fr 0.5fr 72px; /* Simplified mobile columns. */
     font-size: 12px;
   }
   .mapcd-col-ach, .mapcd-col-length { display: none !important; }
