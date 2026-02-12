@@ -1,0 +1,38 @@
+{
+  "map_cd_url": "https://example.com/serverlist/cs2maplist",
+  "stats_export_retention_days": 90,
+  "admin_steam_ids": [],
+  "communities": [
+    {
+      "id": "exg",
+      "name": "Example Community",
+      "short_name": "EXG",
+      "logo": "/static/exg_logo.webp",
+      "game": "cs2",
+      "location": "global",
+      "features": ["map_cd"],
+      "servers": [
+        {
+          "name": "Example Server 01",
+          "host": "server-01.example.com",
+          "port": 27015
+        }
+      ]
+    },
+    {
+      "id": "demo_css",
+      "name": "Example CSS Community",
+      "short_name": "CSS",
+      "logo": "/static/nide_logo.png",
+      "game": "css",
+      "location": "global",
+      "servers": [
+        {
+          "name": "Example CSS Server",
+          "host": "server-css.example.com",
+          "port": 27015
+        }
+      ]
+    }
+  ]
+}

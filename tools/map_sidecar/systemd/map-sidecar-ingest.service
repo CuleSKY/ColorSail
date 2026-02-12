@@ -1,0 +1,14 @@
+[Unit]
+Description=CS2ZE Map Sidecar - EXG ingest HTTP server
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/example-app/NERV_CS2ZE
+EnvironmentFile=/etc/default/map-sidecar
+ExecStart=/opt/example-app/NERV_CS2ZE/.venv/bin/python -m tools.map_sidecar.sidecar ingest-server
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

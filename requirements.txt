@@ -1,0 +1,15 @@
+flask
+Flask-Session
+redis
+flask-sock
+python-a2s
+apscheduler
+requests
+websocket-client
+beautifulsoup4
+lxml
+playwright
+cryptography
+opencc-python-reimplemented
+pypinyin
+pymysql

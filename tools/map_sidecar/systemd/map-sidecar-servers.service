@@ -1,0 +1,9 @@
+[Unit]
+Description=CS2ZE Map Sidecar - Poll /servers.json and export map_translations.json
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/example-app/NERV_CS2ZE
+EnvironmentFile=/etc/default/map-sidecar
+ExecStart=/opt/example-app/NERV_CS2ZE/.venv/bin/python -m tools.map_sidecar.sidecar poll-servers

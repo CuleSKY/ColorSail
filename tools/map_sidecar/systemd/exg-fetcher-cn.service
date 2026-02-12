@@ -1,0 +1,9 @@
+[Unit]
+Description=CS2ZE EXG maplist CN fetcher
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/cs2ze/NERV_CS2ZE
+EnvironmentFile=/etc/default/exg-fetcher
+ExecStart=/opt/cs2ze/NERV_CS2ZE/.venv/bin/python -m tools.map_sidecar.exg_cn_pipeline run

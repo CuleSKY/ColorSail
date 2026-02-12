@@ -1,0 +1,390 @@
+<div id="app">
+<div
+    :class="{ 'app-blurred': showLoginPrompt }"
+    :style="isMobile ? {} : { display: 'flex', width: '100%', height: '100%' }"
+    @click="closeDropdowns"
+  >
+    <div class="login-overlay" v-if="!embedMode && showLoginPrompt">
+      <div class="login-modal">
+        <h3>{{ t('steam_prompt_title') }}</h3>
+        <p>{{ t('steam_prompt_desc') }}</p>
+        <div class="login-modal-actions">
+          <button class="auth-btn steam-login-btn" :disabled="steamAuthPending" @click.stop="startSteamLogin">
+            <img class="steam-logo" :src="steamLogoPath" alt="Steam">
+            {{ t('steam_login') }}
+          </button>
+          <button class="login-skip" @click.stop="dismissLoginPrompt">{{ t('steam_skip') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="sidebar" v-if="!embedMode" :class="{ collapsed: isCollapsed }" @click.stop>
+      <button class="hamburger-btn" @click="toggleSidebar">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <div class="sidebar-logo"><img :src="currentLogoPath" alt="Logo" decoding="async"></div>
+
+      <div class="nav-item" :class="{active: curView === 'servers'}" @click="goToView('servers')">
+        <div class="icon-svg" v-html="icons.server"></div>
+        <span v-if="!isCollapsed">{{ t('servers') }}</span>
+        <div class="tooltip" v-if="isCollapsed">{{ t('servers') }}</div>
+      </div>
+
+      <div v-if="!isCollapsed && isEditMode" class="animate-enter">
+        <div class="drag-hint">{{ t('drag_hint') }}</div>
+        <div
+          class="draggable-item"
+          v-for="(comm, idx) in communities"
+          :key="comm.id"
+          draggable="true"
+          @dragstart="onDragStart($event, idx)"
+          @dragover.prevent
+          @dragenter="onDragEnter($event, idx)"
+          @dragleave="onDragLeave($event)"
+          @drop="onDrop($event, idx)"
+          :class="{ 'dragging': draggedIndex === idx, 'drag-over': dragOverIndex === idx }"
+          style="padding: 10px; font-size:13px; background: rgba(128,128,128,0.05); margin-bottom:4px; border-radius:4px; display:flex; align-items:center; gap:8px;"
+        >
+          <div class="icon-svg" v-html="icons.drag" style="width:16px; opacity:0.5"></div>
+          <span>{{ comm.name }}</span>
+        </div>
+      </div>
+
+      <div class="nav-item" v-if="isLoggedIn" :class="{active: curView === 'map_sub'}" @click="goToView('map_sub')">
+        <div class="icon-svg" v-html="icons.search_sub"></div>
+        <span v-if="!isCollapsed">{{ t('sub_menu') }}</span>
+        <div class="tooltip" v-if="isCollapsed">{{ t('sub_menu') }}</div>
+      </div>
+
+      <div class="nav-item" v-if="isLoggedIn" :class="{active: curView === 'stats', disabled: !isLoggedIn}" @click="goToView('stats')">
+        <div class="icon-svg" v-html="icons.stats"></div>
+        <div v-if="!isCollapsed" style="display:flex; flex-direction:column; justify-content:center; line-height:1.2;">
+          <span>{{ t('stats') }}</span>
+          <span style="font-size: 10px; opacity: 0.7;">{{ t('stats_note') }}</span>
+          <span v-if="!isLoggedIn" style="font-size: 10px; opacity: 0.7;">{{ t('login_required_short') }}</span>
+        </div>
+        <div class="tooltip" v-if="isCollapsed">{{ t('stats') }}</div>
+      </div>
+      <div class="nav-item" v-if="isLoggedIn" :class="{active: curView === 'feedback', disabled: !isLoggedIn}" @click="goToView('feedback')">
+        <div class="icon-svg" v-html="icons.feedback"></div>
+        <span v-if="!isCollapsed">{{ t('feedback') }}</span>
+        <div class="tooltip" v-if="isCollapsed">{{ t('feedback') }}</div>
+      </div>
+      <div class="nav-item" @click="openMapLink" v-if="hasFeature('map_cd')">
+        <div class="icon-svg" v-html="icons.map"></div>
+        <div v-if="!isCollapsed" style="display:flex; flex-direction:column; justify-content:center; line-height:1.2;">
+          <span>{{ t('mapcd') }}</span>
+          <span style="font-size: 10px; opacity: 0.7;">{{ t('exg_only') }}</span>
+        </div>
+        <div class="tooltip" v-if="isCollapsed">{{ t('mapcd') }}</div>
+      </div>
+
+      <div style="margin-top: auto; padding: 10px;">
+        <div class="nav-item" @click="toggleEditMode" :class="{'edit-mode-active': isEditMode}">
+          <div class="icon-svg" v-html="icons.edit"></div>
+          <span v-if="!isCollapsed">{{ isEditMode ? t('exit_edit') : t('edit_order') }}</span>
+          <div class="tooltip" v-if="isCollapsed">{{ t('edit_order') }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="edit-banner" v-if="!embedMode && isEditMode"></div>
+      <header v-if="!embedMode">
+        <div class="header-left">
+          <div class="header-title-area">
+            <div class="header-logo"><img :src="currentLogoPath" alt="Logo"></div>
+            <h1 v-if="curView === 'servers'">{{ t('app_title') }}</h1>
+            <h1 v-if="curView === 'map_sub'">{{ t('sub_menu') }}</h1>
+            <h1 v-if="curView === 'stats'">{{ t('stats') }}</h1>
+            <h1 v-if="curView === 'feedback'">{{ t('feedback') }}</h1>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <div class="auth-panel" v-if="!isMobile">
+            <div class="auth-actions">
+              <button class="auth-btn steam-login-btn" v-if="!isLoggedIn" :disabled="steamAuthPending" @click.stop="startSteamLogin">
+                <img class="steam-logo" :src="steamLogoPath" alt="Steam">
+                {{ t('steam_login') }}
+              </button>
+              <div v-if="isLoggedIn" class="user-menu-wrapper">
+                <button class="profile-btn" @click.stop="toggleProfileMenu">
+                  <img class="profile-avatar" :src="steamProfileAvatar" alt="Steam Avatar">
+                </button>
+                <div class="dropdown-menu profile-menu" :class="{show: showProfileMenu}" @click.stop>
+                  <div class="dropdown-item">
+                    <a v-if="steamId" :href="'https://example.com/profiles/' + steamId" target="_blank" class="profile-link">
+                      {{ steamProfileName }} <span style="font-size:10px; opacity:0.5">鈫?/span>
+                    </a>
+                    <span v-else class="profile-name">{{ steamProfileName }}</span>
+                  </div>
+                  <div class="dropdown-item logout-item" @click.stop="logout">{{ t('logout') }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="header-toolbar" v-if="curView === 'servers'">
+            <button class="toolbar-btn" @click.stop="toggleViewMode" :title="t('switch_view')">
+              <div class="icon-svg" v-html="viewMode === 'grid' ? icons.list : icons.grid"></div>
+              <span>{{ viewMode === 'grid' ? t('view_list') : t('view_grid') }}</span>
+            </button>
+            <button class="toolbar-btn" @click.stop="toggleSortByPlayers" :class="{active: sortByPlayers}" :title="t('sort_players')">
+              <div class="icon-svg" v-html="icons.sort"></div>
+              <span>{{ t('sort_btn') }}</span>
+            </button>
+          </div>
+
+          <div class="top-controls">
+            <div class="desktop-only-icon" v-if="isLoggedIn" style="position: relative;">
+              <button class="control-btn" :class="{'menu-active': showSubPopover}" @click.stop="toggleSubPopover" :title="t('my_subs')">
+                <div class="icon-svg" v-html="icons.bell"></div>
+              </button>
+              <div class="dropdown-menu sub-popover" :class="{show: showSubPopover}" @click.stop>
+                <div v-if="subscriptions.length === 0" class="sub-pop-empty">{{ t('no_subs') }}</div>
+                <div v-else>
+                  <div class="sub-pop-item" v-for="sub in subscriptions.slice(0, 5)" :key="sub.map">
+                    <div class="sub-pop-info">
+                      <div class="sub-pop-map">{{ sub.map }}</div>
+                      <div class="sub-pop-trans" v-if="isChineseLang && getMapTranslation(sub.map)">{{ getMapTranslation(sub.map) }}</div>
+                    </div>
+                    <div class="sub-pop-del" @click.stop="removeSubscriptionByMap(sub.map)" :title="t('unsubscribe')">
+                      <div class="icon-svg" v-html="icons.trash" style="width:14px;"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="sub-pop-footer" @click.stop="goToSubPage">{{ t('manage_all') }}</div>
+              </div>
+            </div>
+
+            <div style="position: relative;">
+              <button class="control-btn" :class="{'menu-active': showLangMenu}" @click.stop="toggleLangMenu">
+                <div class="icon-svg" v-html="icons.lang"></div>
+              </button>
+              <div class="dropdown-menu" :class="{show: showLangMenu}" @click.stop>
+                <div class="dropdown-item" :class="{active: curLang.startsWith('zh')}" @click="setLang(defaultChineseLang)">涓枃</div>
+                <div class="dropdown-item" :class="{active: curLang==='en'}" @click="setLang('en')">English</div>
+              </div>
+            </div>
+            <button class="control-btn" @click="toggleTheme"><div class="icon-svg" v-html="icons.theme"></div></button>
+          </div>
+        </div>
+      </header>
+
+      <div class="community-nav" v-if="curView === 'servers'">
+        <div class="jump-pill" v-for="comm in filteredCommunities" :key="comm.id" @click="scrollToComm(comm.id)">
+          <img v-if="getCommunityLogoMeta(comm).url" :src="getCommunityLogoMeta(comm).url"  :class="{ 'logo-svg': getCommunityLogoMeta(comm).isSvg, 'logo-invert': getCommunityLogoMeta(comm).isSvg && isDark }"loading="lazy" decoding="async">>
+          <span>{{ comm.name }}</span>
+        </div>
+      </div>
+
+      <div class="server-search-bar" v-if="curView === 'servers'">
+        <input class="server-search-input" type="text" v-model="serverMapQueryInput" :placeholder="t('server_search_ph')">
+      </div>
+
+      <div id="main-content">
+        <div v-if="curView === 'servers'" class="animate-enter">
+          <div v-if="serverSearchNotice" class="server-search-hint">
+            {{ serverSearchNotice }}
+          </div>
+          <div v-for="comm in filteredCommunities" :key="comm.id" :id="'comm-' + comm.id" style="margin-bottom: 40px;">
+            <h3 class="desktop-header" v-if="!isMobile" style="border-left: 4px solid var(--accent); padding-left: 10px; margin: 0 0 16px 0;">{{ comm.name }}</h3>
+            <div class="community-title-bar" v-if="isMobile" :id="'comm-mob-' + comm.id">
+              <img v-if="getCommunityLogoMeta(comm).url" :src="getCommunityLogoMeta(comm).url" :class="{ 'logo-svg': getCommunityLogoMeta(comm).isSvg, 'logo-invert': getCommunityLogoMeta(comm).isSvg && isDark }">
+              {{ comm.name }}
+            </div>
+            <div v-if="(!getServers(comm.id) || getServers(comm.id).length === 0)">
+              <div v-if="viewMode === 'list' || isMobile" class="skeleton-list">
+                <div class="skeleton-row" v-for="i in 5" :key="i"></div>
+              </div>
+
+              <div v-else class="skeleton-grid">
+                <div class="skeleton-card" v-for="i in 3" :key="i"></div>
+              </div>
+            </div>
+
+            <div v-if="viewMode === 'grid' && !isMobile" class="grid-container">
+              <div class="card" :class="{ 'online': s.online, 'has-image': s.image_url }" v-for="s in getServers(comm.id)" :key="s.display_ip">
+                <div class="status-line"></div>
+                <img class="card-bg-layer"
+                  v-if="s.image_url"
+                  :src="s.image_url"
+                  loading="lazy"
+                  decoding="async"
+                  alt="Map">
+                <div class="card-overlay" v-if="s.image_url"></div>
+                <div class="card-content">
+                  <div>
+                    <div class="card-header-row">
+                      <div class="srv-name" :title="s.name">{{ s.name }}</div>
+                    </div>
+                    <div class="info-block">
+                      <div class="info-row"><span class="info-label">{{ t('map') }}</span> <div class="map-info"><span>{{ s.map || '-' }}</span><div class="map-trans" v-if="isChineseLang"><span v-if="getServerMapTranslation(s)">{{ getServerMapTranslation(s) }}</span><span v-if="!getServerMapTranslation(s) && s.map!='-'" style="opacity:0.6">{{ t('no_trans') }}</span></div></div></div>
+                      <div class="info-row"><span class="info-label">{{ t('players') }}</span> <span>{{ s.players }}/{{ s.max_players }}</span></div>
+                    </div>
+                  </div>
+                  <div class="actions">
+                    <button class="btn btn-primary" @click="joinServer(s, comm)">{{ t('join_server') }}</button>
+                    <button class="btn btn-sec" v-if="isLoggedIn" @click="copyCmd(s)">{{ t('copy_console_cmd') }}</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="viewMode === 'list' && !isMobile" class="list-container">
+              <div class="list-row" :class="{ 'online': s.online }" v-for="s in getServers(comm.id)" :key="s.display_ip">
+                <div class="col-status"></div>
+                <div class="col-name" :title="s.name">{{ s.name }}</div>
+                <div class="col-map"><span class="map-name">{{ s.map || '-' }}</span><span class="col-map-cn" v-if="isChineseLang">{{ getServerMapTranslation(s) || (s.map!='-' ? t('no_trans') : '') }}</span></div>
+                <div class="col-players">{{ s.players }}/{{ s.max_players }}</div>
+                <div class="col-actions">
+                  <button class="btn btn-primary" @click="joinServer(s, comm)">{{ t('join_server') }}</button>
+                  <button class="btn btn-sec" v-if="isLoggedIn" @click="copyCmd(s)">{{ t('copy_console_cmd') }}</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mobile-list-container" v-if="isMobile">
+              <div class="mobile-item" v-for="s in getServers(comm.id)" :key="s.display_ip">
+                <div class="mobile-item-left"><div class="mobile-srv-name">{{ s.name }}</div><div class="mobile-map-name"><span>{{ s.map || '-' }}</span><span class="mobile-trans" v-if="isChineseLang"> {{ getServerMapTranslation(s) || (s.map!='-' ? t('no_trans') : '') }}</span></div></div>
+                <div class="mobile-item-right"><div :style="{color: s.online ? 'var(--text-primary)' : 'var(--status-offline)'}">{{ s.online ? s.players + '/' + s.max_players : t('offline') }}</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="curView === 'map_sub' && isLoggedIn" class="animate-enter">
+          <div class="sub-container">
+            <div class="perm-warning" v-if="notificationPermission !== 'granted'" @click="requestPerm">
+              {{ t('notify_warn') }}
+            </div>
+            <div class="keep-alive-hint" v-if="notificationPermission === 'granted'">
+              {{ t('keep_open_hint') }}
+            </div>
+
+            <div class="sub-search-area">
+              <input type="text" class="sub-search-box" v-model="subSearchQuery" :placeholder="t('sub_search_ph')" @input="searchMaps">
+
+              <div class="search-results-panel" v-if="searchResults.length > 0">
+                <div class="search-res-item" :class="{selected: selectedMap === m.key}" v-for="m in searchResults" @click="selectMapToSub(m)">
+                  <b>{{ m.key }}</b> <span v-if="m.val" style="opacity:0.8">({{ m.val }})</span>
+                </div>
+              </div>
+
+              <div class="comm-select-area" v-if="selectedMap">
+                <div style="font-weight:600; margin-bottom:8px;">{{ t('sub_confirm_title') }}: <span style="color:var(--accent)">{{ selectedMap }}</span></div>
+                <div style="font-size:12px; color:var(--text-secondary); margin-bottom:8px;">{{ t('sub_select_comm') }}:</div>
+
+                <div class="comm-options">
+                  <div class="comm-pill" :class="{active: newSubComms.includes('all')}" @click="toggleSubComm('all')">
+                    {{ t('all_comm') }}
+                  </div>
+                  <div class="comm-pill" :class="{active: newSubComms.includes(c.id)}" v-for="c in communities" @click="toggleSubComm(c.id)">
+                    {{ c.short_name || c.name }}
+                  </div>
+                </div>
+
+                <button class="btn btn-primary" style="margin-top:16px; width:100%" @click="addSubscription">
+                  {{ t('subscribe_confirm') }}
+                </button>
+              </div>
+            </div>
+
+            <div style="border-top:1px solid var(--card-border); margin: 30px 0;"></div>
+
+            <h3 style="margin-bottom:16px; opacity:0.8">{{ t('my_subs') }}</h3>
+            <div class="sub-table" v-if="subscriptions.length > 0">
+              <div class="sub-row" v-for="(sub, idx) in subscriptions" :key="idx">
+                <div class="sub-col-info">
+                  <div class="sub-map-key">{{ sub.map }}</div>
+                  <div class="sub-map-val" v-if="isChineseLang && getMapIndexDisplayName(sub.map)">{{ getMapIndexDisplayName(sub.map) }}</div>
+                  <div class="sub-comms">{{ formatSubComms(sub.comms) }}</div>
+                </div>
+                <div class="sub-actions">
+                  <div
+                    v-if="exgStatusByIndex[idx]"
+                    :class="['exg-pill', exgStatusByIndex[idx].state === 'available' ? 'exg-pill--green' : 'exg-pill--red']"
+                  >
+                    <template v-if="exgStatusByIndex[idx].state === 'cooldown'">
+                      <span class="exg-pill-text">{{ exgStatusByIndex[idx].prefix }}</span>
+                      <span class="exg-pill-date" @mouseenter="showExgTooltip($event, exgStatusByIndex[idx].datetime)" @mouseleave="hideExgTooltip">{{ exgStatusByIndex[idx].date }}</span>
+                    </template>
+                    <template v-else>
+                      <span class="exg-pill-text">{{ exgStatusByIndex[idx].label }}</span>
+                    </template>
+                  </div>
+                  <button class="btn-unsub" @click="removeSubscription(idx)">{{ t('unsubscribe') }}</button>
+                </div>
+              </div>
+            </div>
+            <div v-else style="text-align: center; padding: 40px; color: var(--text-secondary);">
+              {{ t('no_subs') }}
+            </div>
+
+            <div class="sub-test-btn" @click="testNotification">{{ t('test_notify') }}</div>
+          </div>
+        </div>
+
+        <div v-if="exgTooltip.visible" ref="exgTooltipRef" class="exg-tooltip" :style="{ top: `${exgTooltip.top}px`, left: `${exgTooltip.left}px` }">{{ exgTooltip.text }}</div>
+
+        <div v-if="curView === 'stats'" class="animate-enter">
+          <div v-if="isLoggedIn" class="stats-dashboard">
+            <div class="stats-summary-row">
+              <div class="summary-card">
+                <div class="summary-label">{{ t('stats_total_label') }}</div>
+                <div class="summary-value">{{ totalPlayers }}</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">{{ t('stats_peak_label') }}</div>
+                <div class="summary-value">{{ totalPeak48h }}</div>
+              </div>
+              <div class="summary-card" v-if="topCommunity">
+                <div class="summary-label">{{ t('stats_top_label') }}</div>
+                <div class="summary-value">{{ topCommunity.name }}</div>
+                <div class="summary-sub">{{ topCommunity.count }} {{ t('stats_players_label') }}</div>
+              </div>
+            </div>
+
+            <div class="stats-charts-row">
+              <div class="chart-wrapper">
+                <div class="chart-title">{{ t('stats_title') }}</div>
+                <div class="chart-subtitle">{{ t('stats_time_note') }}</div>
+                <div class="chart-content"><canvas id="statsLineChart"></canvas></div>
+              </div>
+              <div class="community-list-card">
+                <div class="comm-list-header">{{ t('stats_distribution_label') }}</div>
+                <div class="pie-container">
+                  <canvas id="statsPieChart"></canvas>
+                </div>
+                <div class="comm-list-body">
+                  <div class="comm-stat-row" v-for="item in currentStats" :key="item.id">
+                    <div class="comm-stat-info">
+                      <div class="comm-color-dot" :style="{background: item.color}"></div>
+                      <div class="comm-stat-name">{{ item.name }}</div>
+                    </div>
+                    <div class="comm-stat-val">{{ item.count }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="login-required">
+            <strong>{{ t('login_required_title') }}</strong>
+            <div>{{ t('login_required_stats') }}</div>
+          </div>
+        </div>
+
+        <div v-if="curView === 'feedback'" class="animate-enter">
+          <div class="feedback-panel">
+            <h3>{{ t('feedback_dev_title') }}</h3>
+            <p>{{ t('feedback_dev_desc') }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="fixed-logo"><img :src="currentLogoPath" alt="nerv_logo"></div>
+    </div>
+    <div class="toast" v-if="toastMsg" :class="{show: toastMsg}">{{ toastMsg }}</div>
+  </div>
+</div>
+
+

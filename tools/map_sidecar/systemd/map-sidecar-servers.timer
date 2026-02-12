@@ -1,0 +1,10 @@
+[Unit]
+Description=CS2ZE Map Sidecar - Poll /servers.json every 3 minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=3min
+Unit=map-sidecar-servers.service
+
+[Install]
+WantedBy=timers.target

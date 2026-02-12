@@ -1,0 +1,41 @@
+# Dependencies / build outputs
+node_modules/
+frontend/node_modules/
+frontend/dist/
+src-tauri/target/
+build/
+dist/
+static/assets/
+
+# OS / Python cache
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local runtime data (sensitive or machine-specific)
+statistics/
+session_files/
+logs/
+*.log
+stats.db
+*.sqlite
+*.sqlite3
+prime_audit.log
+prime_users.json
+secrets.json
+.env
+.env.*
+!.env.example
+
+# Local-only backups / archives
+old_src/
+backup_old/
+frontend_bak/
+
+# Generated/static local assets
+static/maps/
+map_index.json
+
+# Optional local files
+favicon.ico
