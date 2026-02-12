@@ -1,4 +1,4 @@
-﻿# NERV CS2ZE (Minimal Open Source Edition)
+﻿# NERV CS2ZE (Open Source Edition)
 
 This repository is a sanitized minimal release of the CS2ZE web project.
 It is intended for open-source sharing, local development, and reference deployment.
